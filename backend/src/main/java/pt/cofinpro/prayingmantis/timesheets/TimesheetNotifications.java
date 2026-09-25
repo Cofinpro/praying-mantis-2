@@ -1,9 +1,8 @@
 package pt.cofinpro.prayingmantis.timesheets;
 
 /**
- * What the timesheet services tell other people about (epics 6 and 7). Epic 4 implements it with rows in the
- * notifications table, with the types of the T-4.1 contract; until then {@link LoggingTimesheetNotifications}
- * only logs.
+ * What the timesheet services tell other people about (epics 6 and 7), as rows in the notifications table:
+ * {@link StoredTimesheetNotifications} (BE-4.1). Every call runs inside the business change's transaction.
  */
 public interface TimesheetNotifications {
 

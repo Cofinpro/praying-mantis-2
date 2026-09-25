@@ -14,6 +14,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -46,6 +47,9 @@ class SubmitTimesheetIntegrationTest {
     @Autowired
     ProjectRepository projects;
 
+    @Autowired
+    JdbcTemplate jdbc;
+
     @Test
     @WithUserDetails(EVA)
     void submittingASavedDraftSetsTheApprover() throws Exception {
@@ -60,6 +64,16 @@ class SubmitTimesheetIntegrationTest {
                 .andExpect(jsonPath("$.approver.name").value("Bruno Costa"))
                 .andExpect(jsonPath("$.submittedAt").isString())
                 .andExpect(jsonPath("$.totalHours").value(8.0));
+
+        // Bruno is told (T-4.1)
+        assertThat(jdbc.queryForList("""
+                select n.type, n.message, n.link from notifications n join users u on u.id = n.user_id
+                where u.email = 'bruno.costa@cofinpro.pt'"""))
+                .singleElement()
+                .satisfies(n -> assertThat(n)
+                        .containsEntry("type", "TIMESHEET_SUBMITTED")
+                        .containsEntry("message", "Eva Santos submitted the week of 12 Oct")
+                        .containsEntry("link", "/approvals?tab=timesheets"));
     }
 
     @Test
