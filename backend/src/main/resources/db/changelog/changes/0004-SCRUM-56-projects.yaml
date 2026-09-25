@@ -1,0 +1,74 @@
+# BE-6.1: projects to book hours on (plan.md §4). A null client means an internal project.
+databaseChangeLog:
+  - changeSet:
+      id: 0004-projects-table
+      author: praying-mantis
+      changes:
+        - createTable:
+            tableName: projects
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  generationType: ALWAYS
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_projects
+              - column:
+                  name: code
+                  type: varchar(30)
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uq_projects_code
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: client
+                  type: varchar(20)
+              - column:
+                  name: is_billable
+                  type: boolean
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_active
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+        # Same values as users.client (decision #8); null = internal
+        - sql:
+            sql: >-
+              alter table projects
+                add constraint ck_projects_client check (client in ('DKB', 'DEKA', 'VV', 'DBIS', 'UNION'))
+      rollback:
+        - dropTable:
+            tableName: projects
+
+  # Dev-only: one or two billable projects per client, the internal ones, and one inactive project
+  # so the "inactive but already on the timesheet" rule (decision #32) can be tried.
+  - changeSet:
+      id: 0004-projects-dev-seed
+      author: praying-mantis
+      context: dev
+      changes:
+        - sql:
+            sql: >-
+              insert into projects (code, name, client, is_billable, is_active) values
+                ('DKB-CORE', 'DKB core banking', 'DKB', true, true),
+                ('DKB-APP', 'DKB mobile app', 'DKB', true, true),
+                ('DEKA-RISK', 'Deka risk reporting', 'DEKA', true, true),
+                ('VV-MIGRATION', 'VV data migration', 'VV', true, true),
+                ('DBIS-PORTAL', 'DBIS client portal', 'DBIS', true, true),
+                ('UNION-FUNDS', 'Union Investment fund platform', 'UNION', true, true),
+                ('INTERNAL', 'Internal', null, false, true),
+                ('TRAINING', 'Training', null, false, true),
+                ('DKB-LEGACY', 'DKB legacy migration (finished)', 'DKB', true, false)
+      rollback:
+        - sql:
+            sql: delete from projects

@@ -61,7 +61,9 @@ docker compose down -v                                             # stop and wi
 
 Every seed user has 22 vacation days for the year the database was created, and Ana and Carla carry days over. Carla has one absence request per status in that year: 5.5 approved vacation days, 3 pending, 2 rejected and 1 sick day, so her balance shows 19 days left.
 
-Without the `dev` profile (e.g. the packaged jar), no seed users, entitlements or requests are created. The five absence types and the public holidays for 2026 and 2027 are reference data and are always loaded.
+The dev seed also has nine projects to book hours on: one or two billable ones per client, `INTERNAL` and `TRAINING`, and the inactive `DKB-LEGACY`.
+
+Without the `dev` profile (e.g. the packaged jar), no seed users, entitlements, requests or projects are created. The five absence types and the public holidays for 2026 and 2027 are reference data and are always loaded.
 
 If port 5432 is taken (e.g. by a locally installed Postgres), stop that one first.
 

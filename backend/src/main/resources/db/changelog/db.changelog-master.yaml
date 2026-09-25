@@ -13,3 +13,7 @@ databaseChangeLog:
   - include:
       file: changes/0006-SCRUM-44-notifications.yaml
       relativeToChangelogFile: true
+  # Merged after 0006: the include order is the order changesets ran in, not the file number
+  - include:
+      file: changes/0004-SCRUM-56-projects.yaml
+      relativeToChangelogFile: true
