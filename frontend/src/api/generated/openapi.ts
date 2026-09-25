@@ -320,6 +320,85 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/team/absence-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Absence requests I'm the approver of
+         * @description For the Approvals page (BE-5.1). Returns the requests whose approver is the logged-in user
+         *     (decision 16): their team members' requests, a team lead's lead's, or, for the admin
+         *     fallback, the requests of people without a team lead. Someone who approves nobody gets an
+         *     empty list, not a 403, so the page can just say "nothing to approve".
+         *
+         *     Filtered by `status`, which defaults to `PENDING`. Pending requests come oldest start date
+         *     first, since the soonest need a decision first. Other statuses come newest start first.
+         */
+        get: operations["getTeamAbsenceRequests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/team/absence-requests/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve a pending request
+         * @description BE-5.2. Sets `APPROVED` and `decidedAt`, stores the optional comment, and notifies the
+         *     requester (`ABSENCE_APPROVED`, T-4.1).
+         *
+         *     - **403** unless the caller is the request's approver or an admin. Nobody decides on their
+         *       own request, not even an admin (decision 16).
+         *     - **409** `/problems/absence-not-pending`: it's already decided or cancelled.
+         *     - **409** `/problems/insufficient-balance`: a VACATION request that no longer fits, because
+         *       another request was approved in the meantime (decision 29). The approver can still reject
+         *       it.
+         */
+        post: operations["approveAbsenceRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/team/absence-requests/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject a pending request
+         * @description BE-5.2. Sets `REJECTED` and `decidedAt`, stores the comment, and notifies the requester
+         *     (`ABSENCE_REJECTED`, T-4.1). **The comment is required**, so the requester learns why; a
+         *     missing or blank one is a 400 on `comment`.
+         *
+         *     Same 403, 404 and 409 `/problems/absence-not-pending` as approve. There's no balance check:
+         *     a rejection frees days, it never uses them.
+         */
+        post: operations["rejectAbsenceRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -452,6 +531,26 @@ export interface components {
             endPart: components["schemas"]["DayPart"];
             /** @example Long weekend in Lisbon */
             reason?: string;
+        };
+        /** @description A request as its approver sees it */
+        TeamAbsenceRequest: {
+            request: components["schemas"]["AbsenceRequest"];
+            requester: components["schemas"]["UserRef"];
+            /**
+             * @description The requester's days left of this type in the year the request starts: entitled +
+             *     carried over − approved (decision 29). Only for types that deduct from the balance
+             *     (VACATION). A pending request isn't subtracted yet, so it fits while `workingDays` ≤
+             *     `remainingDays`.
+             * @example 12.5
+             */
+            remainingDays?: number;
+        };
+        AbsenceDecision: {
+            /**
+             * @description Required to reject (1–500 characters), optional to approve
+             * @example Release week, please pick another one
+             */
+            comment?: string;
         };
         UserRef: {
             /**
@@ -656,6 +755,24 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
+        /** @description Logged in, but not allowed to do this; also a missing or wrong CSRF token */
+        Forbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "type": "about:blank",
+                 *       "title": "Forbidden",
+                 *       "status": 403,
+                 *       "detail": "You are not allowed to do this",
+                 *       "instance": "/api/team/absence-requests/42/approve"
+                 *     }
+                 */
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
         /** @description No such resource, or it isn't yours */
         NotFound: {
             headers: {
@@ -696,7 +813,9 @@ export interface components {
             };
         };
     };
-    parameters: never;
+    parameters: {
+        AbsenceRequestId: number;
+    };
     requestBodies: never;
     headers: never;
     pathItems: never;
@@ -1065,6 +1184,96 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["CsrfForbidden"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    getTeamAbsenceRequests: {
+        parameters: {
+            query?: {
+                /** @description Defaults to `PENDING` */
+                status?: components["schemas"]["AbsenceStatus"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The requests */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamAbsenceRequest"][];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    approveAbsenceRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["AbsenceRequestId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AbsenceDecision"];
+            };
+        };
+        responses: {
+            /** @description The approved request */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AbsenceRequest"];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    rejectAbsenceRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["AbsenceRequestId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AbsenceDecision"];
+            };
+        };
+        responses: {
+            /** @description The rejected request */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AbsenceRequest"];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             default: components["responses"]["Problem"];
         };
     };
