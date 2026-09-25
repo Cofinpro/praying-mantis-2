@@ -37,6 +37,7 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 | 27 | PRs merge without waiting for an approval | Accepted |
 | 28 | Own month-calendar component, no calendar library | Proposed |
 | 29 | Absence request rules: balance limit, past dates | Accepted |
+| 30 | Contract PRs merge without waiting for the other dev | Accepted |
 | 30 | Hosting: mock demo on GitHub Pages, backend on Render | Accepted |
 
 `plan.md` decisions D1–D12 map to #12–#23.
@@ -57,7 +58,7 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 
 **Why:** Once the contract is merged, BE and FE can work in parallel and meet at a known interface.
 
-**Consequences:** A contract change needs a PR that both devs review. *Changed by #27: both devs agree the contract in its `together` story; the PR itself no longer waits for an approval.*
+**Consequences:** A contract change needs a PR that both devs review. *Changed by #27 and #30: the contract PR merges once CI is green, without waiting for the other dev; they adjust it in a follow-up PR if needed.*
 
 ## 3. Generated code on both sides of the contract
 **Status:** Accepted
@@ -306,7 +307,7 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 **Decision:**
 - Every change still goes through a PR with a green build and the checklist in `CONTRIBUTING.md`. But the author merges it without waiting for a code-owner approval.
 - Human reviews are optional. Ask a code owner when you want one; a review can also happen after the merge, with fixes in a follow-up PR.
-- Contract changes are still agreed by both devs, in their `together` story (#2).
+- ~~Contract changes are still agreed by both devs, in their `together` story (#2).~~ *Changed by #30: contract PRs don't wait either.*
 
 **Alternatives considered:** 1 code-owner approval before merge (the original PR policy from T-0.1).
 
@@ -365,3 +366,18 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 - Render's free web service sleeps after 15 minutes without traffic, so the first request after that takes about a minute. The free database expires after 30 days, unless it's upgraded or recreated.
 - One-time setup: in the repo settings, set Pages → Source to "GitHub Actions". In Render, create the Blueprint (New → Blueprint → this repo).
 - To get a real integrated deployment later, move the frontend to a Render static site that rewrites `/api` to the backend (the second alternative).
+
+## 30. Contract PRs merge without waiting for the other dev
+**Status:** Accepted · changes the contract bullet of #27
+
+**Decision:**
+- A `T` story's contract PR (`api/openapi.yaml`) merges like any other PR: once CI is green, without waiting for the other dev's agreement.
+- Whoever drafts it lists the choices worth checking in the PR. The other dev reads it when they get to it, and any change goes in a follow-up contract PR, which the other side then follows.
+- Contract first still holds: the contract PR merges before the BE and FE PRs that implement it (#2).
+
+**Alternatives considered:** Waiting for both devs to agree before merging, which was #27's rule for contracts.
+
+**Why:** The team chose not to block contract PRs on the other dev either (2026-09-25). With FE and BE working in parallel against the contract, a merged draft unblocks both sides sooner than an open one.
+
+**Consequences:** A contract can change after one side has started implementing it. Keep contract changes small and say in the follow-up PR what the other side has to adapt.
+
