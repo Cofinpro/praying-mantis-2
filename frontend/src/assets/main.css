@@ -3,7 +3,6 @@
 
 :root {
   font-family: var(--font-sans);
-  font-size: 14px;
   line-height: 1.5;
   color: var(--color-ink);
   /* The design is light only for now */
@@ -18,6 +17,8 @@
 
 body {
   margin: 0;
+  /* 14px at the default browser size; rem stays relative to the user's own setting */
+  font-size: 0.875rem;
   background: var(--color-bg);
 }
 

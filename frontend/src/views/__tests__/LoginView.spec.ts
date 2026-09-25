@@ -11,7 +11,11 @@ import { queryPlugin, testQueryClient } from '@/test/query'
 async function mountLogin(path = '/login') {
   await router.push(path)
   const queryClient = testQueryClient()
-  const wrapper = mount(LoginView, { global: { plugins: [router, queryPlugin(queryClient)] } })
+  const wrapper = mount(LoginView, {
+    // Attached to the document so focus can be checked; setup.ts unmounts it after each test
+    attachTo: document.body,
+    global: { plugins: [router, queryPlugin(queryClient)] },
+  })
   return { wrapper, queryClient }
 }
 
@@ -55,13 +59,26 @@ describe('LoginView', () => {
     expect(router.currentRoute.value.fullPath).toBe('/')
   })
 
-  it('ignores a redirect to another site', async () => {
-    const { wrapper } = await mountLogin('/login?redirect=//evil.example.com')
+  it.each(['//evil.example.com', '/%5Cevil.example.com'])(
+    'ignores a redirect to another site (%s)',
+    async (redirect) => {
+      const { wrapper } = await mountLogin(`/login?redirect=${redirect}`)
+
+      await signIn(wrapper, MOCK_PASSWORD)
+      await flushPromises()
+
+      expect(router.currentRoute.value.fullPath).toBe('/')
+    },
+  )
+
+  it('clears data cached by a previous session', async () => {
+    const { wrapper, queryClient } = await mountLogin()
+    queryClient.setQueryData(['absences'], ['from the previous user'])
 
     await signIn(wrapper, MOCK_PASSWORD)
     await flushPromises()
 
-    expect(router.currentRoute.value.fullPath).toBe('/')
+    expect(queryClient.getQueryData(['absences'])).toBeUndefined()
   })
 
   it('shows one inline error on 401, without saying which field was wrong', async () => {
@@ -75,7 +92,7 @@ describe('LoginView', () => {
     expect(wrapper.find('[aria-invalid="true"]').exists()).toBe(false)
   })
 
-  it('shows field errors from a 400 under the matching input', async () => {
+  it('shows field errors from a 400 under the matching input and focuses it', async () => {
     server.use(
       http.post('*/api/auth/login', () =>
         HttpResponse.json(
@@ -99,6 +116,7 @@ describe('LoginView', () => {
     expect(wrapper.find(`#${email.attributes('aria-describedby')}`).text()).toBe(
       'must be a well-formed email address',
     )
+    expect(document.activeElement).toBe(email.element)
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
   })
 

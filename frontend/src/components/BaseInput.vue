@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { useId } from 'vue'
 
+// Attributes like maxlength or name belong on the <input>, not on the wrapper <div> that Vue
+// would give them to by default (attribute fallthrough goes to the root element)
+defineOptions({ inheritAttrs: false })
+
 // Labelled text input from the Figma foundations (design.md), with the error state:
 // 2px danger border and a danger helper text that screen readers announce with the field.
 const model = defineModel<string>({ required: true })
@@ -22,6 +26,7 @@ const errorId = `${id}-error`
   <div class="field">
     <label :for="id" class="field__label">{{ label }}</label>
     <input
+      v-bind="$attrs"
       :id="id"
       v-model="model"
       :type="type"

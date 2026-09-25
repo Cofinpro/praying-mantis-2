@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { TriangleAlert } from 'lucide-vue-next'
 
 import { api, ApiError } from '@/api/client'
+import { queryKeys } from '@/api/queryKeys'
 import logoUrl from '@/assets/cofinpro-logo.svg'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseInput from '@/components/BaseInput.vue'
@@ -24,9 +25,12 @@ const {
 } = useMutation({
   mutationFn: api.login,
   async onSuccess(user) {
+    // The cache is keyed by query, not by user: drop anything a previous session left in this tab
+    // (client.ts sends expired sessions here), so the new user never sees someone else's data
+    queryClient.clear()
     // The response is the logged-in user, so seed the cache: the app shell (FE-1.2) reads
-    // ['me'] and doesn't have to call GET /me again right after login
-    queryClient.setQueryData(['me'], user)
+    // queryKeys.me and doesn't have to call GET /me again right after login
+    queryClient.setQueryData(queryKeys.me, user)
     await router.replace(safeRedirect(route.query.redirect))
   },
 })
@@ -52,6 +56,18 @@ const fieldErrors = computed<Record<string, string>>(() =>
     ? Object.fromEntries((apiError.value.problem.errors ?? []).map((e) => [e.field, e.message]))
     : {},
 )
+
+// Field errors appear after a submit, while focus is still on the button. Move focus to the first
+// invalid field so screen readers announce its error (aria-describedby is read on focus).
+// A watch, not a computed, because moving focus is a side effect.
+const formEl = useTemplateRef<HTMLFormElement>('form')
+watch(fieldErrors, async (errors) => {
+  if (Object.keys(errors).length === 0) {
+    return
+  }
+  await nextTick()
+  formEl.value?.querySelector<HTMLInputElement>('[aria-invalid="true"]')?.focus()
+})
 
 /** The banner above the form. The 401 text doesn't say which field was wrong (BE-1.2). */
 const formError = computed(() => {
@@ -85,7 +101,7 @@ const formError = computed(() => {
     </section>
 
     <section class="panel">
-      <form class="form" @submit.prevent="submit">
+      <form ref="form" class="form" @submit.prevent="submit">
         <div>
           <h1 class="form__title">Sign in</h1>
           <p class="form__subtitle">Use your Cofinpro email and password.</p>
@@ -101,6 +117,7 @@ const formError = computed(() => {
           label="Email"
           type="email"
           autocomplete="username"
+          maxlength="255"
           required
           :error="fieldErrors.email"
         />
@@ -109,6 +126,7 @@ const formError = computed(() => {
           label="Password"
           type="password"
           autocomplete="current-password"
+          maxlength="128"
           required
           :error="fieldErrors.password"
         />

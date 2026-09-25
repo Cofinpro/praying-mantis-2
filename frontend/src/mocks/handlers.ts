@@ -25,6 +25,20 @@ export const handlers = [
 
   http.post<never, LoginRequest, CurrentUser | Problem>('*/api/auth/login', async ({ request }) => {
     const { email, password } = await request.json()
+    const blank = (['email', 'password'] as const).filter((field) => !{ email, password }[field])
+    if (blank.length > 0) {
+      return HttpResponse.json(
+        {
+          type: 'about:blank',
+          title: 'Bad Request',
+          status: 400,
+          detail: 'Request has invalid fields',
+          instance: '/api/auth/login',
+          errors: blank.map((field) => ({ field, message: 'must not be blank' })),
+        },
+        { status: 400, headers: { 'Content-Type': 'application/problem+json' } },
+      )
+    }
     if (password !== MOCK_PASSWORD) {
       // Same detail for an unknown email and a wrong password, as in the contract
       return HttpResponse.json(
