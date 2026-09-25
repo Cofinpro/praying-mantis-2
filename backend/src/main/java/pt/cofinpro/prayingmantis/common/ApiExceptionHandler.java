@@ -66,6 +66,12 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "Invalid email or password");
     }
 
+    /** A rule across fields that a service checks (e.g. a date range): the same 400 shape as Bean Validation. */
+    @ExceptionHandler(InvalidFieldException.class)
+    ProblemDetail handleInvalidField(InvalidFieldException ex) {
+        return withErrors(ProblemDetail.forStatus(HttpStatus.BAD_REQUEST), List.of(fieldError(ex.getField(), ex.getMessage())));
+    }
+
     /** The user lookup itself failed (e.g. the DB is down), wrapped by DaoAuthenticationProvider: a real 500. */
     @ExceptionHandler(AuthenticationServiceException.class)
     ProblemDetail handleAuthenticationBackendFailure(AuthenticationServiceException ex) {

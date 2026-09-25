@@ -2,9 +2,7 @@ package pt.cofinpro.prayingmantis.absences;
 
 import java.time.LocalDate;
 import java.util.List;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 import pt.cofinpro.prayingmantis.api.AbsencesApi;
 import pt.cofinpro.prayingmantis.api.model.AbsenceBalance;
 import pt.cofinpro.prayingmantis.api.model.AbsenceRequest;
@@ -17,10 +15,13 @@ public class AbsencesController implements AbsencesApi {
 
     private final AbsenceTypeService typeService;
     private final AbsenceBalanceService balanceService;
+    private final AbsenceRequestService requestService;
 
-    public AbsencesController(AbsenceTypeService typeService, AbsenceBalanceService balanceService) {
+    public AbsencesController(
+            AbsenceTypeService typeService, AbsenceBalanceService balanceService, AbsenceRequestService requestService) {
         this.typeService = typeService;
         this.balanceService = balanceService;
+        this.requestService = requestService;
     }
 
     @Override
@@ -35,9 +36,10 @@ public class AbsencesController implements AbsencesApi {
                 .toList();
     }
 
-    /** BE-2.3 (SCRUM-32). The generated interface has no default methods, so it needs a body until then. */
     @Override
     public List<AbsenceRequest> getMyAbsenceRequests(LocalDate from, LocalDate to) {
-        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Coming in BE-2.3");
+        return requestService.overlapping(AuthenticatedUsers.current().getId(), from, to).stream()
+                .map(AbsenceMapper::toApi)
+                .toList();
     }
 }
