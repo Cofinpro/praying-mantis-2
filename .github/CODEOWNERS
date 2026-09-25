@@ -1,6 +1,10 @@
-# Replace these placeholder teams with real Cofinpro teams or usernames (e.g. @pedro-custodinho).
+# Replace these placeholder teams with real Cofinpro teams or GitHub usernames.
+# Contract changes need both a BE and an FE approval (decisions.md D2); branch
+# protection only requires one code owner, so reviewers enforce that by convention.
 *               @Cofinpro/tech-leads
 /backend/       @Cofinpro/backend
 /frontend/      @Cofinpro/frontend
+/api/           @Cofinpro/backend @Cofinpro/frontend
 /.github/       @Cofinpro/tech-leads
 /.claude/       @Cofinpro/tech-leads
+/decisions.md   @Cofinpro/backend @Cofinpro/frontend
