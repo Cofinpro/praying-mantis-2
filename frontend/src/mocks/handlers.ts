@@ -18,6 +18,26 @@ export const mockUser: CurrentUser = {
   isTeamLead: true,
 }
 
+// A fake server session: login starts it, logout ends it, GET /me answers 401 without it.
+// It lives in memory, so reloading the page in `pnpm dev:mock` logs you out.
+let loggedInAs: CurrentUser | null = null
+
+/** Log in without going through the form (tests) */
+export function startMockSession(user: CurrentUser = mockUser) {
+  loggedInAs = user
+}
+
+/** Called after every test by src/test/setup.ts */
+export function resetMockSession() {
+  loggedInAs = null
+}
+
+const unauthorized = (instance: string) =>
+  HttpResponse.json<Problem>(
+    { type: 'about:blank', title: 'Unauthorized', status: 401, instance },
+    { status: 401, headers: { 'Content-Type': 'application/problem+json' } },
+  )
+
 export const handlers = [
   http.get<never, never, Hello>('*/api/hello', () =>
     HttpResponse.json({ message: 'Hello from the MSW mock' }),
@@ -52,6 +72,17 @@ export const handlers = [
         { status: 401, headers: { 'Content-Type': 'application/problem+json' } },
       )
     }
-    return HttpResponse.json({ ...mockUser, email })
+    loggedInAs = { ...mockUser, email }
+    return HttpResponse.json(loggedInAs)
   }),
+
+  // 204 also without a session, as in the contract
+  http.post('*/api/auth/logout', () => {
+    loggedInAs = null
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.get<never, never, CurrentUser | Problem>('*/api/me', () =>
+    loggedInAs ? HttpResponse.json(loggedInAs) : unauthorized('/api/me'),
+  ),
 ]

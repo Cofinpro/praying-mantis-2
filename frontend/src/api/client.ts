@@ -1,6 +1,8 @@
 import createClient, { type Middleware } from 'openapi-fetch'
 
 import router from '@/router'
+import { queryClient } from './queryClient'
+import { queryKeys } from './queryKeys'
 import type { components, paths } from './generated/openapi'
 
 // The only module that talks to the backend (decision #6). Types come from api/openapi.yaml via
@@ -10,6 +12,8 @@ export type Problem = components['schemas']['Problem']
 export type Hello = components['schemas']['Hello']
 export type LoginRequest = components['schemas']['LoginRequest']
 export type CurrentUser = components['schemas']['CurrentUser']
+export type Client = components['schemas']['Client']
+export type Level = components['schemas']['Level']
 
 /** Thrown for every non-2xx response. `problem` is the RFC 9457 body (decision #21). */
 export class ApiError extends Error {
@@ -24,12 +28,22 @@ export class ApiError extends Error {
   }
 }
 
-// On 401, send the user to the login page and remember where they were (FE-1.1 sends them back)
+// On 401 the session is gone: forget the cached user, so the route guard asks the server again,
+// then send the user to the login page and remember where they were (FE-1.1 sends them back).
+//
+// Hands off GET /me: the route guard (router/authGuard.ts) calls it during a navigation and handles
+// its 401 itself. From here, a redirect would start a second navigation that cancels the guard's,
+// and removing the query would cancel the guard's own in-flight fetch (CancelledError).
 const redirectOnUnauthorized: Middleware = {
   // openapi-fetch awaits middleware, so the navigation has finished by the time the caller sees the error
-  async onResponse({ response }) {
+  async onResponse({ response, schemaPath }) {
+    // schemaPath is the path template from openapi.yaml, not the URL, so the base path can't fool it
+    if (response.status !== 401 || schemaPath === '/me') {
+      return
+    }
+    queryClient.removeQueries({ queryKey: queryKeys.me })
     const current = router.currentRoute.value
-    if (response.status === 401 && current.name !== 'login') {
+    if (current.name !== 'login') {
       await router.push({ name: 'login', query: { redirect: current.fullPath } })
     }
   },
@@ -98,4 +112,6 @@ export const api = {
   getHello: () => unwrap(client.GET('/hello')),
   // A wrong password is a 401 too, but the redirect middleware skips it: we're already on login
   login: (body: LoginRequest) => unwrap(client.POST('/auth/login', { body })),
+  logout: () => unwrap(client.POST('/auth/logout')),
+  getMe: () => unwrap(client.GET('/me')),
 }

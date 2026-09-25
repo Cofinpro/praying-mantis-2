@@ -57,13 +57,13 @@ describe('api client', () => {
   })
 
   it('builds a Problem when the error has no body, and redirects to login on 401', async () => {
-    await router.push('/?tab=absences')
+    await router.push('/timesheets?week=43')
     server.use(http.get('*/api/hello', () => new HttpResponse(null, { status: 401 })))
 
     const error = await api.getHello().catch((e: unknown) => e)
 
     expect(error).toMatchObject({ status: 401, problem: { type: 'about:blank', status: 401 } })
     expect(router.currentRoute.value.name).toBe('login')
-    expect(router.currentRoute.value.query.redirect).toBe('/?tab=absences')
+    expect(router.currentRoute.value.query.redirect).toBe('/timesheets?week=43')
   })
 })

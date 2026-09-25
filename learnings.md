@@ -40,6 +40,19 @@ tab survives a re-login, so after an expired session a different user could brie
 user's data. Login now calls `queryClient.clear()` first. Keys live in `src/api/queryKeys.ts`, so the
 code that writes an entry and the code that reads it can't drift apart (FE-1.1 review).
 
+### A cached user isn't proof of a session
+The first route guard used `ensureQueryData` (deprecated in TanStack Query 5.10x), which returns
+cached data without a request, and a failed refetch keeps the old `data` next to the error. So after
+a session expired, `client.ts` sent the user to `/login`, the guard found the cached user and sent
+them straight back home. Now the guard uses `fetchQuery` with `staleTime: 0` for the login page
+(always ask the server) and `Infinity` elsewhere, and every 401 removes the cached user
+(FE-1.2 review).
+
+### A guard error on the first navigation rejects `router.isReady()`
+Throwing in `beforeEach` cancels a navigation. Later that just keeps the current page, but on first
+load there is no page: `await router.isReady(); app.mount()` never mounts and the screen stays
+blank. `main.ts` catches that case and shows a fallback message (FE-1.2 review).
+
 ## TypeScript
 
 ### One tsconfig per environment, tied together with project references

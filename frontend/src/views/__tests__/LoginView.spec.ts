@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { http, HttpResponse } from 'msw'
 
@@ -8,6 +8,8 @@ import { server } from '@/mocks/node'
 import { MOCK_PASSWORD, mockUser } from '@/mocks/handlers'
 import { queryPlugin, testQueryClient } from '@/test/query'
 
+// Pages behind the nav are lazy-loaded (`import()`), which flushPromises() doesn't wait for,
+// so navigation results are checked with vi.waitFor
 async function mountLogin(path = '/login') {
   await router.push(path)
   const queryClient = testQueryClient()
@@ -41,12 +43,12 @@ describe('LoginView', () => {
   })
 
   it('logs in, caches the user and goes back to the page that was requested', async () => {
-    const { wrapper, queryClient } = await mountLogin('/login?redirect=/%3Ftab%3Dabsences')
+    const { wrapper, queryClient } = await mountLogin('/login?redirect=/timesheets%3Fweek%3D43')
 
     await signIn(wrapper, MOCK_PASSWORD)
     await flushPromises()
 
-    expect(router.currentRoute.value.fullPath).toBe('/?tab=absences')
+    await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe('/timesheets?week=43'))
     expect(queryClient.getQueryData(['me'])).toMatchObject({ name: mockUser.name })
   })
 
@@ -56,7 +58,7 @@ describe('LoginView', () => {
     await signIn(wrapper, MOCK_PASSWORD)
     await flushPromises()
 
-    expect(router.currentRoute.value.fullPath).toBe('/')
+    await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe('/absences'))
   })
 
   it.each(['//evil.example.com', '/%5Cevil.example.com'])(
@@ -67,7 +69,7 @@ describe('LoginView', () => {
       await signIn(wrapper, MOCK_PASSWORD)
       await flushPromises()
 
-      expect(router.currentRoute.value.fullPath).toBe('/')
+      await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe('/absences'))
     },
   )
 
@@ -149,6 +151,6 @@ describe('LoginView', () => {
 
     respond()
     await flushPromises()
-    expect(router.currentRoute.value.fullPath).toBe('/')
+    await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe('/absences'))
   })
 })
