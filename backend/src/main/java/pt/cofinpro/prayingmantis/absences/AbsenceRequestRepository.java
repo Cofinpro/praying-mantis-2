@@ -3,6 +3,7 @@ package pt.cofinpro.prayingmantis.absences;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -18,6 +19,12 @@ public interface AbsenceRequestRepository extends JpaRepository<AbsenceRequest, 
             @Param("from") LocalDate from,
             @Param("to") LocalDate to,
             @Param("statuses") Collection<AbsenceStatus> statuses);
+
+    /** One of the user's own requests, with the type and approver loaded; empty if it's someone else's. */
+    @Query("""
+            select r from AbsenceRequest r join fetch r.type left join fetch r.approver
+            where r.id = :id and r.user.id = :userId""")
+    Optional<AbsenceRequest> findOwn(@Param("id") Long id, @Param("userId") Long userId);
 
     /** Does the user have a request in the given statuses that overlaps {@code from..to} (inclusive)? */
     @Query("""

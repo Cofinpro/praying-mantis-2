@@ -72,6 +72,11 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         return withErrors(ProblemDetail.forStatus(HttpStatus.BAD_REQUEST), List.of(fieldError(ex.getField(), ex.getMessage())));
     }
 
+    @ExceptionHandler(NotFoundException.class)
+    ProblemDetail handleNotFound(NotFoundException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
     /** A business rule said no (overlap, balance, ...): 409 with the rule in {@code type} (T-3.1). */
     @ExceptionHandler(ConflictException.class)
     ProblemDetail handleConflict(ConflictException ex) {
