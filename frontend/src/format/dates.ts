@@ -30,6 +30,31 @@ export function weekday(iso: string): number {
 
 export const yearOf = (iso: string) => Number(iso.slice(0, 4))
 
+/** The first day of the month `iso` falls in */
+export const monthStart = (iso: string) => `${iso.slice(0, 7)}-01`
+
+/** The first day of the month `months` away from `iso`'s month */
+export function addMonths(iso: string, months: number): string {
+  const [year, month] = iso.split('-').map(Number) as [number, number]
+  return fromUtc(Date.UTC(year, month - 1 + months, 1))
+}
+
+export function daysInMonth(iso: string): number {
+  const [year, month] = iso.split('-').map(Number) as [number, number]
+  return new Date(Date.UTC(year, month, 0)).getUTCDate()
+}
+
+export const dayOfMonth = (iso: string) => Number(iso.slice(8, 10))
+
+const monthYear = new Intl.DateTimeFormat('en-GB', {
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'UTC',
+})
+
+/** "October 2026" */
+export const formatMonth = (iso: string) => monthYear.format(toUtc(iso))
+
 const dayMonth = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',
   month: 'short',

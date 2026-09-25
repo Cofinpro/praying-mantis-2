@@ -29,3 +29,12 @@ export function useMyAbsenceRequests(from: MaybeRefOrGetter<string>, to: MaybeRe
     queryFn: () => api.getMyAbsenceRequests(toValue(from), toValue(to)),
   })
 }
+
+export function usePublicHolidays(year: MaybeRefOrGetter<number>) {
+  return useQuery({
+    queryKey: computed(() => queryKeys.publicHolidays(toValue(year))),
+    queryFn: () => api.getPublicHolidays(toValue(year)),
+    // Holidays of a year practically never change
+    staleTime: Infinity,
+  })
+}
