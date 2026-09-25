@@ -602,6 +602,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/team/absences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My team's absences in a date range
+         * @description For the team calendar (BE-5.3, frame "10 Approvals – Team calendar"): one row per person, so a
+         *     team lead sees who is away before approving (decision 36).
+         *
+         *     - **Who:** the caller first, then everyone whose team lead is the caller, by name. Someone
+         *       who leads nobody gets only their own row.
+         *     - **What:** pending and approved absences overlapping `from`..`to` (both inclusive). Rejected
+         *       and cancelled ones don't block anyone. Pending ones are marked, so the calendar can show
+         *       them as tentative.
+         *     - **Not shown:** the reason and the approver's comment, which stay between requester and
+         *       approver. The type is shown, sick leave included, as in the requester's own calendar.
+         *     - Days where two or more people are away are for the FE to highlight; the data has all it
+         *       needs.
+         *
+         *     400 when `to` is before `from`, or the range is longer than 366 days (as in
+         *     `GET /me/absence-requests`).
+         */
+        get: operations["getTeamAbsences"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/team/absence-requests/{id}/approve": {
         parameters: {
             query?: never;
@@ -1180,6 +1214,35 @@ export interface components {
             hours: number;
             /** @example Sprint planning */
             description?: string;
+        };
+        /** @description One row of the team calendar */
+        TeamMemberAbsences: {
+            user: components["schemas"]["UserRef"];
+            /** @description Pending and approved absences in the range, by start date */
+            absences: components["schemas"]["TeamAbsence"][];
+        };
+        /** @description An absence as the rest of the team sees it, without reason or comments (decision 36) */
+        TeamAbsence: {
+            /**
+             * Format: int64
+             * @example 42
+             */
+            id: number;
+            type: components["schemas"]["AbsenceTypeCode"];
+            /**
+             * Format: date
+             * @example 2026-10-12
+             */
+            startDate: string;
+            /**
+             * Format: date
+             * @example 2026-10-14
+             */
+            endDate: string;
+            startPart: components["schemas"]["DayPart"];
+            endPart: components["schemas"]["DayPart"];
+            /** @description PENDING or APPROVED */
+            status: components["schemas"]["AbsenceStatus"];
         };
         /** @description A request as its approver sees it */
         TeamAbsenceRequest: {
@@ -2273,6 +2336,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TeamAbsenceRequest"][];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    getTeamAbsences: {
+        parameters: {
+            query: {
+                from: string;
+                /** @description Inclusive; not before `from` */
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One row per person */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamMemberAbsences"][];
                 };
             };
             400: components["responses"]["ValidationProblem"];
