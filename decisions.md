@@ -42,6 +42,7 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 | 32 | Timesheet rules: lazy drafts, one cell per project and day | Accepted |
 | 33 | Export templates: a generic one built in code first | Accepted |
 | 34 | Contract PRs merge without waiting for the other dev | Accepted |
+| 35 | Admin rules: no deletes of people or projects, guarded team leads | Accepted |
 
 `plan.md` decisions D1–D12 map to #12–#23.
 
@@ -425,3 +426,17 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 
 **Consequences:** A contract can change after one side has started implementing it. Keep contract changes small and say in the follow-up PR what the other side has to adapt.
 
+## 35. Admin rules: no deletes of people or projects, guarded team leads
+**Status:** Accepted · T-9.1
+
+**Decision:**
+- Every `/api/admin/**` call checks `Permissions.requireAdmin()` against the DB, not the session's role, so a removed admin flag applies at once (decision 11).
+- **Users and projects are never deleted**: requests, timesheets and entries point at them. A project is deactivated instead (`isActive: false`). Users can't be deactivated yet; add that when someone leaves.
+- **Team leads can't form a cycle** (A leads B, B leads A, or longer): 409 `/problems/team-lead-cycle`. Being your own team lead is a 400 (and a DB check since BE-1.1).
+- **The last admin keeps the flag**: removing it from the only admin is 409 `/problems/last-admin`, or nobody could manage the app any more.
+- **Changing a team lead doesn't move waiting requests or timesheets**: they keep their stored approver (decision 31). Only new ones go to the new lead.
+- **Entitlements are an upsert** on (user, type, year), matching the unique constraint, so the grid in "13 Admin – Entitlements" can save a cell without knowing whether it exists.
+- **The admin sets passwords** (8–72 characters). There's no self-service reset.
+- **Holidays can be added, edited and deleted.** Existing requests keep their stored working days (decision 15).
+
+**Why:** The history (requests, timesheets, exports) stays consistent, and no edit can leave the app without an approver or an admin.
