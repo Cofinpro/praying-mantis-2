@@ -10,3 +10,9 @@
 
 # Local H2 database
 data/
+
+# Secrets / local config
+.env
+.env.*
+!.env.example
+.claude/settings.local.json

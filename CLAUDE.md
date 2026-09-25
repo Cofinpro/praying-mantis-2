@@ -105,3 +105,9 @@ What exists today:
 - **Docs:**
   - Record architectural or tooling choices in `decisions.md`
   - Record useful things to learn in `learnings.md`, grouped by topic (Vue, Java, Springboot, Postgres,..) since we're here to learn new tech
+## Pull requests and AI reviewers
+
+- PR policy: see `CONTRIBUTING.md`. One story per branch and PR (`SCRUM-12-be-login`), 1 code-owner approval, green build, squash merge.
+- Every PR is reviewed by an AI mentor in `.claude/agents/`: `be-specialist` for `backend/**`, `fe-specialist` for `frontend/**`, and both for `api/**` (contract changes). The reviews run locally via `/review-pr` (`--post` puts them on the PR). There is no GitHub Action for this.
+- The reviewers follow `decisions.md` first, then this file and `api/openapi.yaml`, then `.claude/skills/`. Where a skill disagrees with a decision (e.g. Flyway vs Liquibase, Pinia vs TanStack Query for server data), the decision wins.
+- They teach as they review and suggest entries for `learnings.md`.

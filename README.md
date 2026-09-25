@@ -34,3 +34,15 @@ npm run build
 ```
 
 In development, Vite proxies `/api/*` to `http://localhost:8080`, so no CORS setup is needed.
+
+## Contributing & code review
+
+All changes go through a pull request. See [CONTRIBUTING.md](CONTRIBUTING.md) for the policy.
+
+Every PR is reviewed by two AI mentors (`.claude/agents/`): `be-specialist` for `backend/**`, `fe-specialist` for `frontend/**`, and both for `api/**`. They flag problems and explain the Spring Boot / Vue concept behind each one. They run locally in Claude Code: type `/review-pr` to review your branch, or `/review-pr --post` to also post the review on the PR.
+
+One-time repo setup (needs admin rights):
+
+```bash
+./scripts/setup-branch-protection.sh Cofinpro/praying-mantis-2
+```
