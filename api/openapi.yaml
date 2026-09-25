@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: praying-mantis API
-  version: 0.3.0
+  version: 0.4.0
   description: |
     Contract between backend and frontend (decision 2). Agree changes together in a `T` story
     before implementing them. All routes are under /api. Errors are Problem Details (decision 21).
@@ -26,6 +26,8 @@ tags:
     description: Absence types, balance and requests (T-2.1)
   - name: holidays
     description: Public holidays, excluded from working days (T-2.1, decision 15)
+  - name: absence-requests
+    description: Request and cancel my absences (T-3.1)
 security:
   - sessionCookie: []
 paths:
@@ -225,6 +227,98 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         default:
           $ref: '#/components/responses/Problem'
+    post:
+      tags: [absence-requests]
+      operationId: createMyAbsenceRequest
+      summary: Request an absence
+      description: |
+        Creates a request for the logged-in user (BE-3.2). The backend computes `workingDays`
+        (decision 15) and sets the approver (decision 16).
+
+        - A type that requires approval starts `PENDING`, with the approver set. A type that doesn't
+          (SICK) is `APPROVED` straight away, with `decidedAt` set and no approver.
+        - Any type may start in the past, e.g. sick leave booked afterwards (decision 27).
+
+        **400** (`errors` names the field):
+        - `endDate` before `startDate`
+        - day parts that don't fit (see `DayPart`)
+        - no working days at all, e.g. only a weekend
+        - a range longer than 366 days
+        - a missing field, or a `reason` over 500 characters
+
+        **409**, with the reason in the Problem's `type`:
+        - `/problems/absence-overlap`: the days overlap one of the user's pending or approved
+          requests (decision 14)
+        - `/problems/insufficient-balance`: a type that deducts from the balance (VACATION) needs
+          more days than are left in a year it touches. "Left" is entitled + carried over − approved;
+          pending requests don't count against it. A year without an entitlement has none left
+          (decision 27).
+        - `/problems/no-approver`: nobody can approve it. That only happens to the sole admin
+          without a team lead (decision 16).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewAbsenceRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AbsenceRequest'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/CsrfForbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /me/absence-requests/{id}/cancel:
+    post:
+      tags: [absence-requests]
+      operationId: cancelMyAbsenceRequest
+      summary: Cancel one of my absence requests
+      description: |
+        Sets the status to `CANCELLED` (decision 13) and frees its days (BE-3.3). A pending request
+        can always be cancelled. An approved one only while its start date is still in the future,
+        in Lisbon time; once the absence has started, it stays.
+
+        **404** when the request doesn't exist or belongs to someone else, so ids of other people's
+        requests aren't confirmed.
+
+        **409** `/problems/absence-not-cancellable`: the request is already rejected or cancelled,
+        or it's approved and has started.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            example: 42
+      responses:
+        '200':
+          description: The cancelled request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AbsenceRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/CsrfForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Problem'
 
   /public-holidays:
     get:
@@ -407,6 +501,32 @@ components:
       enum: [PENDING, APPROVED, REJECTED, CANCELLED]
       example: PENDING
 
+    NewAbsenceRequest:
+      type: object
+      required: [type, startDate, endDate, startPart, endPart]
+      properties:
+        type:
+          $ref: '#/components/schemas/AbsenceTypeCode'
+        startDate:
+          type: string
+          format: date
+          example: '2026-10-26'
+        endDate:
+          description: Inclusive; same as `startDate` for a single day
+          type: string
+          format: date
+          example: '2026-10-27'
+        startPart:
+          $ref: '#/components/schemas/DayPart'
+        endPart:
+          description: For a single day, the same as `startPart`
+          allOf:
+            - $ref: '#/components/schemas/DayPart'
+        reason:
+          type: string
+          maxLength: 500
+          example: Long weekend in Lisbon
+
     UserRef:
       type: object
       required: [id, name]
@@ -557,3 +677,29 @@ components:
             title: Unauthorized
             status: 401
             instance: /api/me
+    NotFound:
+      description: No such resource, or it isn't yours
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: about:blank
+            title: Not Found
+            status: 404
+            detail: Absence request not found
+            instance: /api/me/absence-requests/42/cancel
+    Conflict:
+      description: |
+        The request is valid but breaks a business rule. `type` says which one, so the FE can pick
+        its message; `detail` is a human-readable English sentence.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: /problems/insufficient-balance
+            title: Conflict
+            status: 409
+            detail: Only 3 vacation days left in 2026, but the request needs 5
+            instance: /api/me/absence-requests

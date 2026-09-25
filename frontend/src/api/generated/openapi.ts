@@ -145,7 +145,61 @@ export interface paths {
          */
         get: operations["getMyAbsenceRequests"];
         put?: never;
-        post?: never;
+        /**
+         * Request an absence
+         * @description Creates a request for the logged-in user (BE-3.2). The backend computes `workingDays`
+         *     (decision 15) and sets the approver (decision 16).
+         *
+         *     - A type that requires approval starts `PENDING`, with the approver set. A type that doesn't
+         *       (SICK) is `APPROVED` straight away, with `decidedAt` set and no approver.
+         *     - Any type may start in the past, e.g. sick leave booked afterwards (decision 27).
+         *
+         *     **400** (`errors` names the field):
+         *     - `endDate` before `startDate`
+         *     - day parts that don't fit (see `DayPart`)
+         *     - no working days at all, e.g. only a weekend
+         *     - a range longer than 366 days
+         *     - a missing field, or a `reason` over 500 characters
+         *
+         *     **409**, with the reason in the Problem's `type`:
+         *     - `/problems/absence-overlap`: the days overlap one of the user's pending or approved
+         *       requests (decision 14)
+         *     - `/problems/insufficient-balance`: a type that deducts from the balance (VACATION) needs
+         *       more days than are left in a year it touches. "Left" is entitled + carried over − approved;
+         *       pending requests don't count against it. A year without an entitlement has none left
+         *       (decision 27).
+         *     - `/problems/no-approver`: nobody can approve it. That only happens to the sole admin
+         *       without a team lead (decision 16).
+         */
+        post: operations["createMyAbsenceRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/absence-requests/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel one of my absence requests
+         * @description Sets the status to `CANCELLED` (decision 13) and frees its days (BE-3.3). A pending request
+         *     can always be cancelled. An approved one only while its start date is still in the future,
+         *     in Lisbon time; once the absence has started, it stays.
+         *
+         *     **404** when the request doesn't exist or belongs to someone else, so ids of other people's
+         *     requests aren't confirmed.
+         *
+         *     **409** `/problems/absence-not-cancellable`: the request is already rejected or cancelled,
+         *     or it's approved and has started.
+         */
+        post: operations["cancelMyAbsenceRequest"];
         delete?: never;
         options?: never;
         head?: never;
@@ -288,6 +342,25 @@ export interface components {
          * @enum {string}
          */
         AbsenceStatus: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+        NewAbsenceRequest: {
+            type: components["schemas"]["AbsenceTypeCode"];
+            /**
+             * Format: date
+             * @example 2026-10-26
+             */
+            startDate: string;
+            /**
+             * Format: date
+             * @description Inclusive; same as `startDate` for a single day
+             * @example 2026-10-27
+             */
+            endDate: string;
+            startPart: components["schemas"]["DayPart"];
+            /** @description For a single day, the same as `startPart` */
+            endPart: components["schemas"]["DayPart"];
+            /** @example Long weekend in Lisbon */
+            reason?: string;
+        };
         UserRef: {
             /**
              * Format: int64
@@ -424,6 +497,45 @@ export interface components {
                  *       "title": "Unauthorized",
                  *       "status": 401,
                  *       "instance": "/api/me"
+                 *     }
+                 */
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description No such resource, or it isn't yours */
+        NotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "type": "about:blank",
+                 *       "title": "Not Found",
+                 *       "status": 404,
+                 *       "detail": "Absence request not found",
+                 *       "instance": "/api/me/absence-requests/42/cancel"
+                 *     }
+                 */
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /**
+         * @description The request is valid but breaks a business rule. `type` says which one, so the FE can pick
+         *     its message; `detail` is a human-readable English sentence.
+         */
+        Conflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "type": "/problems/insufficient-balance",
+                 *       "title": "Conflict",
+                 *       "status": 409,
+                 *       "detail": "Only 3 vacation days left in 2026, but the request needs 5",
+                 *       "instance": "/api/me/absence-requests"
                  *     }
                  */
                 "application/problem+json": components["schemas"]["Problem"];
@@ -620,6 +732,62 @@ export interface operations {
             };
             400: components["responses"]["ValidationProblem"];
             401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    createMyAbsenceRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewAbsenceRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AbsenceRequest"];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["CsrfForbidden"];
+            409: components["responses"]["Conflict"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    cancelMyAbsenceRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The cancelled request */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AbsenceRequest"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["CsrfForbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             default: components["responses"]["Problem"];
         };
     };

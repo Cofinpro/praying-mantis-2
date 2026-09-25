@@ -36,6 +36,7 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 | 26 | Frontend API client with openapi-fetch, committed generated types | Accepted |
 | 27 | PRs merge without waiting for an approval | Accepted |
 | 28 | Own month-calendar component, no calendar library | Proposed |
+| 29 | Absence request rules: balance limit, past dates | Accepted |
 
 `plan.md` decisions D1–D12 map to #12–#23.
 
@@ -329,3 +330,16 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 - The team calendar (FE-5.3) can reuse `calendar.ts`.
 - If we later need week views, drag-to-book or recurring events, revisit this.
 
+## 29. Absence request rules: balance limit, past dates
+**Status:** Accepted · T-3.1 (settles the open question in `plan.md` epic 3)
+
+**Decision:**
+- **Balance:** a request for a type that deducts from the balance (VACATION) is rejected with 409 `/problems/insufficient-balance` when it needs more days than are left in a year it touches. "Left" = entitled + carried over − approved days in that year. **Pending requests don't count against it**: two pending requests can together exceed the balance, and the team lead sees that when deciding. A request across New Year is checked per year, with the days that fall in each (as in the balance, BE-2.2). A year without an entitlement has 0 days left.
+- **Past dates:** any type may start in the past (e.g. sick leave booked afterwards, or a forgotten vacation day). The team lead decides.
+- Other 409s use the Problem's `type` too (`/problems/absence-overlap`, `/problems/no-approver`, `/problems/absence-not-cancellable`), so the FE can show a specific message without parsing `detail`.
+
+**Alternatives considered:** Counting pending requests against the balance too, which is stricter but blocks planning a second trip while the first is still pending. Allowing any request and only warning, which leaves the check to the team lead. Allowing only sick leave in the past.
+
+**Why:** The balance can't go negative through approved requests alone, while planning stays flexible.
+
+**Consequences:** Approving a request (BE-5.2) must check the balance again, because another request may have been approved in the meantime.
