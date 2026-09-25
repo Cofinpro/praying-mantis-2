@@ -16,7 +16,7 @@ Monorepo with a Spring Boot backend and a Vue.js frontend.
 
 - JDK 21+
 - Maven is optional: use the bundled `./mvnw` wrapper
-- Node.js 22+ and npm
+- Node.js 22+ and pnpm (run `corepack enable` once, after `brew install corepack` on Node 25+. Corepack picks the version pinned in `frontend/package.json`)
 - Docker Desktop (or another Docker engine with Compose) for Postgres and, later, Testcontainers (decision #10)
 
 ## Run the whole stack
@@ -26,7 +26,7 @@ Each in its own terminal, from the repo root:
 ```bash
 docker compose up -d --wait              # 1. database, waits until it's healthy
 cd backend && ./mvnw spring-boot:run     # 2. backend  -> http://localhost:8080
-cd frontend && npm install && npm run dev   # 3. frontend -> http://localhost:5173
+cd frontend && pnpm install && pnpm dev   # 3. frontend -> http://localhost:5173
 ```
 
 Then open http://localhost:5173.
@@ -61,14 +61,14 @@ Endpoints:
 
 ```bash
 cd frontend
-npm install
-npm run dev             # http://localhost:5173
-npm run build
+pnpm install
+pnpm dev                # http://localhost:5173
+pnpm build
 ```
 
 In development, Vite proxies `/api/*` to `http://localhost:8080`, so no CORS setup is needed.
 
-> FE-0.1 moves the frontend from npm to pnpm (decision #5). Use `pnpm` from then on.
+> pnpm only (decision #5). Never commit a `package-lock.json` or `yarn.lock`.
 
 ## Contributing & code review
 

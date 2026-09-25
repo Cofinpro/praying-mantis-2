@@ -44,10 +44,10 @@ src/
 ## Commands (run in frontend/)
 
 ```bash
-npm run dev          # http://localhost:5173
-npm run test:unit -- --run   # single run (plain `test:unit` watches)
-npm run type-check
-npm run build        # type-check + production build
+pnpm dev             # http://localhost:5173
+pnpm test:unit --run   # single run (plain `test:unit` watches)
+pnpm type-check
+pnpm build          # type-check + production build
 ```
 
-Before declaring frontend work done, run `npm run test:unit -- --run` and `npm run type-check`.
+Before declaring frontend work done, run `pnpm test:unit --run` and `pnpm type-check`.
