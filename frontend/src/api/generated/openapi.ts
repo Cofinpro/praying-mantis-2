@@ -152,7 +152,7 @@ export interface paths {
          *
          *     - A type that requires approval starts `PENDING`, with the approver set. A type that doesn't
          *       (SICK) is `APPROVED` straight away, with `decidedAt` set and no approver.
-         *     - Any type may start in the past, e.g. sick leave booked afterwards (decision 27).
+         *     - Any type may start in the past, e.g. sick leave booked afterwards (decision 29).
          *
          *     **400** (`errors` names the field):
          *     - `endDate` before `startDate`
@@ -167,7 +167,7 @@ export interface paths {
          *     - `/problems/insufficient-balance`: a type that deducts from the balance (VACATION) needs
          *       more days than are left in a year it touches. "Left" is entitled + carried over − approved;
          *       pending requests don't count against it. A year without an entitlement has none left
-         *       (decision 27).
+         *       (decision 29).
          *     - `/problems/no-approver`: nobody can approve it. That only happens to the sole admin
          *       without a team lead (decision 16).
          */
