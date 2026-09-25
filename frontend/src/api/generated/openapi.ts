@@ -337,6 +337,81 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/team/timesheets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Timesheets I'm the approver of
+         * @description For the Timesheets tab of the Approvals page (BE-7.1). The weeks whose stored approver is the
+         *     logged-in user (decisions 16 and 31). Someone who approves nobody gets an empty list.
+         *
+         *     Filtered by `status`, which defaults to `SUBMITTED`. Submitted weeks come oldest week first;
+         *     other statuses newest first. Each one carries the whole `Timesheet`, entries included, so the
+         *     expandable row can show the week grid read-only, plus the hours per project.
+         */
+        get: operations["getTeamTimesheets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/team/timesheets/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve a submitted week
+         * @description BE-7.2, with the same rules as approving an absence (decision 31). Sets `APPROVED` and
+         *     `decidedAt`, stores the optional comment, and notifies the user (`TIMESHEET_APPROVED`, T-4.1).
+         *
+         *     - **403** unless the caller is the stored approver or an admin, and never for the user's own
+         *       week (decision 16)
+         *     - **404** when there's no such timesheet
+         *     - **409** `/problems/timesheet-not-submitted`: it isn't `SUBMITTED`
+         */
+        post: operations["approveTimesheet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/team/timesheets/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject a submitted week
+         * @description BE-7.2. Sets `REJECTED` and `decidedAt`, stores the comment, and notifies the user
+         *     (`TIMESHEET_REJECTED`, T-4.1). **The comment is required** (decision 31), because the user has
+         *     to know what to fix. A rejected week can be edited and submitted again (decision 32).
+         *
+         *     The same 403, 404 and 409 `/problems/timesheet-not-submitted` as approve.
+         */
+        post: operations["rejectTimesheet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -564,6 +639,25 @@ export interface components {
             /** @example DKB core banking */
             name: string;
         };
+        /** @description A week as its approver sees it */
+        TeamTimesheet: {
+            timesheet: components["schemas"]["Timesheet"];
+            user: components["schemas"]["UserRef"];
+            /** @description Total hours per project in the week, by project code */
+            projectHours: components["schemas"]["ProjectHours"][];
+        };
+        ProjectHours: {
+            project: components["schemas"]["ProjectRef"];
+            /** @example 32 */
+            hours: number;
+        };
+        TimesheetDecision: {
+            /**
+             * @description Required to reject (1–500 characters), optional to approve
+             * @example Please book Thursday on DKB-CORE
+             */
+            comment?: string;
+        };
         TimesheetEntries: {
             entries: components["schemas"]["TimeEntryInput"][];
         };
@@ -768,6 +862,7 @@ export interface components {
         };
     };
     parameters: {
+        TimesheetId: number;
         /** @description The Monday of the week */
         WeekStart: string;
     };
@@ -1153,6 +1248,112 @@ export interface operations {
             400: components["responses"]["ValidationProblem"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["CsrfForbidden"];
+            409: components["responses"]["Conflict"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    getTeamTimesheets: {
+        parameters: {
+            query?: {
+                /** @description Defaults to `SUBMITTED` */
+                status?: components["schemas"]["TimesheetStatus"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The timesheets */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamTimesheet"][];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    approveTimesheet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["TimesheetId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TimesheetDecision"];
+            };
+        };
+        responses: {
+            /** @description The approved week */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Timesheet"];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
+            /** @description Not allowed to decide this week, or a missing CSRF token */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    rejectTimesheet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["TimesheetId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TimesheetDecision"];
+            };
+        };
+        responses: {
+            /** @description The rejected week */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Timesheet"];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
+            /** @description Not allowed to decide this week, or a missing CSRF token */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             default: components["responses"]["Problem"];
         };
