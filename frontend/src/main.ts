@@ -4,6 +4,7 @@ import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query'
 
 import App from './App.vue'
 import router from './router'
+import { installAuthGuard } from './router/authGuard'
 import './assets/main.css'
 
 const app = createApp(App)
@@ -20,8 +21,8 @@ const queryClient = new QueryClient({
 
 // Pinia is for client-only state shared across views. Server data goes through TanStack Query.
 app.use(createPinia())
-app.use(router)
 app.use(VueQueryPlugin, { queryClient })
+installAuthGuard(router, queryClient)
 
 // With `pnpm dev:mock`, start MSW before mounting so the first requests are already mocked
 // (decision #4). Vite replaces the env check at build time, so a production build drops this code.
@@ -40,4 +41,14 @@ async function enableMocking() {
   })
 }
 
-enableMocking().then(() => app.mount('#app'))
+// Installing the router starts the first navigation, and the auth guard calls GET /me in it. So:
+// mocks first, then the router, and mount only once that navigation has settled, so nothing renders
+// for a page the guard is about to redirect away from.
+async function start() {
+  await enableMocking()
+  app.use(router)
+  await router.isReady()
+  app.mount('#app')
+}
+
+start()

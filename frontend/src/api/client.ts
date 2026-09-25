@@ -10,6 +10,8 @@ export type Problem = components['schemas']['Problem']
 export type Hello = components['schemas']['Hello']
 export type LoginRequest = components['schemas']['LoginRequest']
 export type CurrentUser = components['schemas']['CurrentUser']
+export type Client = components['schemas']['Client']
+export type Level = components['schemas']['Level']
 
 /** Thrown for every non-2xx response. `problem` is the RFC 9457 body (decision #21). */
 export class ApiError extends Error {
@@ -24,12 +26,15 @@ export class ApiError extends Error {
   }
 }
 
-// On 401, send the user to the login page and remember where they were (FE-1.1 sends them back)
+// On 401, send the user to the login page and remember where they were (FE-1.1 sends them back).
+// Not for GET /me: the router guard (router/authGuard.ts) calls it during a navigation and decides
+// itself; starting a second navigation from here would cancel the one the guard is running.
 const redirectOnUnauthorized: Middleware = {
   // openapi-fetch awaits middleware, so the navigation has finished by the time the caller sees the error
-  async onResponse({ response }) {
+  async onResponse({ request, response }) {
     const current = router.currentRoute.value
-    if (response.status === 401 && current.name !== 'login') {
+    const isMe = new URL(request.url).pathname.endsWith('/api/me')
+    if (response.status === 401 && current.name !== 'login' && !isMe) {
       await router.push({ name: 'login', query: { redirect: current.fullPath } })
     }
   },
@@ -98,4 +103,6 @@ export const api = {
   getHello: () => unwrap(client.GET('/hello')),
   // A wrong password is a 401 too, but the redirect middleware skips it: we're already on login
   login: (body: LoginRequest) => unwrap(client.POST('/auth/login', { body })),
+  logout: () => unwrap(client.POST('/auth/logout')),
+  getMe: () => unwrap(client.GET('/me')),
 }
