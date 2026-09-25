@@ -70,7 +70,15 @@ public class AbsenceEntitlement {
         return entitledDays;
     }
 
+    public void setEntitledDays(BigDecimal entitledDays) {
+        this.entitledDays = entitledDays;
+    }
+
     public BigDecimal getCarriedOverDays() {
         return carriedOverDays;
+    }
+
+    public void setCarriedOverDays(BigDecimal carriedOverDays) {
+        this.carriedOverDays = carriedOverDays;
     }
 }
