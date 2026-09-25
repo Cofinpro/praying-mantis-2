@@ -62,7 +62,7 @@ This file is the source for the Jira backlog (project **SCRUM**). Each story bel
 
 ## 4. Data model
 
-Tables are snake_case and plural. Every table has `id BIGSERIAL PK`; `created_at`/`updated_at` where useful. Enums are `VARCHAR` with a `CHECK` constraint.
+Tables are snake_case and plural. Every table has `id bigint generated always as identity` as PK; `created_at`/`updated_at` where useful. Enums are `VARCHAR` with a `CHECK` constraint.
 
 **users**
 - `name`, `email` (unique), `password_hash`

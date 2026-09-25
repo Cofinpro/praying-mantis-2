@@ -44,6 +44,7 @@ class UserRepositoryTest {
                 new User("Test Person", "  Test.Person@Cofinpro.PT ", "hash", Client.VV, Level.SENIOR_ARCHITECT));
 
         assertThat(saved.getEmail()).isEqualTo("test.person@cofinpro.pt");
+        assertThat(saved.getCreatedAt()).isNotNull();
         assertThat(jdbc.queryForObject("select client || '/' || level from users where id = ?", String.class, saved.getId()))
                 .isEqualTo("VV/SENIOR_ARCHITECT");
         assertThat(users.findByEmail(User.normalizeEmail("TEST.PERSON@cofinpro.pt"))).isPresent();

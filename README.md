@@ -45,7 +45,7 @@ docker compose down -v                                             # stop and wi
 
 ### Dev users
 
-Liquibase loads seed users in the `dev` context, which is the default (`LIQUIBASE_CONTEXTS`). Every password is `password`.
+`./mvnw spring-boot:run` starts the backend with the `dev` profile, which makes Liquibase load these seed users. Every password is `password`. If you start the app from your IDE instead, activate the `dev` profile there. Tests load the same seed through `src/test/resources/config/application.yml`.
 
 | Email | Role | Team lead |
 |---|---|---|
@@ -56,7 +56,7 @@ Liquibase loads seed users in the `dev` context, which is the default (`LIQUIBAS
 | `eva.santos@cofinpro.pt`, `filipe.rocha@cofinpro.pt`, `hugo.marques@cofinpro.pt` | employee | Bruno |
 | `gabriela.lopes@cofinpro.pt` | employee without team lead (her approvals go to the admins, decision #16) | – |
 
-Any real environment must set `LIQUIBASE_CONTEXTS` to something other than `dev`.
+Without the `dev` profile (e.g. the packaged jar), no seed users are created.
 
 If port 5432 is taken (e.g. by a locally installed Postgres), stop that one first.
 

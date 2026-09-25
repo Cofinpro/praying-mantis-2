@@ -1,0 +1,6 @@
+# Test-only overrides. Boot reads classpath:/config/application.yml on top of the main
+# application.yml, so only the properties listed here change.
+spring:
+  liquibase:
+    # Tests run against the dev seed too, which also checks the seed against the constraints
+    contexts: dev

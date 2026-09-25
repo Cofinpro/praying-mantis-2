@@ -80,7 +80,7 @@ databaseChangeLog:
             tableName: users
 
   # Dev-only seed: 1 admin, 2 team leads, 6 employees. Every password is "password".
-  # Runs only with the dev context (spring.liquibase.contexts, see application.yml).
+  # Runs only with the dev context (application-dev.yml and the test config).
   - changeSet:
       id: 0002-users-dev-seed
       author: praying-mantis
@@ -107,4 +107,8 @@ databaseChangeLog:
                 left join users lead on lead.email = v.lead_email;
       rollback:
         - sql:
-            sql: delete from users where email like '%@cofinpro.pt'
+            sql: >-
+              delete from users where email in ('alex.admin@cofinpro.pt', 'ana.silva@cofinpro.pt',
+                'bruno.costa@cofinpro.pt', 'carla.mendes@cofinpro.pt', 'diogo.pereira@cofinpro.pt',
+                'eva.santos@cofinpro.pt', 'filipe.rocha@cofinpro.pt', 'hugo.marques@cofinpro.pt',
+                'gabriela.lopes@cofinpro.pt')

@@ -13,9 +13,10 @@ spring:
     open-in-view: false
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
-    # "dev" loads the seed data (changesets with context: dev). Any real environment must set
-    # LIQUIBASE_CONTEXTS to something else (e.g. prod), or it gets the dev users and their passwords.
-    contexts: ${LIQUIBASE_CONTEXTS:dev}
+    # No dev seed unless asked for. Careful: an *empty* contexts value would run every changeset,
+    # dev ones included, so the default must be a non-empty value that isn't "dev".
+    # The dev profile (application-dev.yml, used by ./mvnw spring-boot:run) switches the seed on.
+    contexts: ${LIQUIBASE_CONTEXTS:default}
 
 server:
   port: 8080

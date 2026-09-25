@@ -13,6 +13,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.Locale;
+import org.hibernate.annotations.Generated;
 
 /**
  * A person using the platform. "Is team lead" isn't a field: it's derived from other users'
@@ -51,7 +52,8 @@ public class User {
     @JoinColumn(name = "team_lead_id")
     private User teamLead;
 
-    // Set by the DB default
+    // Set by the DB default; @Generated makes Hibernate read it back after the insert
+    @Generated
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;
 
