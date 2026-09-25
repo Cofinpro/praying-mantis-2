@@ -111,3 +111,37 @@ const localDate = new Intl.DateTimeFormat('en-GB', {
 
 /** The day of an instant such as `createdAt`, in the user's time zone: "25 Sep 2026" */
 export const formatInstantDate = (instant: string) => localDate.format(new Date(instant))
+
+const MINUTE_MS = 60 * 1000
+const HOUR_MS = 60 * MINUTE_MS
+
+/** The calendar day of a moment in the user's time zone, as `YYYY-MM-DD` */
+function localDay(ms: number): string {
+  const d = new Date(ms)
+  return fromUtc(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
+}
+
+/**
+ * How long ago an instant was, as in the notifications dropdown: "Just now", "2 min ago",
+ * "1 h ago" (earlier today), "Yesterday", "3 days ago" (up to a week), then "25 Sept 2026".
+ * Days are calendar days in the user's time zone, so 23:50 yesterday is "Yesterday" at 00:10.
+ */
+export function formatTimeAgo(instant: string, now: number = Date.now()): string {
+  const then = new Date(instant).getTime()
+  const elapsed = now - then
+  // A future timestamp means the clocks disagree a little
+  if (elapsed < MINUTE_MS) {
+    return 'Just now'
+  }
+  if (elapsed < HOUR_MS) {
+    return `${Math.floor(elapsed / MINUTE_MS)} min ago`
+  }
+  const days = Math.round((toUtc(localDay(now)) - toUtc(localDay(then))) / DAY_MS)
+  if (days === 0) {
+    return `${Math.floor(elapsed / HOUR_MS)} h ago`
+  }
+  if (days === 1) {
+    return 'Yesterday'
+  }
+  return days < 7 ? `${days} days ago` : formatInstantDate(instant)
+}

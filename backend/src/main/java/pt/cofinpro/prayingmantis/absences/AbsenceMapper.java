@@ -48,6 +48,12 @@ final class AbsenceMapper {
                 .decisionComment(request.getDecisionComment());
     }
 
+    /** The request's type, requester and approver must be loaded (findForApprover fetches them). */
+    static pt.cofinpro.prayingmantis.api.model.TeamAbsenceRequest toApi(TeamRequest team) {
+        return new pt.cofinpro.prayingmantis.api.model.TeamAbsenceRequest(toApi(team.request()), toRef(team.request().getUser()))
+                .remainingDays(team.remainingDays());
+    }
+
     static pt.cofinpro.prayingmantis.api.model.AbsenceTypeCode toApi(AbsenceTypeCode code) {
         return pt.cofinpro.prayingmantis.api.model.AbsenceTypeCode.valueOf(code.name());
     }

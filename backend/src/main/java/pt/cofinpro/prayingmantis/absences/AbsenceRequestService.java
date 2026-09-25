@@ -29,7 +29,6 @@ public class AbsenceRequestService {
 
     /** The 409 reasons of T-3.1, as the Problem's type. */
     static final String OVERLAP = "absence-overlap";
-    static final String INSUFFICIENT_BALANCE = "insufficient-balance";
     static final String NO_APPROVER = "no-approver";
     static final String NOT_CANCELLABLE = "absence-not-cancellable";
 
@@ -102,7 +101,7 @@ public class AbsenceRequestService {
             throw overlap();
         }
         if (type.isDeductsFromBalance()) {
-            requireBalance(userId, type, period, periodHolidays);
+            balances.requireDaysLeft(userId, type, period);
         }
 
         User approver = null;
@@ -162,23 +161,7 @@ public class AbsenceRequestService {
         return request;
     }
 
-    /** Each year the period touches needs enough days left for its part of the period (decision #29). */
-    private void requireBalance(Long userId, AbsenceType type, AbsencePeriod period, Set<LocalDate> periodHolidays) {
-        for (int year = period.start().getYear(); year <= period.end().getYear(); year++) {
-            BigDecimal needed = period.workingDaysWithin(LocalDate.of(year, 1, 1), LocalDate.of(year, 12, 31), periodHolidays);
-            BigDecimal left = balances.daysLeft(userId, type.getCode(), year);
-            if (needed.compareTo(left) > 0) {
-                throw new ConflictException(INSUFFICIENT_BALANCE, "Only %s %s days left in %d, but the request needs %s"
-                        .formatted(plain(left), type.getName().toLowerCase(), year, plain(needed)));
-            }
-        }
-    }
-
     private static ConflictException overlap() {
         return new ConflictException(OVERLAP, "These days overlap another pending or approved request of yours");
-    }
-
-    private static String plain(BigDecimal days) {
-        return days.stripTrailingZeros().toPlainString();
     }
 }

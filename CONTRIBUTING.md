@@ -26,7 +26,7 @@ Every change to `main` goes through a pull request (PR). This policy implements 
 - **Size:** aim for under 400 changed lines, not counting generated code, lockfiles or Liquibase seed data.
 - **One concern per PR.** Don't mix refactors with features.
 - **Before marking it "Ready for review", run the AI review locally**: `/review-pr --post` in Claude Code (see section 4). Open the PR as a **Draft** until then.
-- **Contract first (D2):** a feature's `api/openapi.yaml` change is merged in its own `T` story PR before the BE and FE implementation PRs.
+- **Contract first (D2):** a feature's `api/openapi.yaml` change is merged in its own `T` story PR before the BE and FE implementation PRs. Like every PR, it merges once CI is green, without waiting for the other dev (D34); list the choices worth checking in the PR, and changes go in a follow-up contract PR.
 - **Design first (D24):** an FE PR implements the story's Figma frame (see `design.md`). Link the frame and add a screenshot of the result. If the UI isn't designed yet, or has to differ from the frame, update Figma and `design.md` first.
 
 ## 4. Review process
@@ -35,7 +35,7 @@ Every change to `main` goes through a pull request (PR). This policy implements 
 |-----------------|-------------------------------------|-------------------------------------------------|
 | `backend/**`    | `be-specialist`                     | BE code owner                                   |
 | `frontend/**`   | `fe-specialist`                     | FE code owner                                   |
-| `api/**`        | both                                | both BE and FE; the contract itself is agreed together in its `T` story (D2) |
+| `api/**`        | both                                | both BE and FE; they read it when they can, changes go in a follow-up PR (D34) |
 | more than one   | each matching reviewer              | each matching owner                             |
 
 1. **The author runs the AI review locally** in Claude Code from the repo: `/review-pr` shows the review in the chat, and `/review-pr --post` also posts it as a comment on the PR. It runs the matching reviewer(s) from the table above, using your own Claude login, with no API key or GitHub Action. Run it again after significant changes.

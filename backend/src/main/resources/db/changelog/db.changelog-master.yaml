@@ -10,3 +10,6 @@ databaseChangeLog:
   - include:
       file: changes/0003-SCRUM-30-absences.yaml
       relativeToChangelogFile: true
+  - include:
+      file: changes/0006-SCRUM-44-notifications.yaml
+      relativeToChangelogFile: true

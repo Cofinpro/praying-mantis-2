@@ -22,6 +22,14 @@ export type AbsenceStatus = components['schemas']['AbsenceStatus']
 export type DayPart = components['schemas']['DayPart']
 export type PublicHoliday = components['schemas']['PublicHoliday']
 export type NewAbsenceRequest = components['schemas']['NewAbsenceRequest']
+// Not `Notification`: that name is taken by the browser's Notification API
+export type AppNotification = components['schemas']['Notification']
+export type NotificationType = components['schemas']['NotificationType']
+export type NotificationPage = components['schemas']['NotificationPage']
+export type UnreadCount = components['schemas']['UnreadCount']
+export type NotificationsQuery = NonNullable<
+  paths['/me/notifications']['get']['parameters']['query']
+>
 
 /** Thrown for every non-2xx response. `problem` is the RFC 9457 body (decision #21). */
 export class ApiError extends Error {
@@ -134,4 +142,11 @@ export const api = {
     unwrap(client.POST('/me/absence-requests/{id}/cancel', { params: { path: { id } } })),
   getPublicHolidays: (year: number) =>
     unwrap(client.GET('/public-holidays', { params: { query: { year } } })),
+  /** Newest first. `before` is the `id` of the last item you have, for the next page. */
+  getMyNotifications: (query: NotificationsQuery = {}) =>
+    unwrap(client.GET('/me/notifications', { params: { query } })),
+  getMyUnreadNotificationCount: () => unwrap(client.GET('/me/notifications/unread-count')),
+  markMyNotificationRead: (id: number) =>
+    unwrap(client.POST('/me/notifications/{id}/read', { params: { path: { id } } })),
+  markAllMyNotificationsRead: () => unwrap(client.POST('/me/notifications/read-all')),
 }

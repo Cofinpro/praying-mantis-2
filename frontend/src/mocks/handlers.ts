@@ -4,32 +4,30 @@ import type {
   AbsenceBalance,
   AbsenceRequest,
   AbsenceType,
+  AppNotification,
   CurrentUser,
   Hello,
   LoginRequest,
   NewAbsenceRequest,
+  NotificationPage,
   Problem,
   PublicHoliday,
+  UnreadCount,
 } from '@/api/client'
 import { workingDays } from '@/absences/workingDays'
 import { today } from '@/format/dates'
 import { absenceRequests, absenceTypes, balances, publicHolidays } from './data/absences'
+import { mockNotifications } from './data/notifications'
+import { findMockUser } from './data/users'
 
 // Mock backend that follows api/openapi.yaml (decision #4). Used by `pnpm dev:mock` and by Vitest.
 // Paths are wildcards so they match both the dev origin and the jsdom origin in tests.
 
-/** Any email logs in with this password in the mock. */
-export const MOCK_PASSWORD = 'secret'
+/** The dev seed's password, so the mock and the real backend take the same logins */
+export const MOCK_PASSWORD = 'password'
 
-export const mockUser: CurrentUser = {
-  id: 7,
-  name: 'Ana Silva',
-  email: 'ana.silva@cofinpro.pt',
-  client: 'DKB',
-  level: 'EXPERT',
-  isAdmin: false,
-  isTeamLead: true,
-}
+/** Ana Silva, a team lead: the default user of startMockSession() in tests */
+export const mockUser: CurrentUser = findMockUser('ana.silva@cofinpro.pt')!
 
 // A fake server session: login starts it, logout ends it, GET /me answers 401 without it.
 // It lives in memory, so reloading the page in `pnpm dev:mock` logs you out.
@@ -44,10 +42,21 @@ export function startMockSession(user: CurrentUser = mockUser) {
 let requests: AbsenceRequest[] = structuredClone(absenceRequests)
 let nextRequestId = 1000
 
+// Notifications too, so marking them read changes the badge. Built lazily, so their "2 min ago" is
+// relative to the (possibly faked) clock of the first request.
+let notifications: AppNotification[] | null = null
+const myNotifications = () => (notifications ??= mockNotifications())
+
+/** Replace the logged-in user's notifications (tests) */
+export function setMockNotifications(list: AppNotification[]) {
+  notifications = structuredClone(list)
+}
+
 /** Called after every test by src/test/setup.ts */
 export function resetMockSession() {
   loggedInAs = null
   requests = structuredClone(absenceRequests)
+  notifications = null
 }
 
 const problem = (status: number, body: Omit<Problem, 'status'>) =>
@@ -94,7 +103,8 @@ export const handlers = [
         { status: 400, headers: { 'Content-Type': 'application/problem+json' } },
       )
     }
-    if (password !== MOCK_PASSWORD) {
+    const user = findMockUser(email)
+    if (!user || password !== MOCK_PASSWORD) {
       // Same detail for an unknown email and a wrong password, as in the contract
       return HttpResponse.json(
         {
@@ -107,8 +117,8 @@ export const handlers = [
         { status: 401, headers: { 'Content-Type': 'application/problem+json' } },
       )
     }
-    loggedInAs = { ...mockUser, email }
-    return HttpResponse.json(loggedInAs)
+    loggedInAs = user
+    return HttpResponse.json(user)
   }),
 
   // 204 also without a session, as in the contract
@@ -219,6 +229,59 @@ export const handlers = [
       return HttpResponse.json(found)
     },
   ),
+
+  // Contract T-4.1: newest first, `limit` (default 20, max 100) and a `before` cursor on the id
+  http.get<never, never, NotificationPage | Problem>('*/api/me/notifications', ({ request }) => {
+    if (!loggedInAs) {
+      return unauthorized('/api/me/notifications')
+    }
+    const params = new URL(request.url).searchParams
+    const limit = Number(params.get('limit') ?? 20)
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+      return invalid('limit', 'must be between 1 and 100')
+    }
+    const before = params.get('before')
+    const matching = myNotifications()
+      .filter((n) => params.get('unread') !== 'true' || n.readAt == null)
+      .filter((n) => before === null || n.id < Number(before))
+      .sort((a, b) => b.id - a.id)
+    return HttpResponse.json({
+      items: matching.slice(0, limit),
+      hasMore: matching.length > limit,
+    })
+  }),
+
+  http.get<never, never, UnreadCount | Problem>('*/api/me/notifications/unread-count', () =>
+    loggedInAs
+      ? HttpResponse.json({ count: myNotifications().filter((n) => n.readAt == null).length })
+      : unauthorized('/api/me/notifications/unread-count'),
+  ),
+
+  // Idempotent: an already read notification keeps its first readAt
+  http.post<{ id: string }, never, Problem>('*/api/me/notifications/:id/read', ({ params }) => {
+    if (!loggedInAs) {
+      return unauthorized(`/api/me/notifications/${params.id}/read`)
+    }
+    const found = myNotifications().find((n) => n.id === Number(params.id))
+    if (!found) {
+      return problem(404, {
+        type: 'about:blank',
+        title: 'Not Found',
+        detail: 'Notification not found',
+      })
+    }
+    found.readAt ??= new Date().toISOString()
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.post<never, never, Problem>('*/api/me/notifications/read-all', () => {
+    if (!loggedInAs) {
+      return unauthorized('/api/me/notifications/read-all')
+    }
+    const now = new Date().toISOString()
+    myNotifications().forEach((n) => (n.readAt ??= now))
+    return new HttpResponse(null, { status: 204 })
+  }),
 
   http.get<never, never, PublicHoliday[] | Problem>('*/api/public-holidays', ({ request }) => {
     if (!loggedInAs) {

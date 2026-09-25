@@ -10,4 +10,10 @@ export const queryKeys = {
     requests: (from: string, to: string) => ['absences', 'requests', from, to] as const,
   },
   publicHolidays: (year: number) => ['public-holidays', year] as const,
+  // Invalidating ['notifications'] after marking something read refreshes the badge and the list
+  notifications: {
+    all: ['notifications'] as const,
+    list: ['notifications', 'list'] as const,
+    unreadCount: ['notifications', 'unread-count'] as const,
+  },
 }

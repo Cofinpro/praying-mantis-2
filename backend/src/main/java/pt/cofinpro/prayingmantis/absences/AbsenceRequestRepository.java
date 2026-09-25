@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -19,6 +20,22 @@ public interface AbsenceRequestRepository extends JpaRepository<AbsenceRequest, 
             @Param("from") LocalDate from,
             @Param("to") LocalDate to,
             @Param("statuses") Collection<AbsenceStatus> statuses);
+
+    /**
+     * The requests an approver decides on (BE-5.1), with type, requester and approver loaded. The order comes
+     * from {@code sort}, e.g. by start date.
+     */
+    @Query("""
+            select r from AbsenceRequest r join fetch r.type join fetch r.user join fetch r.approver a
+            where a.id = :approverId and r.status = :status""")
+    List<AbsenceRequest> findForApprover(
+            @Param("approverId") Long approverId, @Param("status") AbsenceStatus status, Sort sort);
+
+    /** Any request by id, with type, requester and approver loaded, for deciding on it (BE-5.2). */
+    @Query("""
+            select r from AbsenceRequest r join fetch r.type join fetch r.user left join fetch r.approver
+            where r.id = :id""")
+    Optional<AbsenceRequest> findWithPeople(@Param("id") Long id);
 
     /** One of the user's own requests, with the type and approver loaded; empty if it's someone else's. */
     @Query("""
