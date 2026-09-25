@@ -9,6 +9,8 @@ export const queryKeys = {
   absences: {
     all: ['absences'] as const,
     balance: (year: number) => ['absences', 'balance', year] as const,
+    /** Every range of my requests: "Coming up" and each calendar month */
+    allRequests: ['absences', 'requests'] as const,
     requests: (from: string, to: string) => ['absences', 'requests', from, to] as const,
   },
   // Requests I decide on as approver (FE-5.1). Separate from `absences`, which are my own.

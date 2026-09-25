@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
-import { focusManager } from '@tanstack/vue-query'
+import { focusManager, QueryClient } from '@tanstack/vue-query'
 import { http, HttpResponse } from 'msw'
 
 import NotificationBell from '../NotificationBell.vue'
@@ -10,15 +10,15 @@ import type { AppNotification } from '@/api/client'
 import { server } from '@/mocks/node'
 import { setMockNotifications, startMockSession } from '@/mocks/handlers'
 import { mockNotifications } from '@/mocks/data/notifications'
-import { queryPlugin } from '@/test/query'
+import { queryPlugin, testQueryClient } from '@/test/query'
 
-async function mountBell() {
+async function mountBell(queryClient: QueryClient = testQueryClient()) {
   const router = createRouter({ history: createMemoryHistory(), routes })
   await router.push('/absences')
   // Attached, so focus and clicks outside behave as in a page
   const wrapper = mount(NotificationBell, {
     attachTo: document.body,
-    global: { plugins: [router, queryPlugin()] },
+    global: { plugins: [router, queryPlugin(queryClient)] },
   })
   await flushPromises()
   return { wrapper, router }
@@ -94,6 +94,37 @@ describe('NotificationBell', () => {
     focusManager.setFocused(undefined)
 
     expect(wrapper.find('.bell__badge').text()).toBe('5')
+  })
+
+  it('refreshes absences and approvals when a new notification arrives', async () => {
+    const queryClient = testQueryClient()
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+    await mountBell(queryClient)
+    // The first count is no news
+    expect(invalidate).not.toHaveBeenCalled()
+
+    setMockNotifications([...mockNotifications(), unread(200)])
+    focusManager.setFocused(false)
+    focusManager.setFocused(true)
+    await flushPromises()
+    focusManager.setFocused(undefined)
+
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['team'] })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['absences'] })
+  })
+
+  it('refreshes nothing when the count goes down', async () => {
+    const queryClient = testQueryClient()
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+    await mountBell(queryClient)
+
+    setMockNotifications([unread(1)])
+    focusManager.setFocused(false)
+    focusManager.setFocused(true)
+    await flushPromises()
+    focusManager.setFocused(undefined)
+
+    expect(invalidate).not.toHaveBeenCalled()
   })
 
   it('lists the newest notifications when opened, unread ones highlighted', async () => {

@@ -116,6 +116,22 @@ decisions the first one's rollback would also resurrect the second row, so `onEr
 just the failed row at its old index. `onSettled` refetches either way, so the server has the last
 word.
 
+### A polled unread count doubles as a cheap change feed
+With the real backend, the Approvals list and the requester's calendar stayed stale after a new
+request or a decision: the global `staleTime` of 30 s and no polling meant they only refetched on
+focus or a reload. The bell already polls the unread count every 30 s, so when that number goes
+*up*, it now calls `invalidateQueries` for `['team']` and `['absences']`. Only queries with a
+mounted observer refetch; the rest are just marked stale, so it's cheap. `watch(query.data,
+(now, before) => …)` skips the first load because `before` is `undefined` then (FE-4.2).
+
+### Opening a linked item without a GET-by-id: look in the cache
+A decision notification links to `/absences?request=42`, but the API has no endpoint for one
+request. The view already loads a year of requests for "Coming up", so it looks there, and then in
+every cached range with `queryClient.getQueriesData({ queryKey: ['absences', 'requests'] })`
+(partial key, like `invalidateQueries`). It then `router.replace`s the query away: otherwise
+clicking the same notification again is a navigation to the current URL, which Vue Router ignores
+(FE-4.2).
+
 ## TypeScript
 
 ### One tsconfig per environment, tied together with project references
