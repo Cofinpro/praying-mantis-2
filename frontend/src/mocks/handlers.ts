@@ -18,22 +18,16 @@ import { workingDays } from '@/absences/workingDays'
 import { today } from '@/format/dates'
 import { absenceRequests, absenceTypes, balances, publicHolidays } from './data/absences'
 import { mockNotifications } from './data/notifications'
+import { findMockUser } from './data/users'
 
 // Mock backend that follows api/openapi.yaml (decision #4). Used by `pnpm dev:mock` and by Vitest.
 // Paths are wildcards so they match both the dev origin and the jsdom origin in tests.
 
-/** Any email logs in with this password in the mock. */
-export const MOCK_PASSWORD = 'secret'
+/** The dev seed's password, so the mock and the real backend take the same logins */
+export const MOCK_PASSWORD = 'password'
 
-export const mockUser: CurrentUser = {
-  id: 7,
-  name: 'Ana Silva',
-  email: 'ana.silva@cofinpro.pt',
-  client: 'DKB',
-  level: 'EXPERT',
-  isAdmin: false,
-  isTeamLead: true,
-}
+/** Ana Silva, a team lead: the default user of startMockSession() in tests */
+export const mockUser: CurrentUser = findMockUser('ana.silva@cofinpro.pt')!
 
 // A fake server session: login starts it, logout ends it, GET /me answers 401 without it.
 // It lives in memory, so reloading the page in `pnpm dev:mock` logs you out.
@@ -109,7 +103,8 @@ export const handlers = [
         { status: 400, headers: { 'Content-Type': 'application/problem+json' } },
       )
     }
-    if (password !== MOCK_PASSWORD) {
+    const user = findMockUser(email)
+    if (!user || password !== MOCK_PASSWORD) {
       // Same detail for an unknown email and a wrong password, as in the contract
       return HttpResponse.json(
         {
@@ -122,8 +117,8 @@ export const handlers = [
         { status: 401, headers: { 'Content-Type': 'application/problem+json' } },
       )
     }
-    loggedInAs = { ...mockUser, email }
-    return HttpResponse.json(loggedInAs)
+    loggedInAs = user
+    return HttpResponse.json(user)
   }),
 
   // 204 also without a session, as in the contract

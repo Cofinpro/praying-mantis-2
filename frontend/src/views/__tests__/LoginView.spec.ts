@@ -153,4 +153,27 @@ describe('LoginView', () => {
     await flushPromises()
     await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe('/absences'))
   })
+
+  it('logs in as the person whose email was typed, not always the same mock user', async () => {
+    // Regression: the mock used to answer every login with Ana Silva
+    const { wrapper, queryClient } = await mountLogin()
+
+    await wrapper.find('input[type="email"]').setValue('Bruno.Costa@cofinpro.pt ')
+    await wrapper.find('input[type="password"]').setValue(MOCK_PASSWORD)
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(queryClient.getQueryData(['me'])).toMatchObject({ name: 'Bruno Costa', client: 'DEKA' })
+  })
+
+  it('rejects an email the mock (like the backend) does not know', async () => {
+    const { wrapper } = await mountLogin()
+
+    await wrapper.find('input[type="email"]').setValue('nobody@cofinpro.pt')
+    await wrapper.find('input[type="password"]').setValue(MOCK_PASSWORD)
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.find('[role="alert"]').text()).toBe('Email or password is incorrect.')
+  })
 })
