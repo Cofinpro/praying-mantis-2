@@ -32,10 +32,10 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 | 22 | Date and time format | Proposed |
 | 23 | Schema migrations with Liquibase | Accepted |
 | 24 | The Figma file is the UI source of truth | Accepted |
-| 25 | PRs merge without waiting for an approval | Accepted |
-| 26 | Own month-calendar component, no calendar library | Proposed |
 | 25 | Frontend lint, format and test tooling | Accepted |
 | 26 | Frontend API client with openapi-fetch, committed generated types | Accepted |
+| 27 | PRs merge without waiting for an approval | Accepted |
+| 28 | Own month-calendar component, no calendar library | Proposed |
 
 `plan.md` decisions D1–D12 map to #12–#23.
 
@@ -55,7 +55,7 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 
 **Why:** Once the contract is merged, BE and FE can work in parallel and meet at a known interface.
 
-**Consequences:** A contract change needs a PR that both devs review. *Changed by #25: both devs agree the contract in its `together` story; the PR itself no longer waits for an approval.*
+**Consequences:** A contract change needs a PR that both devs review. *Changed by #27: both devs agree the contract in its `together` story; the PR itself no longer waits for an approval.*
 
 ## 3. Generated code on both sides of the contract
 **Status:** Accepted
@@ -298,7 +298,7 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 
 **Consequences:** After changing `api/openapi.yaml`, run `pnpm gen:api` and commit the result. CI (`.github/workflows/frontend.yml`, FE-0.3) runs `pnpm gen:api` and fails if `src/api/generated/` changed.
 
-## 25. PRs merge without waiting for an approval
+## 27. PRs merge without waiting for an approval
 **Status:** Accepted
 
 **Decision:**
@@ -312,7 +312,7 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 
 **Consequences:** Reviews happen by asking, not by default, so it's on each author to ask for one on risky changes. The AI mentor review (`/review-pr`) stays in the checklist.
 
-## 26. Own month-calendar component, no calendar library
+## 28. Own month-calendar component, no calendar library
 **Status:** Proposed · FE-2.2 ("decide together: own component vs library")
 
 **Decision:** The absence calendar is our own Vue component (`AbsenceCalendar.vue`). A pure `absences/calendar.ts` builds the weeks, and dates are `YYYY-MM-DD` strings with UTC-based helpers in `format/dates.ts` (#22). No calendar library, and no date library either.

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Applies the PR policy from CONTRIBUTING.md to a GitHub repo: PRs only, green checks, no
-# required approval (decisions.md D25). Branch protection on a private repo needs GitHub Pro/Team.
+# required approval (decisions.md D27). Branch protection on a private repo needs GitHub Pro/Team.
 # Usage: ./scripts/setup-branch-protection.sh <owner>/<repo>
 # Requires: gh CLI authenticated with admin rights on the repo.
 set -euo pipefail
@@ -34,4 +34,4 @@ gh api -X PUT "repos/$REPO/branches/main/protection" --input - >/dev/null <<'JSO
 }
 JSON
 
-echo "Done. Every change needs a PR with green checks (backend, frontend); no approval needed (D25)."
+echo "Done. Every change needs a PR with green checks (backend, frontend); no approval needed (D27)."
