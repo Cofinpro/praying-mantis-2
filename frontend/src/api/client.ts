@@ -8,6 +8,8 @@ import type { components, paths } from './generated/openapi'
 
 export type Problem = components['schemas']['Problem']
 export type Hello = components['schemas']['Hello']
+export type LoginRequest = components['schemas']['LoginRequest']
+export type CurrentUser = components['schemas']['CurrentUser']
 
 /** Thrown for every non-2xx response. `problem` is the RFC 9457 body (decision #21). */
 export class ApiError extends Error {
@@ -73,4 +75,6 @@ function isProblem(body: unknown): body is Problem {
 /** One function per operation in openapi.yaml. Use them as `queryFn` / `mutationFn`. */
 export const api = {
   getHello: () => unwrap(client.GET('/hello')),
+  // A wrong password is a 401 too, but the redirect middleware skips it: we're already on login
+  login: (body: LoginRequest) => unwrap(client.POST('/auth/login', { body })),
 }
