@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, useId, useTemplateRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useQueryClient } from '@tanstack/vue-query'
 import { Bell } from 'lucide-vue-next'
 
 import type { AppNotification, NotificationType } from '@/api/client'
+import { queryKeys } from '@/api/queryKeys'
 import { formatTimeAgo } from '@/format/dates'
 import {
   useMarkAllNotificationsRead,
@@ -18,6 +20,7 @@ import { isInAppPath } from '@/router/inAppPath'
 // through the panel as usual; Esc, a click outside or tabbing out of it closes it.
 
 const router = useRouter()
+const queryClient = useQueryClient()
 const open = ref(false)
 const panelId = useId()
 const titleId = useId()
@@ -46,6 +49,16 @@ const anyUnread = computed(() => count.value > 0 || items.value.some(isUnread))
 watch(count, () => {
   if (open.value) {
     void refetch()
+  }
+})
+
+// More unread than at the last poll: someone requested, decided or cancelled an absence. Refresh
+// what the pages show, so the Approvals list and the calendar update without a reload (workflow
+// step 7). Only active queries refetch; the rest are just marked stale. Not on the first load.
+watch(unreadCount, (now, before) => {
+  if (now !== undefined && before !== undefined && now > before) {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.team.all })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.absences.all })
   }
 })
 

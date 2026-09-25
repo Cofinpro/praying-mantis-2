@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watchEffect } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useQueryClient } from '@tanstack/vue-query'
 
 import BaseButton from '@/components/BaseButton.vue'
 import BaseSelect from '@/components/BaseSelect.vue'
@@ -13,6 +15,7 @@ import { Plus } from 'lucide-vue-next'
 import { useAbsenceBalance, useAbsenceTypes, useMyAbsenceRequests } from '@/absences/queries'
 import { byTypeOrder, typeName } from '@/absences/types'
 import { addDays, today, yearOf } from '@/format/dates'
+import { queryKeys } from '@/api/queryKeys'
 
 // The Absences page, Figma frame "02 Absences": balance cards (FE-2.1), the calendar (FE-2.2) and
 // the "Request absence" dialog (FE-3.1) and the details of an absence, to cancel it (FE-3.2)
@@ -31,6 +34,38 @@ const upcoming = useMyAbsenceRequests(now, addDays(now, 365))
 const requesting = ref(false)
 /** The absence whose details are open, from a calendar chip or "Coming up" */
 const selected = ref<AbsenceRequest | null>(null)
+
+// A notification about a decision links to /absences?request=42 (T-4.1): open that request's
+// details. There's no endpoint for one request, so look for it in what's loaded: "Coming up"
+// (today + a year, all statuses) and, once that's in, any calendar month in the cache. Then drop
+// the query, so clicking the same notification again navigates (and opens it) again.
+const route = useRoute()
+const router = useRouter()
+const queryClient = useQueryClient()
+
+function findLoadedRequest(id: number): AbsenceRequest | undefined {
+  const found = upcoming.data.value?.find((r) => r.id === id)
+  if (found) {
+    return found
+  }
+  return queryClient
+    .getQueriesData<AbsenceRequest[]>({ queryKey: queryKeys.absences.allRequests })
+    .flatMap(([, list]) => list ?? [])
+    .find((r) => r.id === id)
+}
+
+watchEffect(() => {
+  const linked = route.query.request
+  if (typeof linked !== 'string' || upcoming.isPending.value) {
+    return
+  }
+  const request = findLoadedRequest(Number(linked))
+  if (request) {
+    selected.value = request
+  }
+  // Also when it isn't loaded (older than today): the page itself is still the right place
+  void router.replace({ query: { ...route.query, request: undefined } })
+})
 
 const balances = computed(() => [...(balance.data.value ?? [])].sort(byTypeOrder))
 </script>
