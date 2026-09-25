@@ -363,7 +363,7 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 **Why:** Pages gives the FE a public demo for free with no auth changes. The backend is online to try the real API.
 
 **Consequences:**
-- The Pages demo shows mock data. A screen whose endpoint has no MSW handler shows an error there. Log in with any email and the password `secret` (`MOCK_PASSWORD` in `handlers.ts`).
+- The Pages demo shows mock data. A screen whose endpoint has no MSW handler shows an error there. Log in with the dev seed users and the password `password` (`MOCK_PASSWORD` and `src/mocks/data/users.ts`; changed from "any email + `secret`" so the demo shows the right person).
 - The dev seed passwords are public (README), so the Render database only ever holds demo data.
 - Render's free web service sleeps after 15 minutes without traffic, so the first request after that takes about a minute. The free database expires after 30 days, unless it's upgraded or recreated.
 - One-time setup: in the repo settings, set Pages → Source to "GitHub Actions". In Render, create the Blueprint (New → Blueprint → this repo).
