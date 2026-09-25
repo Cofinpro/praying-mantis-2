@@ -67,7 +67,9 @@ docker compose down -v                                             # stop and wi
 | `eva.santos@cofinpro.pt`, `filipe.rocha@cofinpro.pt`, `hugo.marques@cofinpro.pt` | employee | Bruno |
 | `gabriela.lopes@cofinpro.pt` | employee without team lead (her approvals go to the admins, decision #16) | – |
 
-Without the `dev` profile (e.g. the packaged jar), no seed users are created.
+Every seed user has 22 vacation days for the year the database was created, and Ana and Carla carry days over. Carla has one absence request per status in that year: 5.5 approved vacation days, 3 pending, 2 rejected and 1 sick day, so her balance shows 19 days left.
+
+Without the `dev` profile (e.g. the packaged jar), no seed users, entitlements or requests are created. The five absence types and the public holidays for 2026 and 2027 are reference data and are always loaded.
 
 If port 5432 is taken (e.g. by a locally installed Postgres), stop that one first.
 
