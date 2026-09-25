@@ -1,0 +1,70 @@
+# FE-0.3: lint, test and build the frontend on every PR and on main (CONTRIBUTING.md §5).
+# The job name "frontend" is the required status check in scripts/setup-branch-protection.sh.
+name: Frontend CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# No path filter on purpose: a required check that never runs (e.g. on a BE-only PR) blocks the merge.
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+
+      # Installs the pnpm version pinned in "packageManager" (decision #5) and caches its store
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: frontend/package.json
+          cache: true
+          cache_dependency_path: frontend/pnpm-lock.yaml
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      # In CI pnpm refuses to change the lockfile, so a package.json edit without `pnpm install` fails here
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The API types are committed (decision #26). Regenerate them from api/openapi.yaml and fail if they
+      # differ, so a contract change can't be merged without `pnpm gen:api` (decision #3).
+      - name: Check generated API types are up to date
+        run: |
+          pnpm gen:api
+          git diff --exit-code -- src/api/generated/ || {
+            echo "::error::src/api/generated/ is out of date with api/openapi.yaml. Run 'pnpm gen:api' in frontend/ and commit the result."
+            exit 1
+          }
+
+      - name: Check formatting
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test
+
+      # build = vue-tsc type-check (app, config and test projects) + vite production build
+      - name: Build
+        run: pnpm build
+
+      # Catches any other step that writes into tracked files (e.g. msw's postinstall updating the worker)
+      - name: Check the run left no tracked files changed
+        run: git diff --exit-code

@@ -88,6 +88,14 @@ With `pnpm dev:mock` (decision #4), MSW answers the endpoints in `src/mocks/hand
 
 GitHub Actions runs `.github/workflows/backend.yml` on every PR and on `main`. The workflow runs `./mvnw verify`, which includes the Testcontainers tests. Because the API interfaces are regenerated from `api/openapi.yaml` in every build, a controller that doesn't match the contract fails the build. The `backend` check is required before merging (`scripts/setup-branch-protection.sh`).
 
+`.github/workflows/frontend.yml` runs on the same triggers. In `frontend/`, it installs with the pnpm version pinned in `package.json` (`--frozen-lockfile`, so a `package.json` change without a lockfile update fails). Then it runs `pnpm gen:api` and fails if `src/api/generated/` changed, followed by `pnpm format:check`, `pnpm lint`, `pnpm test` and `pnpm build`. The `frontend` check is also required. To reproduce a failing run locally:
+
+```bash
+cd frontend
+pnpm install --frozen-lockfile && pnpm gen:api && git diff --exit-code -- src/api/generated/ \
+  && pnpm format:check && pnpm lint && pnpm test && pnpm build
+```
+
 ## Contributing & code review
 
 All changes go through a pull request. See [CONTRIBUTING.md](CONTRIBUTING.md) for the policy.
