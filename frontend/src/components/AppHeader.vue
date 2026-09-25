@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
-import { Bell, ExternalLink, LogOut } from 'lucide-vue-next'
+import { ExternalLink, LogOut } from 'lucide-vue-next'
 
 import logoUrl from '@/assets/cofinpro-logo.svg'
 import { useCurrentUser, useLogout } from '@/auth/session'
+import NotificationBell from '@/components/NotificationBell.vue'
 import { clientLabel, initials, levelLabel } from '@/format/labels'
 
 // FE-1.2, the header in Figma frame "02 Absences" (design.md)
@@ -59,10 +60,7 @@ const external = [
     </div>
 
     <div class="header__right">
-      <!-- Placeholder until FE-4.1 adds the unread badge and the dropdown -->
-      <button type="button" class="icon-button icon-button--outlined" aria-label="Notifications">
-        <Bell :size="20" aria-hidden="true" />
-      </button>
+      <NotificationBell />
 
       <div v-if="user" class="user">
         <span class="user__avatar" aria-hidden="true">{{ initials(user.name) }}</span>
@@ -183,14 +181,6 @@ const external = [
 .icon-button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
-}
-
-.icon-button--outlined {
-  width: 40px;
-  height: 40px;
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-pill);
-  color: var(--color-ink);
 }
 
 .user {

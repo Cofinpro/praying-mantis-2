@@ -337,6 +337,177 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My notifications, newest first
+         * @description For the bell's dropdown (FE-4.1). Only the logged-in user's own notifications (BE-4.2),
+         *     newest first (by `createdAt`, then `id`; ids grow with time, so that's the same as `id`
+         *     descending).
+         *
+         *     Paginated with a cursor: pass the `id` of the last item you have as `before` to get the next
+         *     page. `hasMore` says whether there is one. A cursor doesn't skip or repeat items when new
+         *     notifications arrive between two pages, which page numbers would.
+         */
+        get: operations["getMyNotifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/notifications/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * How many of my notifications are unread
+         * @description The bell's badge. The FE polls it every 30 s and when the tab regains focus (decision 17),
+         *     so it has to stay cheap: one `count(*)` on an index over `(user_id) WHERE read_at IS NULL`.
+         */
+        get: operations["getMyUnreadNotificationCount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/notifications/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark one of my notifications as read
+         * @description Sets `readAt` to now. Idempotent: a notification that is already read keeps its first
+         *     `readAt`, and the answer is still 204.
+         *
+         *     **404** when the notification doesn't exist or belongs to someone else, so ids of other
+         *     people's notifications aren't confirmed.
+         */
+        post: operations["markMyNotificationRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark all my notifications as read
+         * @description Sets `readAt` to now on every unread notification of the logged-in user. 204 also when
+         *     there was nothing to mark.
+         */
+        post: operations["markAllMyNotificationsRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/team/absence-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Absence requests I'm the approver of
+         * @description For the Approvals page (BE-5.1). Returns the requests whose approver is the logged-in user
+         *     (decision 16): their team members' requests, a team lead's lead's, or, for the admin
+         *     fallback, the requests of people without a team lead. Someone who approves nobody gets an
+         *     empty list, not a 403, so the page can just say "nothing to approve".
+         *
+         *     Filtered by `status`, which defaults to `PENDING`. Pending requests come oldest start date
+         *     first, since the soonest need a decision first. Other statuses come newest start first.
+         */
+        get: operations["getTeamAbsenceRequests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/team/absence-requests/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve a pending request
+         * @description BE-5.2. Sets `APPROVED` and `decidedAt`, stores the optional comment, and notifies the
+         *     requester (`ABSENCE_APPROVED`, T-4.1).
+         *
+         *     - **403** unless the caller is the request's approver or an admin. Nobody decides on their
+         *       own request, not even an admin (decision 16).
+         *     - **409** `/problems/absence-not-pending`: it's already decided or cancelled.
+         *     - **409** `/problems/insufficient-balance`: a VACATION request that no longer fits, because
+         *       another request was approved in the meantime (decision 29). The approver can still reject
+         *       it.
+         */
+        post: operations["approveAbsenceRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/team/absence-requests/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject a pending request
+         * @description BE-5.2. Sets `REJECTED` and `decidedAt`, stores the comment, and notifies the requester
+         *     (`ABSENCE_REJECTED`, T-4.1). **The comment is required**, so the requester learns why; a
+         *     missing or blank one is a 400 on `comment`.
+         *
+         *     Same 403, 404 and 409 `/problems/absence-not-pending` as approve. There's no balance check:
+         *     a rejection frees days, it never uses them.
+         */
+        post: operations["rejectAbsenceRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -586,6 +757,26 @@ export interface components {
             /** @example Sprint planning */
             description?: string;
         };
+        /** @description A request as its approver sees it */
+        TeamAbsenceRequest: {
+            request: components["schemas"]["AbsenceRequest"];
+            requester: components["schemas"]["UserRef"];
+            /**
+             * @description The requester's days left of this type in the year the request starts: entitled +
+             *     carried over − approved (decision 29). Only for types that deduct from the balance
+             *     (VACATION). A pending request isn't subtracted yet, so it fits while `workingDays` ≤
+             *     `remainingDays`.
+             * @example 12.5
+             */
+            remainingDays?: number;
+        };
+        AbsenceDecision: {
+            /**
+             * @description Required to reject (1–500 characters), optional to approve
+             * @example Release week, please pick another one
+             */
+            comment?: string;
+        };
         UserRef: {
             /**
              * Format: int64
@@ -647,6 +838,68 @@ export interface components {
             date: string;
             /** @example Republic Day */
             name: string;
+        };
+        /**
+         * @description What happened. The FE picks the icon colour from it; the text comes ready in `message`.
+         *
+         *     | Type | Sent to | When | `link` |
+         *     |---|---|---|---|
+         *     | ABSENCE_REQUESTED | the approver | a request needs a decision (BE-3.2) | `/approvals` |
+         *     | ABSENCE_APPROVED | the requester | the approver approved it (BE-5.2) | `/absences?request={id}` |
+         *     | ABSENCE_REJECTED | the requester | the approver rejected it (BE-5.2) | `/absences?request={id}` |
+         *     | ABSENCE_CANCELLED | the approver | the requester cancelled an approved request (BE-3.3) | `/approvals` |
+         *     | TIMESHEET_SUBMITTED | the approver | a week was submitted (BE-6.4) | `/approvals?tab=timesheets` |
+         *     | TIMESHEET_APPROVED | the owner | the approver approved it (BE-7.x) | `/timesheets?week={weekStart}` |
+         *     | TIMESHEET_REJECTED | the owner | the approver rejected it (BE-7.x) | `/timesheets?week={weekStart}` |
+         *
+         *     Automatically approved requests (SICK) notify nobody.
+         * @example ABSENCE_REQUESTED
+         * @enum {string}
+         */
+        NotificationType: "ABSENCE_REQUESTED" | "ABSENCE_APPROVED" | "ABSENCE_REJECTED" | "ABSENCE_CANCELLED" | "TIMESHEET_SUBMITTED" | "TIMESHEET_APPROVED" | "TIMESHEET_REJECTED";
+        Notification: {
+            /**
+             * Format: int64
+             * @example 118
+             */
+            id: number;
+            type: components["schemas"]["NotificationType"];
+            /**
+             * @description Ready-to-show English sentence, written by the backend when the notification is created
+             *     (so it doesn't change later). The FE shows it as it is.
+             * @example Carla Mendes requested 5 days of vacation (2–6 Nov)
+             */
+            message: string;
+            /**
+             * @description Where clicking it goes: a path inside the app, starting with a single `/` (never a full
+             *     URL). The FE only follows paths like that.
+             * @example /approvals
+             */
+            link: string;
+            /**
+             * Format: date-time
+             * @description When it was read. Absent or null while unread.
+             * @example 2026-09-25T15:10:00Z
+             */
+            readAt?: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-25T14:02:00Z
+             */
+            createdAt: string;
+        };
+        NotificationPage: {
+            /** @description Newest first */
+            items: components["schemas"]["Notification"][];
+            /**
+             * @description More (older) items exist; ask again with `before` = the last item's `id`
+             * @example false
+             */
+            hasMore: boolean;
+        };
+        UnreadCount: {
+            /** @example 3 */
+            count: number;
         };
         /** @description RFC 9457 Problem Details (decision 21) */
         Problem: {
@@ -727,6 +980,24 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
+        /** @description Logged in, but not allowed to do this; also a missing or wrong CSRF token */
+        Forbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "type": "about:blank",
+                 *       "title": "Forbidden",
+                 *       "status": 403,
+                 *       "detail": "You are not allowed to do this",
+                 *       "instance": "/api/team/absence-requests/42/approve"
+                 *     }
+                 */
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
         /** @description No such resource, or it isn't yours */
         NotFound: {
             headers: {
@@ -770,6 +1041,7 @@ export interface components {
     parameters: {
         /** @description The Monday of the week */
         WeekStart: string;
+        AbsenceRequestId: number;
     };
     requestBodies: never;
     headers: never;
@@ -1153,6 +1425,193 @@ export interface operations {
             400: components["responses"]["ValidationProblem"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["CsrfForbidden"];
+            409: components["responses"]["Conflict"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    getMyNotifications: {
+        parameters: {
+            query?: {
+                /** @description `true` returns only unread notifications. Left out or `false`: all of them. */
+                unread?: boolean;
+                /** @description Page size */
+                limit?: number;
+                /** @description Only notifications with an `id` lower than this one (the next page) */
+                before?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of notifications */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationPage"];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    getMyUnreadNotificationCount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The unread count */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnreadCount"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    markMyNotificationRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Read */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["CsrfForbidden"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    markAllMyNotificationsRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description All read */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["CsrfForbidden"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    getTeamAbsenceRequests: {
+        parameters: {
+            query?: {
+                /** @description Defaults to `PENDING` */
+                status?: components["schemas"]["AbsenceStatus"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The requests */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamAbsenceRequest"][];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    approveAbsenceRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["AbsenceRequestId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AbsenceDecision"];
+            };
+        };
+        responses: {
+            /** @description The approved request */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AbsenceRequest"];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    rejectAbsenceRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["AbsenceRequestId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AbsenceDecision"];
+            };
+        };
+        responses: {
+            /** @description The rejected request */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AbsenceRequest"];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             default: components["responses"]["Problem"];
         };

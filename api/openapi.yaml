@@ -32,6 +32,10 @@ tags:
     description: Projects to book hours on (T-6.1)
   - name: timesheets
     description: My weekly timesheets (T-6.1)
+  - name: team-absences
+    description: Absence requests I decide on as approver (T-5.1)
+  - name: notifications
+    description: In-app notifications for the bell, polled by the FE (T-4.1, decision 17)
 security:
   - sessionCookie: []
 paths:
@@ -501,6 +505,246 @@ paths:
         default:
           $ref: '#/components/responses/Problem'
 
+  /me/notifications:
+    get:
+      tags: [notifications]
+      operationId: getMyNotifications
+      summary: My notifications, newest first
+      description: |
+        For the bell's dropdown (FE-4.1). Only the logged-in user's own notifications (BE-4.2),
+        newest first (by `createdAt`, then `id`; ids grow with time, so that's the same as `id`
+        descending).
+
+        Paginated with a cursor: pass the `id` of the last item you have as `before` to get the next
+        page. `hasMore` says whether there is one. A cursor doesn't skip or repeat items when new
+        notifications arrive between two pages, which page numbers would.
+      parameters:
+        - name: unread
+          in: query
+          description: '`true` returns only unread notifications. Left out or `false`: all of them.'
+          required: false
+          schema:
+            type: boolean
+            example: true
+        - name: limit
+          in: query
+          description: Page size
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: before
+          in: query
+          description: Only notifications with an `id` lower than this one (the next page)
+          required: false
+          schema:
+            type: integer
+            format: int64
+            example: 118
+      responses:
+        '200':
+          description: One page of notifications
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPage'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /me/notifications/unread-count:
+    get:
+      tags: [notifications]
+      operationId: getMyUnreadNotificationCount
+      summary: How many of my notifications are unread
+      description: |
+        The bell's badge. The FE polls it every 30 s and when the tab regains focus (decision 17),
+        so it has to stay cheap: one `count(*)` on an index over `(user_id) WHERE read_at IS NULL`.
+      responses:
+        '200':
+          description: The unread count
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnreadCount'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /me/notifications/{id}/read:
+    post:
+      tags: [notifications]
+      operationId: markMyNotificationRead
+      summary: Mark one of my notifications as read
+      description: |
+        Sets `readAt` to now. Idempotent: a notification that is already read keeps its first
+        `readAt`, and the answer is still 204.
+
+        **404** when the notification doesn't exist or belongs to someone else, so ids of other
+        people's notifications aren't confirmed.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            example: 118
+      responses:
+        '204':
+          description: Read
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/CsrfForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /me/notifications/read-all:
+    post:
+      tags: [notifications]
+      operationId: markAllMyNotificationsRead
+      summary: Mark all my notifications as read
+      description: |
+        Sets `readAt` to now on every unread notification of the logged-in user. 204 also when
+        there was nothing to mark.
+      responses:
+        '204':
+          description: All read
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/CsrfForbidden'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /team/absence-requests:
+    get:
+      tags: [team-absences]
+      operationId: getTeamAbsenceRequests
+      summary: Absence requests I'm the approver of
+      description: |
+        For the Approvals page (BE-5.1). Returns the requests whose approver is the logged-in user
+        (decision 16): their team members' requests, a team lead's lead's, or, for the admin
+        fallback, the requests of people without a team lead. Someone who approves nobody gets an
+        empty list, not a 403, so the page can just say "nothing to approve".
+
+        Filtered by `status`, which defaults to `PENDING`. Pending requests come oldest start date
+        first, since the soonest need a decision first. Other statuses come newest start first.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Defaults to `PENDING`
+          schema:
+            $ref: '#/components/schemas/AbsenceStatus'
+      responses:
+        '200':
+          description: The requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TeamAbsenceRequest'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /team/absence-requests/{id}/approve:
+    post:
+      tags: [team-absences]
+      operationId: approveAbsenceRequest
+      summary: Approve a pending request
+      description: |
+        BE-5.2. Sets `APPROVED` and `decidedAt`, stores the optional comment, and notifies the
+        requester (`ABSENCE_APPROVED`, T-4.1).
+
+        - **403** unless the caller is the request's approver or an admin. Nobody decides on their
+          own request, not even an admin (decision 16).
+        - **409** `/problems/absence-not-pending`: it's already decided or cancelled.
+        - **409** `/problems/insufficient-balance`: a VACATION request that no longer fits, because
+          another request was approved in the meantime (decision 29). The approver can still reject
+          it.
+      parameters:
+        - $ref: '#/components/parameters/AbsenceRequestId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AbsenceDecision'
+      responses:
+        '200':
+          description: The approved request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AbsenceRequest'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /team/absence-requests/{id}/reject:
+    post:
+      tags: [team-absences]
+      operationId: rejectAbsenceRequest
+      summary: Reject a pending request
+      description: |
+        BE-5.2. Sets `REJECTED` and `decidedAt`, stores the comment, and notifies the requester
+        (`ABSENCE_REJECTED`, T-4.1). **The comment is required**, so the requester learns why; a
+        missing or blank one is a 400 on `comment`.
+
+        Same 403, 404 and 409 `/problems/absence-not-pending` as approve. There's no balance check:
+        a rejection frees days, it never uses them.
+      parameters:
+        - $ref: '#/components/parameters/AbsenceRequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AbsenceDecision'
+      responses:
+        '200':
+          description: The rejected request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AbsenceRequest'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Problem'
+
 components:
   securitySchemes:
     sessionCookie:
@@ -519,6 +763,15 @@ components:
         type: string
         format: date
         example: '2026-09-28'
+
+    AbsenceRequestId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+        example: 42
 
   schemas:
     Hello:
@@ -838,6 +1091,34 @@ components:
           maxLength: 500
           example: Sprint planning
 
+    TeamAbsenceRequest:
+      description: A request as its approver sees it
+      type: object
+      required: [request, requester]
+      properties:
+        request:
+          $ref: '#/components/schemas/AbsenceRequest'
+        requester:
+          $ref: '#/components/schemas/UserRef'
+        remainingDays:
+          description: |
+            The requester's days left of this type in the year the request starts: entitled +
+            carried over − approved (decision 29). Only for types that deduct from the balance
+            (VACATION). A pending request isn't subtracted yet, so it fits while `workingDays` ≤
+            `remainingDays`.
+          type: number
+          multipleOf: 0.5
+          example: 12.5
+
+    AbsenceDecision:
+      type: object
+      properties:
+        comment:
+          description: Required to reject (1–500 characters), optional to approve
+          type: string
+          maxLength: 500
+          example: Release week, please pick another one
+
     UserRef:
       type: object
       required: [id, name]
@@ -915,6 +1196,91 @@ components:
           type: string
           example: Republic Day
 
+    NotificationType:
+      description: |
+        What happened. The FE picks the icon colour from it; the text comes ready in `message`.
+
+        | Type | Sent to | When | `link` |
+        |---|---|---|---|
+        | ABSENCE_REQUESTED | the approver | a request needs a decision (BE-3.2) | `/approvals` |
+        | ABSENCE_APPROVED | the requester | the approver approved it (BE-5.2) | `/absences?request={id}` |
+        | ABSENCE_REJECTED | the requester | the approver rejected it (BE-5.2) | `/absences?request={id}` |
+        | ABSENCE_CANCELLED | the approver | the requester cancelled an approved request (BE-3.3) | `/approvals` |
+        | TIMESHEET_SUBMITTED | the approver | a week was submitted (BE-6.4) | `/approvals?tab=timesheets` |
+        | TIMESHEET_APPROVED | the owner | the approver approved it (BE-7.x) | `/timesheets?week={weekStart}` |
+        | TIMESHEET_REJECTED | the owner | the approver rejected it (BE-7.x) | `/timesheets?week={weekStart}` |
+
+        Automatically approved requests (SICK) notify nobody.
+      type: string
+      enum:
+        - ABSENCE_REQUESTED
+        - ABSENCE_APPROVED
+        - ABSENCE_REJECTED
+        - ABSENCE_CANCELLED
+        - TIMESHEET_SUBMITTED
+        - TIMESHEET_APPROVED
+        - TIMESHEET_REJECTED
+      example: ABSENCE_REQUESTED
+
+    Notification:
+      type: object
+      required: [id, type, message, link, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 118
+        type:
+          $ref: '#/components/schemas/NotificationType'
+        message:
+          description: |
+            Ready-to-show English sentence, written by the backend when the notification is created
+            (so it doesn't change later). The FE shows it as it is.
+          type: string
+          maxLength: 500
+          example: Carla Mendes requested 5 days of vacation (2–6 Nov)
+        link:
+          description: |
+            Where clicking it goes: a path inside the app, starting with a single `/` (never a full
+            URL). The FE only follows paths like that.
+          type: string
+          maxLength: 255
+          pattern: '^/(?![/\\]).*'
+          example: /approvals
+        readAt:
+          description: When it was read. Absent or null while unread.
+          type: string
+          format: date-time
+          nullable: true
+          example: '2026-09-25T15:10:00Z'
+        createdAt:
+          type: string
+          format: date-time
+          example: '2026-09-25T14:02:00Z'
+
+    NotificationPage:
+      type: object
+      required: [items, hasMore]
+      properties:
+        items:
+          description: Newest first
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
+        hasMore:
+          description: More (older) items exist; ask again with `before` = the last item's `id`
+          type: boolean
+          example: false
+
+    UnreadCount:
+      type: object
+      required: [count]
+      properties:
+        count:
+          type: integer
+          minimum: 0
+          example: 3
+
     Problem:
       description: RFC 9457 Problem Details (decision 21)
       type: object
@@ -956,6 +1322,7 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
+
     ValidationProblem:
       description: Invalid request; `errors` lists the fields
       content:
@@ -971,12 +1338,14 @@ components:
             errors:
               - field: email
                 message: must be a well-formed email address
+
     CsrfForbidden:
       description: Missing or wrong `X-XSRF-TOKEN` header
       content:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
+
     Unauthorized:
       description: Not logged in, or the session expired
       content:
@@ -988,6 +1357,20 @@ components:
             title: Unauthorized
             status: 401
             instance: /api/me
+
+    Forbidden:
+      description: Logged in, but not allowed to do this; also a missing or wrong CSRF token
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: about:blank
+            title: Forbidden
+            status: 403
+            detail: You are not allowed to do this
+            instance: /api/team/absence-requests/42/approve
+
     NotFound:
       description: No such resource, or it isn't yours
       content:
@@ -1000,6 +1383,7 @@ components:
             status: 404
             detail: Absence request not found
             instance: /api/me/absence-requests/42/cancel
+
     Conflict:
       description: |
         The request is valid but breaks a business rule. `type` says which one, so the FE can pick

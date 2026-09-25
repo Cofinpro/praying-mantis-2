@@ -6,6 +6,7 @@ import {
   formatDays,
   formatRange,
   formatRangeWithYear,
+  formatTimeAgo,
   today,
   weekday,
   weekdayName,
@@ -48,5 +49,30 @@ describe('dates', () => {
     expect(formatRangeWithYear('2026-10-30', '2026-11-03')).toBe('30 Oct – 3 Nov 2026')
     expect(formatRangeWithYear('2026-12-30', '2027-01-02')).toBe('30 Dec 2026 – 2 Jan 2027')
     expect(weekdayName('2026-10-26')).toBe('Mon')
+  })
+  it('says how long ago an instant was, in local calendar days', () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 9, 15, 10, 0)) // 15 Oct, 10:00 local
+    const at = (...local: [number, number, number, number]) =>
+      new Date(2026, ...local).toISOString()
+
+    expect(formatTimeAgo(new Date(2026, 9, 15, 9, 59, 30).toISOString())).toBe('Just now')
+    expect(formatTimeAgo(at(9, 15, 9, 59))).toBe('1 min ago')
+    // Clocks a little apart: a moment in the future is still "just now"
+    expect(formatTimeAgo(at(9, 15, 10, 1))).toBe('Just now')
+    expect(formatTimeAgo(at(9, 15, 9, 58))).toBe('2 min ago')
+    expect(formatTimeAgo(at(9, 15, 9, 0))).toBe('1 h ago')
+    expect(formatTimeAgo(at(9, 15, 0, 5))).toBe('9 h ago')
+    expect(formatTimeAgo(at(9, 14, 23, 0))).toBe('Yesterday')
+    expect(formatTimeAgo(at(9, 12, 12, 0))).toBe('3 days ago')
+    expect(formatTimeAgo(at(9, 9, 12, 0))).toBe('6 days ago')
+    expect(formatTimeAgo(at(9, 8, 12, 0))).toBe('8 Oct 2026')
+  })
+
+  it('counts calendar days, not 24-hour periods, for "Yesterday"', () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 9, 15, 0, 10)) // 00:10
+    expect(formatTimeAgo(new Date(2026, 9, 14, 23, 50).toISOString())).toBe('20 min ago')
+    expect(formatTimeAgo(new Date(2026, 9, 14, 22, 0).toISOString())).toBe('Yesterday')
   })
 })

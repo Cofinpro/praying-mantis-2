@@ -4,16 +4,20 @@ import type {
   AbsenceBalance,
   AbsenceRequest,
   AbsenceType,
+  AppNotification,
   CurrentUser,
   Hello,
   LoginRequest,
   NewAbsenceRequest,
+  NotificationPage,
   Problem,
   PublicHoliday,
+  UnreadCount,
 } from '@/api/client'
 import { workingDays } from '@/absences/workingDays'
 import { today } from '@/format/dates'
 import { absenceRequests, absenceTypes, balances, publicHolidays } from './data/absences'
+import { mockNotifications } from './data/notifications'
 
 // Mock backend that follows api/openapi.yaml (decision #4). Used by `pnpm dev:mock` and by Vitest.
 // Paths are wildcards so they match both the dev origin and the jsdom origin in tests.
@@ -44,10 +48,21 @@ export function startMockSession(user: CurrentUser = mockUser) {
 let requests: AbsenceRequest[] = structuredClone(absenceRequests)
 let nextRequestId = 1000
 
+// Notifications too, so marking them read changes the badge. Built lazily, so their "2 min ago" is
+// relative to the (possibly faked) clock of the first request.
+let notifications: AppNotification[] | null = null
+const myNotifications = () => (notifications ??= mockNotifications())
+
+/** Replace the logged-in user's notifications (tests) */
+export function setMockNotifications(list: AppNotification[]) {
+  notifications = structuredClone(list)
+}
+
 /** Called after every test by src/test/setup.ts */
 export function resetMockSession() {
   loggedInAs = null
   requests = structuredClone(absenceRequests)
+  notifications = null
 }
 
 const problem = (status: number, body: Omit<Problem, 'status'>) =>
@@ -219,6 +234,59 @@ export const handlers = [
       return HttpResponse.json(found)
     },
   ),
+
+  // Contract T-4.1: newest first, `limit` (default 20, max 100) and a `before` cursor on the id
+  http.get<never, never, NotificationPage | Problem>('*/api/me/notifications', ({ request }) => {
+    if (!loggedInAs) {
+      return unauthorized('/api/me/notifications')
+    }
+    const params = new URL(request.url).searchParams
+    const limit = Number(params.get('limit') ?? 20)
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+      return invalid('limit', 'must be between 1 and 100')
+    }
+    const before = params.get('before')
+    const matching = myNotifications()
+      .filter((n) => params.get('unread') !== 'true' || n.readAt == null)
+      .filter((n) => before === null || n.id < Number(before))
+      .sort((a, b) => b.id - a.id)
+    return HttpResponse.json({
+      items: matching.slice(0, limit),
+      hasMore: matching.length > limit,
+    })
+  }),
+
+  http.get<never, never, UnreadCount | Problem>('*/api/me/notifications/unread-count', () =>
+    loggedInAs
+      ? HttpResponse.json({ count: myNotifications().filter((n) => n.readAt == null).length })
+      : unauthorized('/api/me/notifications/unread-count'),
+  ),
+
+  // Idempotent: an already read notification keeps its first readAt
+  http.post<{ id: string }, never, Problem>('*/api/me/notifications/:id/read', ({ params }) => {
+    if (!loggedInAs) {
+      return unauthorized(`/api/me/notifications/${params.id}/read`)
+    }
+    const found = myNotifications().find((n) => n.id === Number(params.id))
+    if (!found) {
+      return problem(404, {
+        type: 'about:blank',
+        title: 'Not Found',
+        detail: 'Notification not found',
+      })
+    }
+    found.readAt ??= new Date().toISOString()
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.post<never, never, Problem>('*/api/me/notifications/read-all', () => {
+    if (!loggedInAs) {
+      return unauthorized('/api/me/notifications/read-all')
+    }
+    const now = new Date().toISOString()
+    myNotifications().forEach((n) => (n.readAt ??= now))
+    return new HttpResponse(null, { status: 204 })
+  }),
 
   http.get<never, never, PublicHoliday[] | Problem>('*/api/public-holidays', ({ request }) => {
     if (!loggedInAs) {
