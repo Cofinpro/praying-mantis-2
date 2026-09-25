@@ -48,4 +48,14 @@ describe('BalanceCard', () => {
 
     expect(wrapper.find('.balance__big').text()).toBe('1 day used')
   })
+
+  it('treats remainingDays: null like a missing field, as the backend sends it', () => {
+    // Jackson writes absent optional fields as null; the generated type only knows undefined
+    const balance = { ...vacation, type: 'PARENTAL', usedDays: 2, remainingDays: null }
+    const wrapper = mount(BalanceCard, {
+      props: { balance: balance as unknown as AbsenceBalance, name: 'Parental leave' },
+    })
+
+    expect(wrapper.find('.balance__big').text()).toBe('2 days used')
+  })
 })

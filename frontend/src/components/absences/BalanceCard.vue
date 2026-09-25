@@ -15,14 +15,13 @@ const usedPercent = computed(() =>
   available.value > 0 ? Math.min(100, (balance.usedDays / available.value) * 100) : 0,
 )
 
-// Types that don't deduct from the balance have no remainingDays (contract): show used days
+// Types that don't deduct from the balance have no remainingDays (contract): show used days.
+// `== null` on purpose: the backend sends a missing optional field as null, not left out.
 const big = computed(() => {
-  const days = balance.remainingDays ?? balance.usedDays
+  const remaining = balance.remainingDays
+  const days = remaining ?? balance.usedDays
   const unit = days === 1 ? 'day' : 'days'
-  return {
-    number: formatNumber(days),
-    unit: balance.remainingDays === undefined ? `${unit} used` : `${unit} left`,
-  }
+  return { number: formatNumber(days), unit: remaining == null ? `${unit} used` : `${unit} left` }
 })
 
 const stats = computed(() =>

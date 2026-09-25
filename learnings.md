@@ -74,6 +74,12 @@ left", because the template compiler removes whitespace that contains a newline 
 A flex `gap` hides it visually, but screen readers and `text()` in tests don't. Keep the space inside
 a text node (`<span>{{ n }}</span> {{ unit }}`) or build the string in a `computed` (FE-2.1).
 
+### The backend sends absent optional fields as `null`
+The contract marks fields like `remainingDays` or `approver` as optional, so openapi-typescript
+generates `remainingDays?: number`: absent means `undefined`. Jackson serializes them as
+`"remainingDays": null`, so a check like `=== undefined` misses them. The FE compares with `== null`
+where it matters, and the contract and backend should agree on one of the two (FE-2.3).
+
 ## TypeScript
 
 ### One tsconfig per environment, tied together with project references
