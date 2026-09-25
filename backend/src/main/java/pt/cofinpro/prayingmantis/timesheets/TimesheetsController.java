@@ -2,9 +2,7 @@ package pt.cofinpro.prayingmantis.timesheets;
 
 import java.time.LocalDate;
 import java.util.List;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 import pt.cofinpro.prayingmantis.api.TimesheetsApi;
 import pt.cofinpro.prayingmantis.api.model.Timesheet;
 import pt.cofinpro.prayingmantis.api.model.TimesheetEntries;
@@ -33,9 +31,8 @@ public class TimesheetsController implements TimesheetsApi {
         return TimesheetMapper.toApi(timesheetService.saveEntries(AuthenticatedUsers.current().getId(), weekStart, input));
     }
 
-    /** BE-6.4 (SCRUM-59). The generated interface has no default methods, so it needs a body until then. */
     @Override
     public Timesheet submitMyTimesheet(LocalDate weekStart) {
-        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Coming in BE-6.4");
+        return TimesheetMapper.toApi(timesheetService.submit(AuthenticatedUsers.current().getId(), weekStart));
     }
 }
