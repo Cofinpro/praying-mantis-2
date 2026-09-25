@@ -155,6 +155,21 @@ banking Descriptions for DKB-CORE Remove DKB-CORE". The buttons moved to their o
 visually hidden ", " separates the code from the subtitle, since two block `<span>`s concatenate
 without a space in `textContent` (FE-6.1).
 
+### Chrome shows the `beforeunload` prompt only after a real user gesture
+Verifying the timesheet's "Leave site?" prompt with a scripted Chrome (CDP `Runtime.evaluate`)
+showed nothing, and the console said "Blocked attempt to show a 'beforeunload' confirmation panel
+for a frame that never had a user gesture". Events dispatched from script don't count as a gesture,
+so an automated browser check can't see the prompt. The Vitest test dispatches a cancelable
+`beforeunload` and checks `defaultPrevented` instead; `event.preventDefault()` is all a modern
+browser needs (the old `returnValue` string is ignored) (FE-6.3).
+
+### Key the calls on the natural key, and a lazy draft's `id: null` doesn't matter
+A week that was never saved comes back from the real backend as `"id": null` (the mock leaves the
+field out, decision 32). The timesheet FE never reads `id`: every call is keyed on `weekStart`
+(`GET/PUT /me/timesheets/{weekStart}`, the query key `['timesheets', weekStart]`), so a lazy draft
+and a stored week take the same code path, and switching from MSW to the backend changed nothing
+(FE-6.3).
+
 ## TypeScript
 
 ### One tsconfig per environment, tied together with project references
