@@ -21,6 +21,7 @@ export type AbsenceRequest = components['schemas']['AbsenceRequest']
 export type AbsenceStatus = components['schemas']['AbsenceStatus']
 export type DayPart = components['schemas']['DayPart']
 export type PublicHoliday = components['schemas']['PublicHoliday']
+export type NewAbsenceRequest = components['schemas']['NewAbsenceRequest']
 
 /** Thrown for every non-2xx response. `problem` is the RFC 9457 body (decision #21). */
 export class ApiError extends Error {
@@ -127,6 +128,10 @@ export const api = {
   /** `from` and `to` are inclusive `YYYY-MM-DD` dates */
   getMyAbsenceRequests: (from: string, to: string) =>
     unwrap(client.GET('/me/absence-requests', { params: { query: { from, to } } })),
+  createMyAbsenceRequest: (body: NewAbsenceRequest) =>
+    unwrap(client.POST('/me/absence-requests', { body })),
+  cancelMyAbsenceRequest: (id: number) =>
+    unwrap(client.POST('/me/absence-requests/{id}/cancel', { params: { path: { id } } })),
   getPublicHolidays: (year: number) =>
     unwrap(client.GET('/public-holidays', { params: { query: { year } } })),
 }

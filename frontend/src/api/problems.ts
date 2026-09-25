@@ -1,0 +1,38 @@
+import { ApiError } from './client'
+
+// Turns an ApiError into what the user reads. 409s carry the business rule in the Problem's
+// `type` (contract, decision #29), so the FE picks its own wording instead of parsing `detail`.
+
+const CONFLICTS: Record<string, string> = {
+  '/problems/absence-overlap':
+    'These days overlap another absence of yours that is pending or approved.',
+  '/problems/insufficient-balance': 'You don’t have enough days left for this request.',
+  '/problems/no-approver': 'Nobody can approve this request yet. Please ask an admin.',
+  '/problems/absence-not-cancellable': 'This absence can’t be cancelled any more.',
+}
+
+/** A message for the form's banner, or null for a 400 (those go under the fields) */
+export function problemMessage(error: unknown): string | null {
+  if (!(error instanceof ApiError)) {
+    return error ? 'Something went wrong. Please try again.' : null
+  }
+  if (error.status === 400) {
+    return null
+  }
+  const known = CONFLICTS[error.problem.type]
+  if (known) {
+    // The backend's detail adds the numbers for the balance case ("Only 3 days left in 2026…")
+    return error.problem.type === '/problems/insufficient-balance' && error.problem.detail
+      ? `${known} ${error.problem.detail}.`
+      : known
+  }
+  return 'Something went wrong. Please try again.'
+}
+
+/** Field messages from a 400 Problem, keyed by field name */
+export function fieldErrors(error: unknown): Record<string, string> {
+  if (!(error instanceof ApiError) || error.status !== 400) {
+    return {}
+  }
+  return Object.fromEntries((error.problem.errors ?? []).map((e) => [e.field, e.message]))
+}

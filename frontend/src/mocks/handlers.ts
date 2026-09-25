@@ -7,9 +7,12 @@ import type {
   CurrentUser,
   Hello,
   LoginRequest,
+  NewAbsenceRequest,
   Problem,
   PublicHoliday,
 } from '@/api/client'
+import { workingDays } from '@/absences/workingDays'
+import { today } from '@/format/dates'
 import { absenceRequests, absenceTypes, balances, publicHolidays } from './data/absences'
 
 // Mock backend that follows api/openapi.yaml (decision #4). Used by `pnpm dev:mock` and by Vitest.
@@ -37,10 +40,32 @@ export function startMockSession(user: CurrentUser = mockUser) {
   loggedInAs = user
 }
 
+// Requests live in memory too, so creating and cancelling show up in the calendar
+let requests: AbsenceRequest[] = structuredClone(absenceRequests)
+let nextRequestId = 1000
+
 /** Called after every test by src/test/setup.ts */
 export function resetMockSession() {
   loggedInAs = null
+  requests = structuredClone(absenceRequests)
 }
+
+const problem = (status: number, body: Omit<Problem, 'status'>) =>
+  HttpResponse.json<Problem>(
+    { status, ...body },
+    { status, headers: { 'Content-Type': 'application/problem+json' } },
+  )
+
+const conflict = (type: string, detail: string) =>
+  problem(409, { type, title: 'Conflict', detail, instance: '/api/me/absence-requests' })
+
+const invalid = (field: string, message: string) =>
+  problem(400, {
+    type: 'about:blank',
+    title: 'Bad Request',
+    detail: 'Request has invalid fields',
+    errors: [{ field, message }],
+  })
 
 const unauthorized = (instance: string) =>
   HttpResponse.json<Problem>(
@@ -115,8 +140,85 @@ export const handlers = [
     const from = params.get('from') ?? ''
     const to = params.get('to') ?? ''
     // Overlaps [from, to]; ISO dates compare correctly as strings
-    return HttpResponse.json(absenceRequests.filter((r) => r.startDate <= to && r.endDate >= from))
+    return HttpResponse.json(requests.filter((r) => r.startDate <= to && r.endDate >= from))
   }),
+
+  // The rules of the contract (T-3.1): field errors, overlap, balance, auto-approved sick leave
+  http.post<never, NewAbsenceRequest, AbsenceRequest | Problem>(
+    '*/api/me/absence-requests',
+    async ({ request }) => {
+      if (!loggedInAs) {
+        return unauthorized('/api/me/absence-requests')
+      }
+      const body = await request.json()
+      if (body.endDate < body.startDate) {
+        return invalid('endDate', 'must not be before startDate')
+      }
+      const holidays = new Set(
+        [Number(body.startDate.slice(0, 4)), Number(body.endDate.slice(0, 4))]
+          .flatMap((year) => publicHolidays[year] ?? [])
+          .map((h) => h.date),
+      )
+      const days = workingDays(body, holidays)
+      if (days === 0) {
+        return invalid('endDate', 'the range has no working days')
+      }
+      const overlaps = requests.some(
+        (r) =>
+          (r.status === 'PENDING' || r.status === 'APPROVED') &&
+          r.startDate <= body.endDate &&
+          r.endDate >= body.startDate,
+      )
+      if (overlaps) {
+        return conflict('/problems/absence-overlap', 'The request overlaps another absence')
+      }
+      const year = Number(body.startDate.slice(0, 4))
+      const left = balances[year]?.find((b) => b.type === body.type)?.remainingDays
+      if (body.type === 'VACATION' && (left ?? 0) < days) {
+        return conflict(
+          '/problems/insufficient-balance',
+          `Only ${left ?? 0} vacation days left in ${year}, but the request needs ${days}`,
+        )
+      }
+      const autoApproved = body.type === 'SICK'
+      const created: AbsenceRequest = {
+        ...body,
+        id: nextRequestId++,
+        workingDays: days,
+        status: autoApproved ? 'APPROVED' : 'PENDING',
+        ...(autoApproved ? {} : { approver: { id: 1, name: 'Alex Admin' } }),
+        createdAt: new Date().toISOString(),
+      }
+      requests.push(created)
+      return HttpResponse.json(created, { status: 201 })
+    },
+  ),
+
+  http.post<{ id: string }, never, AbsenceRequest | Problem>(
+    '*/api/me/absence-requests/:id/cancel',
+    ({ params }) => {
+      if (!loggedInAs) {
+        return unauthorized(`/api/me/absence-requests/${params.id}/cancel`)
+      }
+      const found = requests.find((r) => r.id === Number(params.id))
+      if (!found) {
+        return problem(404, {
+          type: 'about:blank',
+          title: 'Not Found',
+          detail: 'Absence request not found',
+        })
+      }
+      const started = found.status === 'APPROVED' && found.startDate <= today()
+      if (found.status === 'REJECTED' || found.status === 'CANCELLED' || started) {
+        return conflict(
+          '/problems/absence-not-cancellable',
+          'The absence can no longer be cancelled',
+        )
+      }
+      found.status = 'CANCELLED'
+      return HttpResponse.json(found)
+    },
+  ),
 
   http.get<never, never, PublicHoliday[] | Problem>('*/api/public-holidays', ({ request }) => {
     if (!loggedInAs) {

@@ -6,12 +6,14 @@ import BaseSelect from '@/components/BaseSelect.vue'
 import BalanceCard from '@/components/absences/BalanceCard.vue'
 import UpcomingAbsences from '@/components/absences/UpcomingAbsences.vue'
 import AbsenceCalendar from '@/components/absences/AbsenceCalendar.vue'
+import RequestAbsenceDialog from '@/components/absences/RequestAbsenceDialog.vue'
+import { Plus } from 'lucide-vue-next'
 import { useAbsenceBalance, useAbsenceTypes, useMyAbsenceRequests } from '@/absences/queries'
 import { byTypeOrder, typeName } from '@/absences/types'
 import { addDays, today, yearOf } from '@/format/dates'
 
-// The Absences page, Figma frame "02 Absences": balance cards (FE-2.1) and the calendar (FE-2.2).
-// The "Request absence" button comes with FE-3.1.
+// The Absences page, Figma frame "02 Absences": balance cards (FE-2.1), the calendar (FE-2.2) and
+// the "Request absence" dialog (FE-3.1)
 const now = today()
 const year = ref(yearOf(now))
 const years = [year.value - 1, year.value, year.value + 1].map((y) => ({
@@ -24,6 +26,8 @@ const balance = useAbsenceBalance(year)
 // The next year of requests feeds "Coming up" (the contract allows up to 366 days per call)
 const upcoming = useMyAbsenceRequests(now, addDays(now, 365))
 
+const requesting = ref(false)
+
 const balances = computed(() => [...(balance.data.value ?? [])].sort(byTypeOrder))
 </script>
 
@@ -34,7 +38,13 @@ const balances = computed(() => [...(balance.data.value ?? [])].sort(byTypeOrder
         <h1 class="page-header__title">Absences</h1>
         <p class="page-header__subtitle">Your balance and booked time off</p>
       </div>
-      <BaseSelect v-model="year" :options="years" label="Year" />
+      <div class="page-header__actions">
+        <BaseSelect v-model="year" :options="years" label="Year" />
+        <BaseButton @click="requesting = true">
+          <Plus :size="18" aria-hidden="true" />
+          Request absence
+        </BaseButton>
+      </div>
     </header>
 
     <section class="cards" aria-label="Balance">
@@ -60,6 +70,9 @@ const balances = computed(() => [...(balance.data.value ?? [])].sort(byTypeOrder
     </section>
 
     <AbsenceCalendar :types="types" />
+
+    <!-- Mounted only while open, so each request starts with a fresh form -->
+    <RequestAbsenceDialog v-if="requesting" @close="requesting = false" />
   </div>
 </template>
 
@@ -74,6 +87,12 @@ const balances = computed(() => [...(balance.data.value ?? [])].sort(byTypeOrder
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
+}
+
+.page-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
 }
 
 .page-header__title {
