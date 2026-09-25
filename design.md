@@ -63,6 +63,8 @@ They live in `frontend/src/assets/tokens.css` (created in FE-1.1). Use them ever
 
 Absence type colours: Vacation = primary, Training = training, Sick = info, Parental leave = success, Unpaid leave = muted (on grey). The last two aren't in the Figma legend yet; add them there when a frame shows them. **Pending** = the type's soft colour with a dashed primary border. Rejected and cancelled are hidden by default (FE-2.2).
 
+Notification type colours (FE-4.1, frame "07 Notifications dropdown"): each item has a 32px round icon in the soft colour with a 10px dot in the full colour. Absence requested = primary · Timesheet submitted = info · Absence or timesheet approved = success · Absence or timesheet rejected = danger · Absence cancelled = muted on grey. Unread items have the surface-alt background, semibold ink text and an 8px primary dot on the right. Read items are white with regular muted text.
+
 Status badges: Draft = grey/muted · Submitted = info-soft/info · Pending = primary-soft/primary · Approved = success-soft/success-ink · Rejected = danger-soft/danger.
 
 ### Type
@@ -97,7 +99,7 @@ Build these once as Vue components and reuse them. The names are a suggestion:
 - `StatusBadge`: the five statuses above.
 - `BaseInput` (error state: 2px danger border + danger helper text), `BaseSelect`, `SegmentedControl` (full day / morning / afternoon), `BaseToggle`.
 - `BaseDialog`: overlay, 20px radius, title plus close icon, actions right-aligned (secondary, then primary). Widths 580px (forms), 520px (details) and 460px (confirmations, which have no title row: an icon, a heading and the actions).
-- `BalanceCard`, `AbsenceCalendar` (month grid, chips, half days), `TeamCalendar` (people × days, conflict days highlighted), `TimesheetGrid`, `NotificationBell`, `DataTable` (uppercase muted header on surface-alt, 1px row dividers).
+- `BalanceCard`, `AbsenceCalendar` (month grid, chips, half days), `TeamCalendar` (people × days, conflict days highlighted), `TimesheetGrid`, `NotificationBell` (a disclosure: the 40px bell with an 18px primary badge, capped at "9+", opens a 420px panel below it, right-aligned; the frame's "See all notifications" footer is left out until a story adds that page), `DataTable` (uppercase muted header on surface-alt, 1px row dividers).
 - Admin pages share a layout: page title, a 220px sub-nav on the left (active item white with a 3px primary bar), and the section on the right.
 
 Icons are [Lucide](https://lucide.dev) at stroke width 2 (bell, chevrons, plus, x, check, calendar, download, alert-triangle, info, external-link, log-out, trash, pencil, search, copy, key).

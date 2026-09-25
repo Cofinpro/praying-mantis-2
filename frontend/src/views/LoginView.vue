@@ -9,6 +9,7 @@ import { queryKeys } from '@/api/queryKeys'
 import logoUrl from '@/assets/cofinpro-logo.svg'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseInput from '@/components/BaseInput.vue'
+import { isInAppPath } from '@/router/inAppPath'
 
 // FE-1.1, Figma frame "01 Login" (design.md)
 const route = useRoute()
@@ -39,13 +40,9 @@ function submit() {
   login({ email: email.value.trim(), password: password.value })
 }
 
-// client.ts sends us here with ?redirect=<where the user was>. Only follow paths inside the app:
-// "//evil.com" or "/\evil.com" would take the user to another site (open redirect).
+// client.ts sends us here with ?redirect=<where the user was>. Only follow paths inside the app.
 function safeRedirect(target: unknown): string {
-  if (typeof target !== 'string' || !target.startsWith('/') || /^\/[/\\]/.test(target)) {
-    return '/'
-  }
-  return target
+  return isInAppPath(target) ? target : '/'
 }
 
 const apiError = computed(() => (error.value instanceof ApiError ? error.value : null))
