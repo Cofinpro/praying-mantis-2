@@ -69,6 +69,19 @@ public class AbsenceBalanceService {
                 .toList();
     }
 
+    /**
+     * Days of a deducting type the user has left in {@code year}: entitled + carried over − approved. Pending
+     * requests don't count against it, and a year without an entitlement has none left (decision #29).
+     */
+    @Transactional(readOnly = true)
+    public BigDecimal daysLeft(Long userId, AbsenceTypeCode type, int year) {
+        return balance(userId, year).stream()
+                .filter(balance -> balance.type() == type)
+                .map(TypeBalance::remainingDays)
+                .findFirst()
+                .orElse(BigDecimal.ZERO);
+    }
+
     private static BigDecimal sum(
             List<AbsenceRequest> requests, AbsenceType type, AbsenceStatus status,
             LocalDate jan1, LocalDate dec31, Set<LocalDate> holidays) {

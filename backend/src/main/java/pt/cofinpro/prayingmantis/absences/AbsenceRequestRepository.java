@@ -19,6 +19,16 @@ public interface AbsenceRequestRepository extends JpaRepository<AbsenceRequest, 
             @Param("to") LocalDate to,
             @Param("statuses") Collection<AbsenceStatus> statuses);
 
+    /** Does the user have a request in the given statuses that overlaps {@code from..to} (inclusive)? */
+    @Query("""
+            select count(r) > 0 from AbsenceRequest r
+            where r.user.id = :userId and r.status in :statuses and r.startDate <= :to and r.endDate >= :from""")
+    boolean existsOverlapping(
+            @Param("userId") Long userId,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to,
+            @Param("statuses") Collection<AbsenceStatus> statuses);
+
     /**
      * Every request of a user that overlaps {@code from..to} (inclusive), in any status, with the type and
      * the approver loaded for the API, ordered by start date (BE-2.3).

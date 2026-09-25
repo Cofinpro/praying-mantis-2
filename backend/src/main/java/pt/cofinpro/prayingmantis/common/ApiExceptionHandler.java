@@ -72,6 +72,14 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         return withErrors(ProblemDetail.forStatus(HttpStatus.BAD_REQUEST), List.of(fieldError(ex.getField(), ex.getMessage())));
     }
 
+    /** A business rule said no (overlap, balance, ...): 409 with the rule in {@code type} (T-3.1). */
+    @ExceptionHandler(ConflictException.class)
+    ProblemDetail handleConflict(ConflictException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problem.setType(ex.getType());
+        return problem;
+    }
+
     /** The user lookup itself failed (e.g. the DB is down), wrapped by DaoAuthenticationProvider: a real 500. */
     @ExceptionHandler(AuthenticationServiceException.class)
     ProblemDetail handleAuthenticationBackendFailure(AuthenticationServiceException ex) {
