@@ -4,8 +4,12 @@ Monorepo with a Spring Boot backend and a Vue.js frontend.
 
 ```
 .
-├── backend/    Spring Boot 4 (Java 21, Maven)
-└── frontend/   Vue 3 + Vite + TypeScript (Vue Router, Pinia)
+├── backend/             Spring Boot 4 (Java 21, Maven)
+├── frontend/            Vue 3 + Vite + TypeScript (Vue Router, Pinia)
+├── docker-compose.yml   Local Postgres
+├── plan.md              Plan: scope, data model, user stories
+├── decisions.md         Architectural and tooling decisions (#1, #2, …)
+└── learnings.md         What we learned, by technology
 ```
 
 ## Prerequisites
@@ -13,6 +17,35 @@ Monorepo with a Spring Boot backend and a Vue.js frontend.
 - JDK 21+
 - Maven is optional: use the bundled `./mvnw` wrapper
 - Node.js 22+ and npm
+- Docker Desktop (or another Docker engine with Compose) for Postgres and, later, Testcontainers (decision #10)
+
+## Run the whole stack
+
+Each in its own terminal, from the repo root:
+
+```bash
+docker compose up -d --wait              # 1. database, waits until it's healthy
+cd backend && ./mvnw spring-boot:run     # 2. backend  -> http://localhost:8080
+cd frontend && npm install && npm run dev   # 3. frontend -> http://localhost:5173
+```
+
+Then open http://localhost:5173.
+
+## Database
+
+Postgres 17 runs in Docker on `localhost:5432`. Database, user and password are all `prayingmantis` (local only).
+
+```bash
+docker compose up -d --wait                                        # start
+docker compose ps                                                  # status
+docker compose exec postgres psql -U prayingmantis prayingmantis   # SQL shell
+docker compose down                                                # stop, keep data
+docker compose down -v                                             # stop and wipe all data
+```
+
+If port 5432 is taken (e.g. by a locally installed Postgres), stop that one first.
+
+> The backend still uses a file-based H2 database. BE-0.1 switches it to this Postgres with Liquibase (decision #23).
 
 ## Backend
 
@@ -34,6 +67,8 @@ npm run build
 ```
 
 In development, Vite proxies `/api/*` to `http://localhost:8080`, so no CORS setup is needed.
+
+> FE-0.1 moves the frontend from npm to pnpm (decision #5). Use `pnpm` from then on.
 
 ## Contributing & code review
 
