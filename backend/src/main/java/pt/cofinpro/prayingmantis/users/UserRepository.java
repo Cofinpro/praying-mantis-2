@@ -15,6 +15,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     /** True when someone has this user as team lead, which is what "is team lead" means (decision #9). */
     boolean existsByTeamLeadId(Long userId);
 
+    /** The people whose direct team lead is {@code teamLeadId}, by name (the team calendar, BE-5.3). */
+    List<User> findByTeamLeadIdOrderByName(Long teamLeadId);
+
     /** Is this user an admin? One query, no entity loaded. */
     boolean existsByIdAndAdminTrue(Long userId);
 

@@ -43,6 +43,20 @@ public interface AbsenceRequestRepository extends JpaRepository<AbsenceRequest, 
             where r.id = :id and r.user.id = :userId""")
     Optional<AbsenceRequest> findOwn(@Param("id") Long id, @Param("userId") Long userId);
 
+    /**
+     * The requests of several users in the given statuses that overlap {@code from..to} (inclusive), with the
+     * type loaded, by start date (the team calendar, BE-5.3).
+     */
+    @Query("""
+            select r from AbsenceRequest r join fetch r.type
+            where r.user.id in :userIds and r.status in :statuses and r.startDate <= :to and r.endDate >= :from
+            order by r.startDate, r.id""")
+    List<AbsenceRequest> findForUsersOverlapping(
+            @Param("userIds") Collection<Long> userIds,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to,
+            @Param("statuses") Collection<AbsenceStatus> statuses);
+
     /** Does the user have a request in the given statuses that overlaps {@code from..to} (inclusive)? */
     @Query("""
             select count(r) > 0 from AbsenceRequest r
