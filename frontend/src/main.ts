@@ -23,4 +23,21 @@ app.use(createPinia())
 app.use(router)
 app.use(VueQueryPlugin, { queryClient })
 
-app.mount('#app')
+// With `pnpm dev:mock`, start MSW before mounting so the first requests are already mocked
+// (decision #4). Vite replaces the env check at build time, so a production build drops this code.
+async function enableMocking() {
+  if (import.meta.env.VITE_API_MOCKS !== 'true') {
+    return
+  }
+  const { worker } = await import('./mocks/browser')
+  await worker.start({
+    // /api calls without a handler go on to the real backend, with a console warning
+    onUnhandledRequest(request, print) {
+      if (new URL(request.url).pathname.startsWith('/api')) {
+        print.warning()
+      }
+    },
+  })
+}
+
+enableMocking().then(() => app.mount('#app'))
