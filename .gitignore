@@ -8,11 +8,11 @@
 # Logs
 *.log
 
-# Local H2 database
-data/
 
 # Secrets / local config
 .env
 .env.*
 !.env.example
+# Only the MSW toggle for `pnpm dev:mock`. VITE_ variables end up in the browser bundle, so never secrets
+!frontend/.env.mock
 .claude/settings.local.json

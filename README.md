@@ -16,7 +16,7 @@ Monorepo with a Spring Boot backend and a Vue.js frontend.
 
 - JDK 21+
 - Maven is optional: use the bundled `./mvnw` wrapper
-- Node.js 22+ and npm
+- Node.js 22+ and pnpm (run `corepack enable` once, after `brew install corepack` on Node 25+. Corepack picks the version pinned in `frontend/package.json`)
 - Docker Desktop (or another Docker engine with Compose) for Postgres and, later, Testcontainers (decision #10)
 
 ## Run the whole stack
@@ -26,7 +26,7 @@ Each in its own terminal, from the repo root:
 ```bash
 docker compose up -d --wait              # 1. database, waits until it's healthy
 cd backend && ./mvnw spring-boot:run     # 2. backend  -> http://localhost:8080
-cd frontend && npm install && npm run dev   # 3. frontend -> http://localhost:5173
+cd frontend && pnpm install && pnpm dev   # 3. frontend -> http://localhost:5173
 ```
 
 Then open http://localhost:5173.
@@ -45,30 +45,48 @@ docker compose down -v                                             # stop and wi
 
 If port 5432 is taken (e.g. by a locally installed Postgres), stop that one first.
 
-> The backend still uses a file-based H2 database. BE-0.1 switches it to this Postgres with Liquibase (decision #23).
+The backend connects to it by default. Override with the `DB_URL`, `DB_USER` and `DB_PASSWORD` env vars. Liquibase applies the schema on start (decision #23).
 
 ## Backend
 
 ```bash
 cd backend
-./mvnw spring-boot:run    # http://localhost:8080
+./mvnw spring-boot:run    # http://localhost:8080, needs the database running
+./mvnw test               # needs Docker: tests start their own Postgres (Testcontainers)
 ```
+
+Schema changes are Liquibase changesets in `src/main/resources/db/changelog/changes/`, one file per story, included from `db.changelog-master.yaml`.
 
 Endpoints:
 - `GET /actuator/health` – health check
+- `GET /api/hello` – sample endpoint, public until login exists
+
+The API contract is `api/openapi.yaml` (decision #2). On every build, `openapi-generator-maven-plugin` turns it into controller interfaces and DTOs in `target/generated-sources/openapi` (package `pt.cofinpro.prayingmantis.api`). Controllers implement those interfaces. To add an endpoint, change the contract, run `./mvnw compile`, and implement the new method: the build fails until you do. If your IDE doesn't see the generated classes, mark that folder as a generated sources root.
 
 ## Frontend
 
 ```bash
 cd frontend
-npm install
-npm run dev             # http://localhost:5173
-npm run build
+pnpm install
+pnpm dev                # http://localhost:5173, /api goes to the backend
+pnpm dev:mock           # same, but /api is served by the MSW mocks (no backend needed)
+pnpm gen:api            # regenerate src/api/generated/ after api/openapi.yaml changes
+pnpm lint               # ESLint (pnpm lint:fix to auto-fix)
+pnpm format             # Prettier (pnpm format:check only reports)
+pnpm test               # Vitest, single run (pnpm test:watch to watch)
+pnpm type-check         # vue-tsc
+pnpm build              # type-check + production build
 ```
 
 In development, Vite proxies `/api/*` to `http://localhost:8080`, so no CORS setup is needed.
 
-> FE-0.1 moves the frontend from npm to pnpm (decision #5). Use `pnpm` from then on.
+With `pnpm dev:mock` (decision #4), MSW answers the endpoints in `src/mocks/handlers.ts`. Other `/api` calls still go to the backend, with a console warning. Tests use the same handlers.
+
+> pnpm only (decision #5). Never commit a `package-lock.json` or `yarn.lock`.
+
+## CI
+
+GitHub Actions runs `.github/workflows/backend.yml` on every PR and on `main`. The workflow runs `./mvnw verify`, which includes the Testcontainers tests. Because the API interfaces are regenerated from `api/openapi.yaml` in every build, a controller that doesn't match the contract fails the build. The `backend` check is required before merging (`scripts/setup-branch-protection.sh`).
 
 ## Contributing & code review
 

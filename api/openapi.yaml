@@ -1,0 +1,76 @@
+openapi: 3.0.3
+info:
+  title: praying-mantis API
+  version: 0.1.0
+  description: |
+    Contract between backend and frontend (decision #2). Agree changes together in a `T` story
+    before implementing them. All routes are under /api. Errors are Problem Details (decision #21).
+servers:
+  - url: /api
+tags:
+  - name: hello
+    description: Sample endpoint from BE-0.2, used to check that FE and BE are wired up (M0)
+paths:
+  /hello:
+    get:
+      tags: [hello]
+      operationId: getHello
+      summary: Say hello
+      security: []
+      responses:
+        '200':
+          description: A greeting
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Hello'
+        default:
+          $ref: '#/components/responses/Problem'
+components:
+  schemas:
+    Hello:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          example: Hello from praying-mantis
+    Problem:
+      description: RFC 9457 Problem Details (decision #21)
+      type: object
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference
+        errors:
+          description: Field errors, only on 400 validation responses
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+    FieldError:
+      type: object
+      required: [field, message]
+      properties:
+        field:
+          type: string
+          example: email
+        message:
+          type: string
+          example: must not be blank
+  responses:
+    Problem:
+      description: Error
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'

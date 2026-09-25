@@ -1,0 +1,6 @@
+# Master changelog (decision #23). Include one changelog per story, in the order they were merged.
+# Never edit a changeset that has already run: its checksum would fail. Add a new one instead.
+databaseChangeLog:
+  - include:
+      file: changes/0001-SCRUM-16-baseline.yaml
+      relativeToChangelogFile: true
