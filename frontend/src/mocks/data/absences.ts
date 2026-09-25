@@ -165,7 +165,7 @@ export const absenceRequests: AbsenceRequest[] = [
   }),
 ]
 
-// Portugal, national holidays plus St Anthony (Lisbon)
+// Portugal's national holidays (contract: GET /public-holidays)
 export const publicHolidays: Record<number, PublicHoliday[]> = {
   2026: [
     { date: '2026-01-01', name: 'New Year’s Day' },
@@ -174,7 +174,6 @@ export const publicHolidays: Record<number, PublicHoliday[]> = {
     { date: '2026-05-01', name: 'Labour Day' },
     { date: '2026-06-04', name: 'Corpus Christi' },
     { date: '2026-06-10', name: 'Portugal Day' },
-    { date: '2026-06-13', name: 'St Anthony (Lisbon)' },
     { date: '2026-08-15', name: 'Assumption' },
     { date: '2026-10-05', name: 'Republic Day' },
     { date: '2026-11-01', name: 'All Saints’ Day' },
