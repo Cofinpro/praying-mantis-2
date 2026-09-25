@@ -412,6 +412,78 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/export-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The export templates
+         * @description BE-8.1. The templates a month can be exported with, ordered by name. `client` says which
+         *     client a template is for; the generic one has none. The dialog preselects the template of
+         *     the user's client, or the generic one (decision 33).
+         */
+        get: operations["getExportTemplates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/timesheet-months/{month}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What an export of my month would contain
+         * @description BE-8.2. For the export dialog: the hours of the month and the status of every week that
+         *     touches it. A week without a timesheet counts as `DRAFT` with 0 hours. The export includes all
+         *     entries whatever their week's status (decision 18), so the dialog warns when a week isn't
+         *     `APPROVED`.
+         *
+         *     **400** on `month` unless it's `YYYY-MM`.
+         */
+        get: operations["getMyTimesheetMonth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/timesheet-exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download my month as an Excel file
+         * @description BE-8.2. An `.xlsx` of all the user's entries with a `workDate` in the month, whatever their
+         *     week's status (decision 18). It also lists the month's approved absences. The file is sent
+         *     as an attachment, e.g. `timesheet-2026-10-eva.santos-GENERIC.xlsx`.
+         *
+         *     **400**: `month` isn't `YYYY-MM` (field `month`), or `template` isn't a known template code
+         *     (field `template`).
+         */
+        get: operations["exportMyTimesheetMonth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -639,6 +711,41 @@ export interface components {
             /** @example DKB core banking */
             name: string;
         };
+        ExportTemplate: {
+            /**
+             * @description What `GET /me/timesheet-exports` takes as `template`
+             * @example GENERIC
+             */
+            code: string;
+            /** @example Generic monthly timesheet */
+            name: string;
+            /** @description The client it's for; absent for the generic template */
+            client?: components["schemas"]["Client"];
+        };
+        TimesheetMonth: {
+            /** @example 2026-10 */
+            month: string;
+            /**
+             * @description Hours with a `workDate` in the month, from weeks in any status
+             * @example 152.5
+             */
+            totalHours: number;
+            /** @description Every week that touches the month, by `weekStart` */
+            weeks: components["schemas"]["TimesheetMonthWeek"][];
+        };
+        TimesheetMonthWeek: {
+            /**
+             * Format: date
+             * @example 2026-09-28
+             */
+            weekStart: string;
+            status: components["schemas"]["TimesheetStatus"];
+            /**
+             * @description Only the hours of this week's days that fall in the month
+             * @example 16
+             */
+            hoursInMonth: number;
+        };
         /** @description A week as its approver sees it */
         TeamTimesheet: {
             timesheet: components["schemas"]["Timesheet"];
@@ -862,6 +969,8 @@ export interface components {
         };
     };
     parameters: {
+        /** @description `YYYY-MM` */
+        Month: string;
         TimesheetId: number;
         /** @description The Monday of the week */
         WeekStart: string;
@@ -1355,6 +1464,83 @@ export interface operations {
             };
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    getExportTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The templates */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportTemplate"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    getMyTimesheetMonth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description `YYYY-MM` */
+                month: components["parameters"]["Month"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The month */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimesheetMonth"];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    exportMyTimesheetMonth: {
+        parameters: {
+            query: {
+                month: string;
+                /** @description An `ExportTemplate.code` */
+                template: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The Excel file */
+            200: {
+                headers: {
+                    /** @description `attachment; filename="timesheet-2026-10-eva.santos-GENERIC.xlsx"` */
+                    "Content-Disposition"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
             default: components["responses"]["Problem"];
         };
     };

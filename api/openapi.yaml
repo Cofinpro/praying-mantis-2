@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: praying-mantis API
-  version: 0.8.0
+  version: 0.9.0
   description: |
     Contract between backend and frontend (decision 2). Agree changes together in a `T` story
     before implementing them. All routes are under /api. Errors are Problem Details (decision 21).
@@ -34,6 +34,8 @@ tags:
     description: My weekly timesheets (T-6.1)
   - name: team-timesheets
     description: Timesheets I decide on as approver (T-7.1)
+  - name: exports
+    description: Monthly timesheet exports as Excel files (T-8.1)
 security:
   - sessionCookie: []
 paths:
@@ -626,6 +628,104 @@ paths:
         default:
           $ref: '#/components/responses/Problem'
 
+  /export-templates:
+    get:
+      tags: [exports]
+      operationId: getExportTemplates
+      summary: The export templates
+      description: |
+        BE-8.1. The templates a month can be exported with, ordered by name. `client` says which
+        client a template is for; the generic one has none. The dialog preselects the template of
+        the user's client, or the generic one (decision 33).
+      responses:
+        '200':
+          description: The templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExportTemplate'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /me/timesheet-months/{month}:
+    get:
+      tags: [exports]
+      operationId: getMyTimesheetMonth
+      summary: What an export of my month would contain
+      description: |
+        BE-8.2. For the export dialog: the hours of the month and the status of every week that
+        touches it. A week without a timesheet counts as `DRAFT` with 0 hours. The export includes all
+        entries whatever their week's status (decision 18), so the dialog warns when a week isn't
+        `APPROVED`.
+
+        **400** on `month` unless it's `YYYY-MM`.
+      parameters:
+        - $ref: '#/components/parameters/Month'
+      responses:
+        '200':
+          description: The month
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimesheetMonth'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /me/timesheet-exports:
+    get:
+      tags: [exports]
+      operationId: exportMyTimesheetMonth
+      summary: Download my month as an Excel file
+      description: |
+        BE-8.2. An `.xlsx` of all the user's entries with a `workDate` in the month, whatever their
+        week's status (decision 18). It also lists the month's approved absences. The file is sent
+        as an attachment, e.g. `timesheet-2026-10-eva.santos-GENERIC.xlsx`.
+
+        **400**: `month` isn't `YYYY-MM` (field `month`), or `template` isn't a known template code
+        (field `template`).
+      parameters:
+        - name: month
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+            example: '2026-10'
+        - name: template
+          in: query
+          required: true
+          description: An `ExportTemplate.code`
+          schema:
+            type: string
+            example: GENERIC
+      responses:
+        '200':
+          description: The Excel file
+          headers:
+            Content-Disposition:
+              description: '`attachment; filename="timesheet-2026-10-eva.santos-GENERIC.xlsx"`'
+              schema:
+                type: string
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        default:
+          $ref: '#/components/responses/Problem'
+
 components:
   securitySchemes:
     sessionCookie:
@@ -635,6 +735,15 @@ components:
       name: JSESSIONID
 
   parameters:
+    Month:
+      name: month
+      in: path
+      required: true
+      description: '`YYYY-MM`'
+      schema:
+        type: string
+        pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+        example: '2026-10'
     TimesheetId:
       name: id
       in: path
@@ -935,6 +1044,54 @@ components:
         name:
           type: string
           example: DKB core banking
+
+    ExportTemplate:
+      type: object
+      required: [code, name]
+      properties:
+        code:
+          description: What `GET /me/timesheet-exports` takes as `template`
+          type: string
+          example: GENERIC
+        name:
+          type: string
+          example: Generic monthly timesheet
+        client:
+          description: The client it's for; absent for the generic template
+          allOf:
+            - $ref: '#/components/schemas/Client'
+
+    TimesheetMonth:
+      type: object
+      required: [month, totalHours, weeks]
+      properties:
+        month:
+          type: string
+          example: '2026-10'
+        totalHours:
+          description: Hours with a `workDate` in the month, from weeks in any status
+          type: number
+          example: 152.5
+        weeks:
+          description: Every week that touches the month, by `weekStart`
+          type: array
+          items:
+            $ref: '#/components/schemas/TimesheetMonthWeek'
+
+    TimesheetMonthWeek:
+      type: object
+      required: [weekStart, status, hoursInMonth]
+      properties:
+        weekStart:
+          type: string
+          format: date
+          example: '2026-09-28'
+        status:
+          $ref: '#/components/schemas/TimesheetStatus'
+        hoursInMonth:
+          description: Only the hours of this week's days that fall in the month
+          type: number
+          example: 16
 
     TeamTimesheet:
       description: A week as its approver sees it

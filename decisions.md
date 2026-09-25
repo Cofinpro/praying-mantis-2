@@ -25,8 +25,8 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 | 15 | Working days exclude weekends and public holidays | Proposed |
 | 16 | Approver fallback | Proposed |
 | 17 | Notifications by polling | Proposed |
-| 18 | Monthly export aggregates weekly timesheets | Proposed |
-| 19 | Export templates as `.xlsx` files filled with Apache POI | Proposed |
+| 18 | Monthly export aggregates weekly timesheets | Accepted |
+| 19 | Export templates as `.xlsx` files filled with Apache POI | Accepted, refined by #33 |
 | 20 | No seats table | Proposed |
 | 21 | Errors as RFC 7807 Problem Details | Proposed |
 | 22 | Date and time format | Proposed |
@@ -38,6 +38,7 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 | 28 | Own month-calendar component, no calendar library | Proposed |
 | 29 | Absence request rules: balance limit, past dates | Accepted |
 | 30 | Hosting: mock demo on GitHub Pages, backend on Render | Accepted |
+| 33 | Export templates: a generic one built in code first | Accepted |
 | 32 | Timesheet rules: lazy drafts, one cell per project and day | Accepted |
 
 `plan.md` decisions D1–D12 map to #12–#23.
@@ -200,16 +201,16 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 **Consequences:** A new notification can take up to 30 s to show up, and each open tab sends a tiny request every 30 s. That's acceptable for an internal tool. Server push stays a stretch story.
 
 ## 18. Monthly export aggregates weekly timesheets
-**Status:** Proposed · plan D7
+**Status:** Accepted · plan D7, settled in T-8.1
 
 **Decision:** The export for a month contains all time entries whose `work_date` falls in that month, regardless of which weekly timesheet they belong to.
 
 **Why:** Timesheets are weekly, but exports are monthly, and weeks cross month borders.
 
-**Open:** Whether weeks that aren't approved yet are included. The proposal is to include them, with a warning in the export dialog.
+**Settled in T-8.1:** Weeks that aren't approved yet are included. The export dialog warns about them, using `GET /me/timesheet-months/{month}`, which gives every week's status.
 
 ## 19. Export templates as `.xlsx` files filled with Apache POI
-**Status:** Proposed · plan D8
+**Status:** Accepted · plan D8, refined by #33
 
 **Decision:**
 - There is one template per client plus a generic one.
@@ -382,3 +383,14 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 **Why:** Safe, repeatable reads, and a data model that matches the screen.
 
 **Consequences:** The FE treats a timesheet without `id` as unsaved. Epic 8's export reads only stored entries.
+
+## 33. Export templates: a generic one built in code first
+**Status:** Accepted · T-8.1 (refines #19)
+
+**Decision:**
+- We don't have real client sheets yet (`plan.md` T-8.1: "gather real example sheets if available"), so the first and only template is **`GENERIC`**. Its Java class builds the workbook with Apache POI from scratch, with no `.xlsx` file behind it.
+- **Client templates** (DKB, DEKA, VV, DBIS, UNION) come one story each, once a real sheet arrives. Those follow #19: the client's `.xlsx` goes in `src/main/resources/export-templates/`, and a class fills in its cells.
+- Every template is a Spring bean behind one `ExportTemplate` interface (strategy pattern). `GET /export-templates` lists the beans, so adding a template is one class and no API change.
+- The export dialog preselects the template of the user's client, or `GENERIC` when their client has none yet.
+
+**Why:** It unblocks the export without inventing client layouts nobody has checked, and the registry makes the real templates a drop-in.
