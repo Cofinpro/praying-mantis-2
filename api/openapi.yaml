@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: praying-mantis API
-  version: 0.7.0
+  version: 0.8.0
   description: |
     Contract between backend and frontend (decision 2). Agree changes together in a `T` story
     before implementing them. All routes are under /api. Errors are Problem Details (decision 21).
@@ -32,6 +32,8 @@ tags:
     description: Projects to book hours on (T-6.1)
   - name: timesheets
     description: My weekly timesheets (T-6.1)
+  - name: team-timesheets
+    description: Timesheets I decide on as approver (T-7.1)
   - name: team-absences
     description: Absence requests I decide on as approver (T-5.1)
   - name: notifications
@@ -505,6 +507,129 @@ paths:
         default:
           $ref: '#/components/responses/Problem'
 
+  /team/timesheets:
+    get:
+      tags: [team-timesheets]
+      operationId: getTeamTimesheets
+      summary: Timesheets I'm the approver of
+      description: |
+        For the Timesheets tab of the Approvals page (BE-7.1). The weeks whose stored approver is the
+        logged-in user (decisions 16 and 31). Someone who approves nobody gets an empty list.
+
+        Filtered by `status`, which defaults to `SUBMITTED`. Submitted weeks come oldest week first;
+        other statuses newest first. Each one carries the whole `Timesheet`, entries included, so the
+        expandable row can show the week grid read-only, plus the hours per project.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Defaults to `SUBMITTED`
+          schema:
+            $ref: '#/components/schemas/TimesheetStatus'
+      responses:
+        '200':
+          description: The timesheets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TeamTimesheet'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /team/timesheets/{id}/approve:
+    post:
+      tags: [team-timesheets]
+      operationId: approveTimesheet
+      summary: Approve a submitted week
+      description: |
+        BE-7.2, with the same rules as approving an absence (decision 31). Sets `APPROVED` and
+        `decidedAt`, stores the optional comment, and notifies the user (`TIMESHEET_APPROVED`, T-4.1).
+
+        - **403** unless the caller is the stored approver or an admin, and never for the user's own
+          week (decision 16)
+        - **404** when there's no such timesheet
+        - **409** `/problems/timesheet-not-submitted`: it isn't `SUBMITTED`
+      parameters:
+        - $ref: '#/components/parameters/TimesheetId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimesheetDecision'
+      responses:
+        '200':
+          description: The approved week
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Timesheet'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Not allowed to decide this week, or a missing CSRF token
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /team/timesheets/{id}/reject:
+    post:
+      tags: [team-timesheets]
+      operationId: rejectTimesheet
+      summary: Reject a submitted week
+      description: |
+        BE-7.2. Sets `REJECTED` and `decidedAt`, stores the comment, and notifies the user
+        (`TIMESHEET_REJECTED`, T-4.1). **The comment is required** (decision 31), because the user has
+        to know what to fix. A rejected week can be edited and submitted again (decision 32).
+
+        The same 403, 404 and 409 `/problems/timesheet-not-submitted` as approve.
+      parameters:
+        - $ref: '#/components/parameters/TimesheetId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimesheetDecision'
+      responses:
+        '200':
+          description: The rejected week
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Timesheet'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Not allowed to decide this week, or a missing CSRF token
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Problem'
+
   /me/notifications:
     get:
       tags: [notifications]
@@ -754,6 +879,15 @@ components:
       name: JSESSIONID
 
   parameters:
+    TimesheetId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+        example: 12
+
     WeekStart:
       name: weekStart
       in: path
@@ -1055,6 +1189,40 @@ components:
         name:
           type: string
           example: DKB core banking
+
+    TeamTimesheet:
+      description: A week as its approver sees it
+      type: object
+      required: [timesheet, user, projectHours]
+      properties:
+        timesheet:
+          $ref: '#/components/schemas/Timesheet'
+        user:
+          $ref: '#/components/schemas/UserRef'
+        projectHours:
+          description: Total hours per project in the week, by project code
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectHours'
+
+    ProjectHours:
+      type: object
+      required: [project, hours]
+      properties:
+        project:
+          $ref: '#/components/schemas/ProjectRef'
+        hours:
+          type: number
+          example: 32
+
+    TimesheetDecision:
+      type: object
+      properties:
+        comment:
+          description: Required to reject (1–500 characters), optional to approve
+          type: string
+          maxLength: 500
+          example: Please book Thursday on DKB-CORE
 
     TimesheetEntries:
       type: object
