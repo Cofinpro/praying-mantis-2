@@ -18,7 +18,7 @@ gh api -X PATCH "repos/$REPO" \
 echo "Protecting main..."
 gh api -X PUT "repos/$REPO/branches/main/protection" --input - >/dev/null <<'JSON'
 {
-  "required_status_checks": null,
+  "required_status_checks": { "strict": true, "contexts": ["backend"] },
   "enforce_admins": false,
   "required_pull_request_reviews": {
     "required_approving_review_count": 1,
@@ -33,4 +33,4 @@ gh api -X PUT "repos/$REPO/branches/main/protection" --input - >/dev/null <<'JSO
 }
 JSON
 
-echo "Done. Once the CI pipeline exists (BE-0.3 / FE-0.3), add its checks as required status checks."
+echo "Done. Required checks: backend (BE-0.3). Add the frontend job to \"contexts\" with FE-0.3."
