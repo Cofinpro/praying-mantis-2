@@ -10,6 +10,8 @@ const CONFLICTS: Record<string, string> = {
   '/problems/no-approver': 'Nobody can approve this request yet. Please ask an admin.',
   '/problems/absence-not-cancellable': 'This absence can’t be cancelled any more.',
   '/problems/absence-not-pending': 'This request was already decided or cancelled.',
+  '/problems/timesheet-not-editable':
+    'This week was already submitted, so it can’t be changed any more.',
 }
 
 /**

@@ -50,6 +50,17 @@ States and choices the code has that Figma doesn't show yet. Add them to Figma w
   - States: loading ("Loading requests…"), empty ("Nothing to approve right now.", also what non-team-leads see), load error with "Try again", and a danger banner above the table when an approval fails. Reject errors show inside the dialog (banner, or under the field for a 400 on `comment`).
   - Avatars cycle through primary, training, info and success-ink by user id.
 
+- **05 Timesheets (FE-6.1):**
+  - **Descriptions per entry** (the contract's `TimeEntry.description`): a message icon button in each row (between the project and Monday, in its own cell) opens a `BaseDialog` (520px) "Descriptions · DKB-CORE" with one text field per day that has hours ("Monday 19 Oct · 6 h", 500 characters max). Secondary "Cancel", primary "Apply"; Apply updates the grid and the week's Save sends it. The icon turns primary with a count when the row has descriptions. Read-only weeks show them as a list with "Close".
+  - **Remove a row**: a trash icon button next to the descriptions button (editable weeks only).
+  - **"+ Add project"** turns into a pill select of the active projects not on the grid yet, with "Add" (primary, small) and "Cancel" (ghost). The new row's Monday gets the focus.
+  - **Header chips**: approved absences in the type's soft colour (a half day adds "½"), public holidays in grey with the holiday's name (cut with an ellipsis at 88px, full name on hover and for screen readers). Weekends get no absence chip.
+  - **Errors**: an invalid cell gets the 2px danger border; a day over 24 h turns its daily total danger red. All messages are listed in a danger-soft strip under the totals ("DKB-CORE, Thursday 22 Oct: Use quarter hours, e.g. 7.25"), each linked to its input with `aria-describedby`. Save is disabled while any is shown. Server errors (400 per entry, 409) use the same list plus a danger banner above the grid.
+  - **Status banners** above the grid: rejected = danger-soft with "Rejected by X on date", the approver's comment in quotes and "Correct the hours, save, and submit the week again."; submitted and approved = info-soft one-liners ending in "The week is read-only.". Read-only weeks show the hours as plain text, with no inputs, add row, remove buttons or Save.
+  - **Unsaved changes guard**: leaving the week or the page with unsaved changes opens a 460px confirmation ("Discard unsaved changes?", primary-soft warning icon, secondary "Keep editing", danger-fill "Discard changes"). Closing the tab uses the browser's own prompt. After a save the toolbar shows a muted "Saved" where "● Unsaved changes" was.
+  - States: "Loading the week…", and a load error with "Try again". An empty week says "No hours yet this week." (read-only: "No hours were recorded this week.").
+  - The footer note adds "in quarter hours". The **Export month** button is left out until FE-8.1 builds its dialog (frame "06").
+
 ## Tokens
 
 They live in `frontend/src/assets/tokens.css` (created in FE-1.1). Use them everywhere with `var(--…)`. Spacing is available as `--space-1` … `--space-10`, `--space-12` and `--space-16` (the number × 4px; add a step when a frame needs it) and the float shadow as `--shadow-float`.

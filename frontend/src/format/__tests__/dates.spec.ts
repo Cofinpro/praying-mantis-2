@@ -7,9 +7,13 @@ import {
   formatRange,
   formatRangeWithYear,
   formatTimeAgo,
+  formatWeekdayDate,
+  isIsoDate,
+  isoWeek,
   today,
   weekday,
   weekdayName,
+  weekStartOf,
 } from '../dates'
 
 describe('dates', () => {
@@ -26,6 +30,36 @@ describe('dates', () => {
   it('numbers weekdays from Monday', () => {
     expect(weekday('2026-10-05')).toBe(0) // Monday
     expect(weekday('2026-10-11')).toBe(6) // Sunday
+  })
+
+  it('finds the Monday of a week', () => {
+    expect(weekStartOf('2026-10-19')).toBe('2026-10-19') // Monday itself
+    expect(weekStartOf('2026-10-25')).toBe('2026-10-19') // Sunday
+    expect(weekStartOf('2027-01-01')).toBe('2026-12-28') // across the year
+  })
+
+  it('numbers weeks as ISO 8601 does', () => {
+    expect(isoWeek('2026-10-19')).toBe(43) // the Figma frame's week
+    expect(isoWeek('2026-10-25')).toBe(43)
+    // 1 Jan 2026 is a Thursday, so its week is week 1 and starts in 2025
+    expect(isoWeek('2025-12-29')).toBe(1)
+    expect(isoWeek('2026-01-01')).toBe(1)
+    // 2026 has 53 weeks: its last Thursday is 31 Dec
+    expect(isoWeek('2026-12-31')).toBe(53)
+    expect(isoWeek('2027-01-03')).toBe(53)
+    expect(isoWeek('2027-01-04')).toBe(1)
+  })
+
+  it('names a day with its weekday', () => {
+    expect(formatWeekdayDate('2026-10-19')).toBe('Monday 19 Oct')
+  })
+
+  it('accepts only real calendar days', () => {
+    expect(isIsoDate('2026-10-19')).toBe(true)
+    expect(isIsoDate('2026-02-30')).toBe(false)
+    expect(isIsoDate('2026-1-5')).toBe(false)
+    expect(isIsoDate(['2026-10-19'])).toBe(false)
+    expect(isIsoDate(undefined)).toBe(false)
   })
 
   it('takes today from the local clock', () => {
