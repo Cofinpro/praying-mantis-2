@@ -71,7 +71,7 @@ public class AbsenceBalanceService {
 
     /**
      * Days of a deducting type the user has left in {@code year}: entitled + carried over − approved. Pending
-     * requests don't count against it, and a year without an entitlement has none left (decision #27).
+     * requests don't count against it, and a year without an entitlement has none left (decision #29).
      */
     @Transactional(readOnly = true)
     public BigDecimal daysLeft(Long userId, AbsenceTypeCode type, int year) {

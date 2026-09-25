@@ -80,7 +80,7 @@ public class AbsenceRequestService {
     /**
      * Creates a request for the user (BE-3.2). The checks run in the order the FE can best explain them:
      * the period itself (400), then overlap, balance and approver (409). A type that needs no approval
-     * (SICK) is approved straight away. Any type may start in the past (decision #27).
+     * (SICK) is approved straight away. Any type may start in the past (decision #29).
      */
     @Transactional
     public AbsenceRequest create(
@@ -133,7 +133,7 @@ public class AbsenceRequestService {
         return request;
     }
 
-    /** Each year the period touches needs enough days left for its part of the period (decision #27). */
+    /** Each year the period touches needs enough days left for its part of the period (decision #29). */
     private void requireBalance(Long userId, AbsenceType type, AbsencePeriod period, Set<LocalDate> periodHolidays) {
         for (int year = period.start().getYear(); year <= period.end().getYear(); year++) {
             BigDecimal needed = period.workingDaysWithin(LocalDate.of(year, 1, 1), LocalDate.of(year, 12, 31), periodHolidays);

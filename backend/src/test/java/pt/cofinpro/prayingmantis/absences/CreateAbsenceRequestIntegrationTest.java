@@ -94,7 +94,7 @@ class CreateAbsenceRequestIntegrationTest {
     @Test
     @WithUserDetails(DIOGO)
     void sickLeaveIsApprovedStraightAwayWithoutApproverOrBalance() throws Exception {
-        // No SICK entitlement, and it's in the past: both fine (decision #27)
+        // No SICK entitlement, and it's in the past: both fine (decision #29)
         create("SICK", "2026-01-05", "FULL", "2026-01-06", "FULL", null)
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("APPROVED"))
