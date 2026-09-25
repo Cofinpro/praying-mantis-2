@@ -40,6 +40,7 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 | 30 | Hosting: mock demo on GitHub Pages, backend on Render | Accepted |
 | 31 | Team approval rules | Accepted |
 | 32 | Timesheet rules: lazy drafts, one cell per project and day | Accepted |
+| 33 | Export templates: a generic one built in code first | Accepted |
 | 34 | Contract PRs merge without waiting for the other dev | Accepted |
 
 `plan.md` decisions D1–D12 map to #12–#23.
@@ -398,6 +399,17 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 **Why:** Safe, repeatable reads, and a data model that matches the screen.
 
 **Consequences:** The FE treats a timesheet without `id` as unsaved. Epic 8's export reads only stored entries.
+
+## 33. Export templates: a generic one built in code first
+**Status:** Accepted · T-8.1 (refines #19)
+
+**Decision:**
+- We don't have real client sheets yet (`plan.md` T-8.1: "gather real example sheets if available"), so the first and only template is **`GENERIC`**. Its Java class builds the workbook with Apache POI from scratch, with no `.xlsx` file behind it.
+- **Client templates** (DKB, DEKA, VV, DBIS, UNION) come one story each, once a real sheet arrives. Those follow #19: the client's `.xlsx` goes in `src/main/resources/export-templates/`, and a class fills in its cells.
+- Every template is a Spring bean behind one `ExportTemplate` interface (strategy pattern). `GET /export-templates` lists the beans, so adding a template is one class and no API change.
+- The export dialog preselects the template of the user's client, or `GENERIC` when their client has none yet.
+
+**Why:** It unblocks the export without inventing client layouts nobody has checked, and the registry makes the real templates a drop-in.
 
 ## 34. Contract PRs merge without waiting for the other dev
 **Status:** Accepted · changes the contract bullet of #27
