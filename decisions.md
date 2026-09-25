@@ -413,6 +413,12 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 
 **Why:** It unblocks the export without inventing client layouts nobody has checked, and the registry makes the real templates a drop-in.
 
+**Update (BE-8.3):** Until the real sheets arrive, each client has a **mock** template, marked "MUSTER" in the file, in `backend/src/main/resources/export-templates/` (`dkb.xlsx`, `deka.xlsx`, `vv.xlsx`, `dbis.xlsx`, `union.xlsx`).
+- There are two layouts: a daily list (DKB, VV, Union) and a days × projects grid (Deka, DBIS).
+- A client's sheet shows only the hours on that client's projects.
+- The cell positions live in `ClientExportTemplates`. `MockExportTemplateGenerator` (test sources) builds the files from them, and a test fails if the two drift apart.
+- To use a real sheet: replace the file, point the client's layout at its cells, and drop that client from the generator.
+
 ## 34. Contract PRs merge without waiting for the other dev
 **Status:** Accepted · changes the contract bullet of #27
 

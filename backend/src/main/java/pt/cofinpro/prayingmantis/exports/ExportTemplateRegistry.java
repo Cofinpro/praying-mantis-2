@@ -19,7 +19,7 @@ public class ExportTemplateRegistry {
     private final Map<String, ExportTemplate> byCode;
 
     public ExportTemplateRegistry(List<ExportTemplate> templates) {
-        this.byName = templates.stream().sorted(Comparator.comparing(ExportTemplate::name)).toList();
+        this.byName = templates.stream().sorted(Comparator.comparing(ExportTemplate::name, String.CASE_INSENSITIVE_ORDER)).toList();
         this.byCode = templates.stream().collect(Collectors.toMap(ExportTemplate::code, Function.identity()));
     }
 

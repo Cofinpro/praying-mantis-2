@@ -167,7 +167,7 @@ class MonthlyExportIntegrationTest {
     @Test
     @WithUserDetails(EVA)
     void anUnknownTemplateIsAFieldError() throws Exception {
-        mockMvc.perform(get("/api/me/timesheet-exports").param("month", "2026-10").param("template", "DKB"))
+        mockMvc.perform(get("/api/me/timesheet-exports").param("month", "2026-10").param("template", "NOPE"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[0].field").value("template"));
     }

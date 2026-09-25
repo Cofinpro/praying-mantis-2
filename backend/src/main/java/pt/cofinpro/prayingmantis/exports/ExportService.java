@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pt.cofinpro.prayingmantis.absences.AbsenceRequestService;
 import pt.cofinpro.prayingmantis.absences.AbsenceStatus;
+import pt.cofinpro.prayingmantis.holidays.PublicHolidayRepository;
 import pt.cofinpro.prayingmantis.timesheets.TimeEntry;
 import pt.cofinpro.prayingmantis.timesheets.TimeEntryRepository;
 import pt.cofinpro.prayingmantis.timesheets.Timesheet;
@@ -43,18 +44,21 @@ public class ExportService {
     private final UserRepository users;
     private final AbsenceRequestService absences;
     private final ExportTemplateRegistry templates;
+    private final PublicHolidayRepository holidays;
 
     public ExportService(
             TimeEntryRepository entries,
             TimesheetRepository timesheets,
             UserRepository users,
             AbsenceRequestService absences,
-            ExportTemplateRegistry templates) {
+            ExportTemplateRegistry templates,
+            PublicHolidayRepository holidays) {
         this.entries = entries;
         this.timesheets = timesheets;
         this.users = users;
         this.absences = absences;
         this.templates = templates;
+        this.holidays = holidays;
     }
 
     /**
@@ -96,7 +100,8 @@ public class ExportService {
                 user,
                 month,
                 entries.findForUserBetween(userId, first, last),
-                absences.overlapping(userId, first, last).stream().filter(r -> r.getStatus() == AbsenceStatus.APPROVED).toList());
+                absences.overlapping(userId, first, last).stream().filter(r -> r.getStatus() == AbsenceStatus.APPROVED).toList(),
+                holidays.findByDateBetweenOrderByDate(first, last));
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         try {
