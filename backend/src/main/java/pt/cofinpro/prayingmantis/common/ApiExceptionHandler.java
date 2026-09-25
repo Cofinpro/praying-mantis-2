@@ -11,6 +11,9 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.web.csrf.CsrfException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -54,6 +57,24 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
                                 result.getMethodParameter().getParameterName(), error.getDefaultMessage())))
                 .toList();
         return handleExceptionInternal(ex, withErrors(ex.getBody(), errors), headers, status, request);
+    }
+
+    /** Wrong email or password. One message for both, so it doesn't reveal whether an account exists. */
+    @ExceptionHandler(BadCredentialsException.class)
+    ProblemDetail handleBadCredentials(BadCredentialsException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "Invalid email or password");
+    }
+
+    /** Not logged in, or the session expired; the filter chain's entry point sends this here. */
+    @ExceptionHandler(AuthenticationException.class)
+    ProblemDetail handleUnauthenticated(AuthenticationException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "Not logged in");
+    }
+
+    /** Missing or wrong X-XSRF-TOKEN header on an unsafe request (decision #12). */
+    @ExceptionHandler(CsrfException.class)
+    ProblemDetail handleCsrf(CsrfException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "Missing or invalid CSRF token");
     }
 
     /** Thrown by method security inside a controller or service; without this the catch-all makes it a 500. */
