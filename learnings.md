@@ -106,6 +106,16 @@ lets a test jump 30 s with `vi.advanceTimersByTime(30_000)`, while MSW keeps its
 `Notification` schema is exported as `AppNotification`, because `Notification` is already the
 browser's global notification API (FE-4.1).
 
+### Optimistic updates: `onMutate` edits the cache, `onError` undoes only your change
+On the Approvals page the row leaves the list as soon as you click Approve (FE-5.1). `onMutate`
+runs before the request: it cancels any in-flight refetch of the list first (`cancelQueries`),
+since a refetch landing afterwards would put the row back, then removes the row with
+`setQueryData` and returns `{ index }`, which TanStack Query hands to `onError` and `onSettled` as
+`context`. The textbook rollback restores a snapshot of the whole list, but with two quick
+decisions the first one's rollback would also resurrect the second row, so `onError` re-inserts
+just the failed row at its old index. `onSettled` refetches either way, so the server has the last
+word.
+
 ## TypeScript
 
 ### One tsconfig per environment, tied together with project references

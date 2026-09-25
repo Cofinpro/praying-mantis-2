@@ -32,11 +32,10 @@ export const routes: RouteRecordRaw[] = [
   },
   {
     // In the nav for team leads only. Anyone can open the URL; the backend decides what they see
-    // (decision #11), and FE-5.1 shows "nothing to approve" to everyone else.
+    // (decision #11), and everyone else gets "Nothing to approve right now."
     path: '/approvals',
     name: 'approvals',
-    component: placeholder,
-    props: { title: 'Approvals', story: 'FE-5.1' },
+    component: () => import('../views/ApprovalsView.vue'),
   },
   {
     // In the nav for admins only; the backend enforces it (decision #11)

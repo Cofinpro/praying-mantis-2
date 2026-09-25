@@ -9,10 +9,17 @@ const CONFLICTS: Record<string, string> = {
   '/problems/insufficient-balance': 'You don’t have enough days left for this request.',
   '/problems/no-approver': 'Nobody can approve this request yet. Please ask an admin.',
   '/problems/absence-not-cancellable': 'This absence can’t be cancelled any more.',
+  '/problems/absence-not-pending': 'This request was already decided or cancelled.',
 }
 
-/** A message for the form's banner, or null for a 400 with field errors (those go under the fields) */
-export function problemMessage(error: unknown): string | null {
+/**
+ * A message for the form's banner, or null for a 400 with field errors (those go under the fields).
+ * `overrides` rewords a `type` for another point of view, e.g. the approver's instead of the requester's.
+ */
+export function problemMessage(
+  error: unknown,
+  overrides: Record<string, string> = {},
+): string | null {
   if (!(error instanceof ApiError)) {
     return error ? 'Something went wrong. Please try again.' : null
   }
@@ -20,7 +27,7 @@ export function problemMessage(error: unknown): string | null {
     // Spring answers an unreadable body with a 400 without `errors`: nothing to show under a field
     return error.problem.errors?.length ? null : 'Something went wrong. Please try again.'
   }
-  const known = CONFLICTS[error.problem.type]
+  const known = overrides[error.problem.type] ?? CONFLICTS[error.problem.type]
   if (known) {
     // The backend's detail adds the numbers for the balance case ("Only 3 days left in 2026…")
     return error.problem.type === '/problems/insufficient-balance' && error.problem.detail

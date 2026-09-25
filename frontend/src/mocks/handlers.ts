@@ -2,7 +2,9 @@ import { http, HttpResponse } from 'msw'
 
 import type {
   AbsenceBalance,
+  AbsenceDecision,
   AbsenceRequest,
+  AbsenceStatus,
   AbsenceType,
   AppNotification,
   CurrentUser,
@@ -12,12 +14,14 @@ import type {
   NotificationPage,
   Problem,
   PublicHoliday,
+  TeamAbsenceRequest,
   UnreadCount,
 } from '@/api/client'
 import { workingDays } from '@/absences/workingDays'
 import { today } from '@/format/dates'
 import { absenceRequests, absenceTypes, balances, publicHolidays } from './data/absences'
 import { mockNotifications } from './data/notifications'
+import { teamAbsenceRequests } from './data/team'
 import { findMockUser } from './data/users'
 
 // Mock backend that follows api/openapi.yaml (decision #4). Used by `pnpm dev:mock` and by Vitest.
@@ -41,6 +45,8 @@ export function startMockSession(user: CurrentUser = mockUser) {
 // Requests live in memory too, so creating and cancelling show up in the calendar
 let requests: AbsenceRequest[] = structuredClone(absenceRequests)
 let nextRequestId = 1000
+// The requests Ana decides on as team lead (T-5.1), so approving and rejecting stick
+let teamRequests: TeamAbsenceRequest[] = structuredClone(teamAbsenceRequests)
 
 // Notifications too, so marking them read changes the badge. Built lazily, so their "2 min ago" is
 // relative to the (possibly faked) clock of the first request.
@@ -57,6 +63,7 @@ export function resetMockSession() {
   loggedInAs = null
   requests = structuredClone(absenceRequests)
   notifications = null
+  teamRequests = structuredClone(teamAbsenceRequests)
 }
 
 const problem = (status: number, body: Omit<Problem, 'status'>) =>
@@ -282,6 +289,86 @@ export const handlers = [
     myNotifications().forEach((n) => (n.readAt ??= now))
     return new HttpResponse(null, { status: 204 })
   }),
+
+  // T-5.1: only the requests whose approver is the caller, so anyone else gets an empty list
+  http.get<never, never, TeamAbsenceRequest[] | Problem>(
+    '*/api/team/absence-requests',
+    ({ request }) => {
+      if (!loggedInAs) {
+        return unauthorized('/api/team/absence-requests')
+      }
+      const status = (new URL(request.url).searchParams.get('status') ?? 'PENDING') as AbsenceStatus
+      const me = loggedInAs.id
+      const mine = teamRequests.filter((r) => r.request.approver?.id === me)
+      // Pending ones soonest start first; ISO dates compare correctly as strings
+      return HttpResponse.json(
+        mine
+          .filter((r) => r.request.status === status)
+          .sort((a, b) => a.request.startDate.localeCompare(b.request.startDate)),
+      )
+    },
+  ),
+
+  http.post<{ id: string; decision: string }, AbsenceDecision | null, AbsenceRequest | Problem>(
+    '*/api/team/absence-requests/:id/:decision',
+    async ({ params, request }) => {
+      const instance = `/api/team/absence-requests/${params.id}/${params.decision}`
+      if (!loggedInAs) {
+        return unauthorized(instance)
+      }
+      if (params.decision !== 'approve' && params.decision !== 'reject') {
+        return problem(404, { type: 'about:blank', title: 'Not Found', instance })
+      }
+      // The approve body is optional
+      const comment = ((await request.json().catch(() => null)) ?? {}).comment?.trim()
+      const found = teamRequests.find((r) => r.request.id === Number(params.id))
+      if (!found) {
+        return problem(404, {
+          type: 'about:blank',
+          title: 'Not Found',
+          detail: 'Absence request not found',
+          instance,
+        })
+      }
+      if (found.request.status !== 'PENDING') {
+        return problem(409, {
+          type: '/problems/absence-not-pending',
+          title: 'Conflict',
+          detail: 'The absence request is no longer pending',
+          instance,
+        })
+      }
+      if (params.decision === 'reject' && !comment) {
+        return invalid('comment', 'must not be blank')
+      }
+      if ((comment?.length ?? 0) > 500) {
+        return invalid('comment', 'size must be between 0 and 500')
+      }
+      const { request: r, remainingDays } = found
+      if (params.decision === 'approve' && remainingDays != null) {
+        if (remainingDays < r.workingDays) {
+          return problem(409, {
+            type: '/problems/insufficient-balance',
+            title: 'Conflict',
+            detail: `Only ${remainingDays} vacation days left in ${r.startDate.slice(0, 4)}, but the request needs ${r.workingDays}`,
+            instance,
+          })
+        }
+        // The approved days now count as used for the requester's other requests of that type
+        for (const other of teamRequests) {
+          if (other.requester.id === found.requester.id && other.request.type === r.type) {
+            other.remainingDays = (other.remainingDays ?? 0) - r.workingDays
+          }
+        }
+      }
+      r.status = params.decision === 'approve' ? 'APPROVED' : 'REJECTED'
+      r.decidedAt = new Date().toISOString()
+      if (comment) {
+        r.decisionComment = comment
+      }
+      return HttpResponse.json(r)
+    },
+  ),
 
   http.get<never, never, PublicHoliday[] | Problem>('*/api/public-holidays', ({ request }) => {
     if (!loggedInAs) {

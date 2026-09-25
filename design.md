@@ -38,6 +38,18 @@ Links open the frame directly (`?node-id=`).
 
 Integration stories (FE-1.3, FE-2.3, ...) don't change the UI. They must still match the frame once real data is in.
 
+### Not in the frames yet
+
+States and choices the code has that Figma doesn't show yet. Add them to Figma when someone next edits the frame.
+
+- **04 Approvals (FE-5.1):**
+  - The reject comment opens in a narrow `BaseDialog` (460px, no title row, 16px bold heading) instead of a popover anchored to the row: the native modal gives focus trap, Esc and an inert page without positioning code. Same copy and buttons (ghost "Cancel", dark "Reject request").
+  - The person cell shows avatar and name only. "Level · Client" needs the requester's level and client, which `TeamAbsenceRequest.requester` (a `UserRef`) doesn't have yet (asked on #39).
+  - The Timesheets tab is shown disabled, without a count, until FE-7.1.
+  - Balance: "–" for types without a balance (only VACATION has one); the "after" number turns danger red when the request no longer fits (approving it answers a 409).
+  - States: loading ("Loading requests…"), empty ("Nothing to approve right now.", also what non-team-leads see), load error with "Try again", and a danger banner above the table when an approval fails. Reject errors show inside the dialog (banner, or under the field for a 400 on `comment`).
+  - Avatars cycle through primary, training, info and success-ink by user id.
+
 ## Tokens
 
 They live in `frontend/src/assets/tokens.css` (created in FE-1.1). Use them everywhere with `var(--…)`. Spacing is available as `--space-1` … `--space-10`, `--space-12` and `--space-16` (the number × 4px; add a step when a frame needs it) and the float shadow as `--shadow-float`.
