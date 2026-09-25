@@ -30,18 +30,20 @@ export class ApiError extends Error {
 
 // On 401 the session is gone: forget the cached user, so the route guard asks the server again,
 // then send the user to the login page and remember where they were (FE-1.1 sends them back).
-// No redirect for GET /me: the guard (router/authGuard.ts) calls it during a navigation and decides
-// itself; starting a second navigation from here would cancel the one the guard is running.
+//
+// Hands off GET /me: the route guard (router/authGuard.ts) calls it during a navigation and handles
+// its 401 itself. From here, a redirect would start a second navigation that cancels the guard's,
+// and removing the query would cancel the guard's own in-flight fetch (CancelledError).
 const redirectOnUnauthorized: Middleware = {
   // openapi-fetch awaits middleware, so the navigation has finished by the time the caller sees the error
   async onResponse({ response, schemaPath }) {
-    if (response.status !== 401) {
+    // schemaPath is the path template from openapi.yaml, not the URL, so the base path can't fool it
+    if (response.status !== 401 || schemaPath === '/me') {
       return
     }
     queryClient.removeQueries({ queryKey: queryKeys.me })
     const current = router.currentRoute.value
-    // schemaPath is the path template from openapi.yaml, not the URL, so the base path can't fool it
-    if (current.name !== 'login' && schemaPath !== '/me') {
+    if (current.name !== 'login') {
       await router.push({ name: 'login', query: { redirect: current.fullPath } })
     }
   },

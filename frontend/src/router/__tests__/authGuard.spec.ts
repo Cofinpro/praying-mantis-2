@@ -9,6 +9,7 @@ import { queryKeys } from '@/api/queryKeys'
 import { server } from '@/mocks/node'
 import { mockUser, startMockSession } from '@/mocks/handlers'
 import { testQueryClient } from '@/test/query'
+import { queryClient as appQueryClient } from '@/api/queryClient'
 
 describe('auth guard', () => {
   let router: Router
@@ -75,5 +76,17 @@ describe('auth guard', () => {
 
     await expect(router.push('/timesheets')).rejects.toMatchObject({ status: 503 })
     expect(router.currentRoute.value.name).not.toBe('login')
+  })
+
+  it("works with the app's own QueryClient, which client.ts also uses on a 401", async () => {
+    // Regression: client.ts removed the cached user on every 401, including the guard's own GET /me.
+    // Removing a query cancels its fetch, so the guard got a CancelledError instead of the 401.
+    const appRouter = createRouter({ history: createMemoryHistory(), routes })
+    installAuthGuard(appRouter, appQueryClient)
+
+    await appRouter.push('/timesheets')
+
+    expect(appRouter.currentRoute.value.name).toBe('login')
+    appQueryClient.clear()
   })
 })
