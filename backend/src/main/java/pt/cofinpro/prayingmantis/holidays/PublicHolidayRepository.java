@@ -8,4 +8,8 @@ public interface PublicHolidayRepository extends JpaRepository<PublicHoliday, Lo
 
     /** Both ends inclusive. */
     List<PublicHoliday> findByDateBetweenOrderByDate(LocalDate from, LocalDate to);
+
+    boolean existsByDate(LocalDate date);
+
+    boolean existsByDateAndIdNot(LocalDate date, Long id);
 }
