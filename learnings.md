@@ -37,3 +37,17 @@ Since Spring Security 6 the filter chain also runs on the ERROR dispatch. With `
 (from Node 25 install it once with `brew install corepack`). After `corepack enable`, typing `pnpm` downloads and runs exactly that version, so everyone (and CI)
 uses the same pnpm without a global install. The lockfile is `pnpm-lock.yaml`; a
 `package-lock.json` means someone ran `npm install` by mistake (decision #5).
+
+### pnpm blocks dependency install scripts until you approve them
+Since pnpm 10, `postinstall` scripts of dependencies don't run by default, and pnpm 12 fails the
+install until each one is approved or denied. The choice lives in `frontend/pnpm-workspace.yaml`
+under `allowBuilds` (`pnpm approve-builds` writes it). We deny `vue-demi` (pulled in by
+TanStack Query): its script only switches builds for Vue 2, and the shipped build already
+targets Vue 3. Check what a script does before approving it: install scripts are a common
+supply-chain attack vector (FE-0.1).
+
+### `vitest.config.ts` reuses the Vite config
+`mergeConfig(viteConfig, defineConfig({ test: { environment: 'jsdom' } }))` gives tests the same
+Vue plugin and `@` alias as the app, so there's no separate Jest-style transform to maintain.
+Import it as `./vite.config.ts` (with the extension), or Vite 8 warns that its native config
+loader won't support it (FE-0.1).

@@ -1,11 +1,11 @@
 ---
 name: vue
-description: Conventions for the Vue 3 + Vite + TypeScript frontend in frontend/ (Composition API, Vue Router, Pinia, Vitest). Use when creating or changing components, views, routes, stores, API clients or frontend tests.
+description: Conventions for the Vue 3 + Vite + TypeScript frontend in frontend/ (Composition API, Vue Router, TanStack Query, Pinia, Vitest). Use when creating or changing components, views, routes, stores, API clients or frontend tests.
 ---
 
 # Vue frontend (frontend/)
 
-Stack: Vue 3.5, Vite 8, TypeScript 5.9 (strict, `vue-tsc`), Vue Router 5, Pinia 4, Vitest 5 + `@vue/test-utils` + jsdom. The `@` alias maps to `frontend/src`.
+Stack: Vue 3.5, Vite 8, TypeScript 5.9 (strict, `vue-tsc`), Vue Router 5, TanStack Query 5 (`@tanstack/vue-query`), Pinia 4, Vitest 5 + `@vue/test-utils` + jsdom, ESLint 10 (flat config) + Prettier. The `@` alias maps to `frontend/src`.
 
 ## Layout
 
@@ -31,7 +31,8 @@ src/
   - Export a TS interface mirroring the backend record/DTO.
   - Use relative `/api/...` URLs — Vite proxies `/api` to `http://localhost:8080` in dev, so no CORS or base URL config.
   - Throw an `Error` on `!response.ok`; the caller shows loading / error / data states.
-- Shared or cross-view state goes in a Pinia setup store (`defineStore('name', () => { ... })`); local UI state stays in the component.
+- Server data goes through TanStack Query (`useQuery` / `useMutation`), never into a Pinia store (decision #6). The `QueryClient` is created in `main.ts`.
+- Client-only state shared across views goes in a Pinia setup store (`defineStore('name', () => { ... })`); local UI state stays in the component.
 - Lazy-load non-home routes: `component: () => import('../views/XxxView.vue')`.
 
 ## Tests
@@ -45,9 +46,11 @@ src/
 
 ```bash
 pnpm dev             # http://localhost:5173
-pnpm test:unit --run   # single run (plain `test:unit` watches)
+pnpm test            # single run (`pnpm test:watch` watches)
+pnpm lint            # ESLint; `pnpm lint:fix` auto-fixes
+pnpm format          # Prettier; `pnpm format:check` only reports
 pnpm type-check
-pnpm build          # type-check + production build
+pnpm build           # type-check + production build
 ```
 
-Before declaring frontend work done, run `pnpm test:unit --run` and `pnpm type-check`.
+Before declaring frontend work done, run `pnpm lint`, `pnpm test` and `pnpm type-check`.
