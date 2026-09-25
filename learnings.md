@@ -93,3 +93,32 @@ supply-chain attack vector (FE-0.1).
 Vue plugin and `@` alias as the app, so there's no separate Jest-style transform to maintain.
 Import it as `./vite.config.ts` (with the extension), or Vite 8 warns that its native config
 loader won't support it (FE-0.1).
+
+## Epic 0 recap: how the frontend was set up
+
+A short summary of the steps Claude Code took for the frontend stories of epic 0, and what it would
+repeat next time. Details are in the entries above and in `decisions.md` (#25, #26).
+
+1. **Switched to pnpm.** Removed the npm lockfile, pinned the pnpm version in `package.json` and
+   changed the docs to use pnpm commands.
+2. **Built the skeleton (FE-0.1).** Added routing, TanStack Query for server data, and the tooling
+   for linting, formatting and tests. When pnpm asked whether a package could run an install
+   script, it checked what the script did before answering.
+3. **Had the work reviewed.** Ran the fe-specialist reviewer before merging and fixed what it found.
+   The main issue was that the Vue skill still taught an older pattern than our decisions.
+4. **Connected the frontend to the API contract (FE-0.2).** Generated TypeScript types from
+   `openapi.yaml`, wrote the single API client (errors and the redirect to login when not logged
+   in), and added mock responses that both the dev server and the tests use. One bug took some
+   digging: the tests reached the real network instead of the mocks.
+5. **Automated the checks (FE-0.3).** Added a GitHub Actions workflow that runs the same checks on
+   every PR, including one that fails when the generated types are out of date. It was tried in a
+   fresh copy of the repo first, including a deliberate failure to prove the check works.
+
+**Habits worth keeping:**
+- Read `decisions.md` before following a tool's default or a skill's advice, because the
+  decisions win.
+- Run lint, tests and build before every commit, not just at the end.
+- When something only works on your machine, try it in a clean clone.
+- Write down each choice (in `decisions.md`) and each surprise (here) while it's fresh.
+- Keep one story per branch and PR, and mention anything found outside the story, such as the YAML
+  comment bug in the contract, instead of quietly fixing it.
