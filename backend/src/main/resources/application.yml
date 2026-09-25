@@ -13,9 +13,6 @@ spring:
     open-in-view: false
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
-  mvc:
-    problemdetails:
-      enabled: true
 
 server:
   port: 8080

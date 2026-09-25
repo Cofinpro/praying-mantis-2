@@ -3,6 +3,7 @@ package pt.cofinpro.prayingmantis.config;
 import jakarta.servlet.DispatcherType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
@@ -22,6 +23,8 @@ public class SecurityConfig {
                         // Security also runs on the internal forward to /error; without this a 404/500 becomes 401
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                        // Sample endpoint (BE-0.2), public so the FE can call it before login exists (M0)
+                        .requestMatchers(HttpMethod.GET, "/api/hello").permitAll()
                         .anyRequest().authenticated())
                 // Answer 401 instead of redirecting to a login page. The body is still empty:
                 // BE-1.2 should write a ProblemDetail here (decision #21), @RestControllerAdvice never sees it

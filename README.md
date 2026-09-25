@@ -59,6 +59,9 @@ Schema changes are Liquibase changesets in `src/main/resources/db/changelog/chan
 
 Endpoints:
 - `GET /actuator/health` – health check
+- `GET /api/hello` – sample endpoint, public until login exists
+
+The API contract is `api/openapi.yaml` (decision #2). On every build, `openapi-generator-maven-plugin` turns it into controller interfaces and DTOs in `target/generated-sources/openapi` (package `pt.cofinpro.prayingmantis.api`). Controllers implement those interfaces. To add an endpoint, change the contract, run `./mvnw compile`, and implement the new method: the build fails until you do. If your IDE doesn't see the generated classes, mark that folder as a generated sources root.
 
 ## Frontend
 
