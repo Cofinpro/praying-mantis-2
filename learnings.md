@@ -289,6 +289,14 @@ per test. (BE-4.1)
 The type allows any single decimal. `check (x * 2 = trunc(x * 2))` only lets whole and half days
 through. (BE-2.1)
 
+### `INSERT ... SELECT` from `VALUES` with a join doesn't keep the list's order
+The dev seed inserts the employees with `select ... from (values ...) v left join users lead on ...`.
+The planner may run that as a hash join, which returns rows in any order, so the serial ids don't
+follow the `VALUES` list: in our dev DB Diogo is 4 and Carla 5, while `test-users.md` and the MSW
+mock have Carla 4 and Diogo 5. Nothing broke, because the FE never hard-codes an id (only the avatar
+colour, `id % 4`, differs), but seed data shouldn't be referenced by id. Add `order by` (or explicit
+ids) when the order matters (found in FE-7.2).
+
 ## Liquibase
 
 ### An empty context list runs the dev seed too
