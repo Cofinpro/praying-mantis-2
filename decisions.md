@@ -140,6 +140,7 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 - `POST /api/auth/login` checks a BCrypt password hash and creates a server session. The session is kept in an HttpOnly cookie with `SameSite=Lax`.
 - `POST /api/auth/logout` invalidates the session.
 - The Vite dev server proxies `/api`, so FE and BE share an origin and no CORS setup is needed.
+- CSRF protection stays on (Spring Security's SPA setup, `csrf.spa()`): the backend sets a readable `XSRF-TOKEN` cookie, and `client.ts` copies it into the `X-XSRF-TOKEN` header on every unsafe request, login and logout included. A missing or wrong token is a 403. Added in T-1.1.
 
 **Alternatives considered:** JWT access and refresh tokens. That means more moving parts (storage, refresh, revocation), and there's no benefit for a same-origin internal app.
 

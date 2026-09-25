@@ -66,8 +66,8 @@ Tables are snake_case and plural. Every table has `id BIGSERIAL PK`; `created_at
 
 **users**
 - `name`, `email` (unique), `password_hash`
-- `client` (DKB | Deka | VV | DBIS | UNION)
-- `level` (junior | expert | senior | architect | senior_architect)
+- `client` (DKB | DEKA | VV | DBIS | UNION)
+- `level` (JUNIOR | EXPERT | SENIOR | ARCHITECT | SENIOR_ARCHITECT)
 - `is_admin` — the "privileged account"
 - `team_lead_id` → users (nullable)
 - *Is team lead* is derived (someone has you as `team_lead_id`), not stored — avoids two sources of truth.
