@@ -1,9 +1,7 @@
 package pt.cofinpro.prayingmantis.timesheets;
 
 import java.util.List;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 import pt.cofinpro.prayingmantis.api.TeamTimesheetsApi;
 import pt.cofinpro.prayingmantis.api.model.TeamTimesheet;
 import pt.cofinpro.prayingmantis.api.model.Timesheet;
@@ -28,15 +26,14 @@ public class TeamTimesheetsController implements TeamTimesheetsApi {
                 .toList();
     }
 
-    /** BE-7.2 (SCRUM-64). The generated interface has no default methods, so it needs a body until then. */
+    /** The body is optional here: approving needs no comment. */
     @Override
     public Timesheet approveTimesheet(Long id, TimesheetDecision decision) {
-        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Coming in BE-7.2");
+        return TimesheetMapper.toApi(teamService.approve(id, decision == null ? null : decision.getComment()));
     }
 
-    /** BE-7.2 (SCRUM-64). */
     @Override
     public Timesheet rejectTimesheet(Long id, TimesheetDecision decision) {
-        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Coming in BE-7.2");
+        return TimesheetMapper.toApi(teamService.reject(id, decision.getComment()));
     }
 }

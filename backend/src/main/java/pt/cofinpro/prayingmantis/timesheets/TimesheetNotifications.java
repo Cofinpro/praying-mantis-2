@@ -8,4 +8,10 @@ public interface TimesheetNotifications {
 
     /** A week is waiting for its approver: TIMESHEET_SUBMITTED. */
     void submitted(Timesheet timesheet);
+
+    /** The user's week was approved (BE-7.2): TIMESHEET_APPROVED. */
+    void approved(Timesheet timesheet);
+
+    /** The user's week was rejected, with the approver's comment (BE-7.2): TIMESHEET_REJECTED. */
+    void rejected(Timesheet timesheet);
 }
