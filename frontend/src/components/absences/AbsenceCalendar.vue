@@ -19,7 +19,7 @@ import {
 } from '@/format/dates'
 
 // FE-2.2: month view of my absences, Figma frame "02 Absences". Our own component rather than a
-// calendar library (decision #26, proposed).
+// calendar library (decision #28, proposed).
 const { types } = defineProps<{ types: AbsenceType[] | undefined }>()
 
 const todayIso = today()
