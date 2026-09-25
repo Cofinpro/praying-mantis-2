@@ -4,6 +4,7 @@ import { http, HttpResponse } from 'msw'
 import { api, ApiError } from '@/api/client'
 import router from '@/router'
 import { server } from '@/mocks/node'
+import { MOCK_PASSWORD, mockUser } from '@/mocks/handlers'
 
 describe('api client', () => {
   beforeEach(async () => {
@@ -37,6 +38,22 @@ describe('api client', () => {
       message: 'Overlaps another absence',
       problem: { title: 'Conflict' },
     })
+  })
+
+  it('copies the XSRF-TOKEN cookie into the X-XSRF-TOKEN header of unsafe requests', async () => {
+    document.cookie = 'XSRF-TOKEN=token%2B1'
+    let sent: string | null = null
+    server.use(
+      http.post('*/api/auth/login', ({ request }) => {
+        sent = request.headers.get('X-XSRF-TOKEN')
+        return HttpResponse.json(mockUser)
+      }),
+    )
+
+    await api.login({ email: mockUser.email, password: MOCK_PASSWORD })
+
+    expect(sent).toBe('token+1')
+    document.cookie = 'XSRF-TOKEN=; expires=Thu, 01 Jan 1970 00:00:00 GMT'
   })
 
   it('builds a Problem when the error has no body, and redirects to login on 401', async () => {

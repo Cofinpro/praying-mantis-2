@@ -40,7 +40,7 @@ Integration stories (FE-1.3, FE-2.3, ...) don't change the UI. They must still m
 
 ## Tokens
 
-Define these once in `frontend/src/assets/tokens.css` (the first story that styles the app, FE-1.2, creates it) and use them everywhere with `var(--…)`.
+They live in `frontend/src/assets/tokens.css` (created in FE-1.1). Use them everywhere with `var(--…)`. Spacing is available as `--space-1` … `--space-8`, `--space-12` and `--space-16` (the number × 4px; add a step when a frame needs it) and the float shadow as `--shadow-float`.
 
 ### Colour
 
@@ -67,7 +67,7 @@ Status badges: Draft = grey/muted · Submitted = info-soft/info · Pending = pri
 
 ### Type
 
-Font: **Inter** (`--font-sans: 'Inter', system-ui, sans-serif`).
+Font: **Inter**, self-hosted from the `@fontsource-variable/inter` package (`--font-sans: 'Inter Variable', 'Inter', system-ui, sans-serif`), so there is no request to Google Fonts.
 
 | Role | Size / weight | Notes |
 |---|---|---|

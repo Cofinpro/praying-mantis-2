@@ -27,6 +27,19 @@ refetch-on-reconnect only fire for *stale* queries, so inside those 30 s they're
 their own `refetchInterval` and `staleTime: 0`. `gcTime` is different: it's how long unused cache
 entries stay in memory (FE-0.1 review).
 
+### Attribute fallthrough goes to the root element
+Attributes and listeners a component doesn't declare as props or emits land on its root element.
+That's what makes `<BaseButton :disabled @click>` work, because the `<button>` is the root. In
+`BaseInput` the root is a wrapper `<div>`, so `maxlength` or `name` silently did nothing. Wrapped
+inputs use `defineOptions({ inheritAttrs: false })` and `v-bind="$attrs"` on the real `<input>`
+(FE-1.1 review).
+
+### The TanStack Query cache knows keys, not users
+`setQueryData(queryKeys.me, user)` after login saves a GET /me, but everything else cached in the
+tab survives a re-login, so after an expired session a different user could briefly see the previous
+user's data. Login now calls `queryClient.clear()` first. Keys live in `src/api/queryKeys.ts`, so the
+code that writes an entry and the code that reads it can't drift apart (FE-1.1 review).
+
 ## TypeScript
 
 ### One tsconfig per environment, tied together with project references

@@ -1,0 +1,50 @@
+/* Design tokens from the Figma file (decision #24). design.md lists them with their uses.
+   Components use these variables, never raw colours, fonts or radii. A new token goes here and in
+   design.md in the same PR. */
+:root {
+  /* Colour */
+  --color-primary: #fd6202;
+  --color-primary-soft: #fff0e5;
+  --color-ink: #131313;
+  --color-muted: #6e6e6e;
+  --color-bg: #f5f4f2;
+  --color-surface: #ffffff;
+  --color-surface-alt: #faf9f7;
+  --color-line: #e7e5e1;
+  --color-grey: #efeeeb;
+  --color-success: #60d391;
+  --color-success-soft: #e6f8ee;
+  --color-success-ink: #1e7a4a;
+  --color-training: #8242d8;
+  --color-training-soft: #f1e9fc;
+  --color-info: #006cff;
+  --color-info-soft: #e5f0ff;
+  --color-danger: #d93a3a;
+  --color-danger-soft: #fdecec;
+  --color-overlay: rgb(19 19 19 / 50%);
+
+  /* Type */
+  --font-sans: 'Inter Variable', 'Inter', system-ui, sans-serif;
+
+  /* Shape */
+  --radius-pill: 999px;
+  --radius-card: 16px;
+  --radius-dialog: 20px;
+  --radius-input: 10px;
+  --radius-chip: 6px;
+
+  /* Spacing: 4px scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Floating things only: dialogs, popovers, dropdowns */
+  --shadow-float: 0 24px 48px rgb(0 0 0 / 18%);
+}
