@@ -1,7 +1,6 @@
 package pt.cofinpro.prayingmantis.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -19,9 +18,15 @@ import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import pt.cofinpro.prayingmantis.TestcontainersConfiguration;
 
-/** Login, logout and /me end to end, against the dev seed users (password "password"). */
+/**
+ * Login, logout and /me end to end, against the dev seed users (password "password").
+ * CSRF is done the way the browser does it (cookie + header), not with spring-security-test's csrf():
+ * that helper swaps the CSRF token repository for the whole cached test context, after which no real
+ * XSRF-TOKEN cookie comes back.
+ */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
@@ -115,7 +120,7 @@ class AuthIntegrationTest {
     void logoutEndsTheSession() throws Exception {
         MockHttpSession session = login("ana.silva@cofinpro.pt", "password");
 
-        mockMvc.perform(post("/api/auth/logout").with(csrf()).session(session))
+        mockMvc.perform(post("/api/auth/logout").with(xsrfToken()).session(session))
                 .andExpect(status().isNoContent());
 
         assertThat(session.isInvalid()).isTrue();
@@ -123,7 +128,7 @@ class AuthIntegrationTest {
 
     @Test
     void logoutWithoutSessionIsStillNoContent() throws Exception {
-        mockMvc.perform(post("/api/auth/logout").with(csrf()))
+        mockMvc.perform(post("/api/auth/logout").with(xsrfToken()))
                 .andExpect(status().isNoContent());
     }
 
@@ -143,6 +148,21 @@ class AuthIntegrationTest {
                 .andExpect(status().isOk());
     }
 
+    /** Like the FE: take the XSRF-TOKEN cookie from any response and send it back as the header too. */
+    private RequestPostProcessor xsrfToken() {
+        return request -> {
+            try {
+                Cookie token = mockMvc.perform(get("/api/hello")).andReturn().getResponse().getCookie("XSRF-TOKEN");
+                assertThat(token).as("XSRF-TOKEN cookie").isNotNull();
+                request.setCookies(token);
+                request.addHeader("X-XSRF-TOKEN", token.getValue());
+                return request;
+            } catch (Exception e) {
+                throw new IllegalStateException(e);
+            }
+        };
+    }
+
     private MockHttpSession login(String email, String password) throws Exception {
         MvcResult result = mockMvc.perform(loginRequest(email, password))
                 .andExpect(status().isOk())
@@ -150,9 +170,9 @@ class AuthIntegrationTest {
         return (MockHttpSession) result.getRequest().getSession(false);
     }
 
-    private static MockHttpServletRequestBuilder loginRequest(String email, String password) {
+    private MockHttpServletRequestBuilder loginRequest(String email, String password) {
         return post("/api/auth/login")
-                .with(csrf())
+                .with(xsrfToken())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json(email, password));
     }
