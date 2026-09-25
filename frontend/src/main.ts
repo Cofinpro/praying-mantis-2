@@ -1,23 +1,14 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query'
+import { VueQueryPlugin } from '@tanstack/vue-query'
 
 import App from './App.vue'
+import { queryClient } from './api/queryClient'
 import router from './router'
 import { installAuthGuard } from './router/authGuard'
 import './assets/main.css'
 
 const app = createApp(App)
-
-// One QueryClient for the whole app: it holds the cache of all server data (decision #6)
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      // Treat fetched data as fresh for 30 s, so navigating between pages doesn't refetch it
-      staleTime: 30_000,
-    },
-  },
-})
 
 // Pinia is for client-only state shared across views. Server data goes through TanStack Query.
 app.use(createPinia())
@@ -47,7 +38,16 @@ async function enableMocking() {
 async function start() {
   await enableMocking()
   app.use(router)
-  await router.isReady()
+  try {
+    await router.isReady()
+  } catch {
+    // The guard cancels a navigation when GET /me fails for another reason than 401. Later that
+    // just keeps the current page, but on first load there is none, and isReady() rejects.
+    // Plain text until the "server unavailable" state has a Figma frame (decision #24).
+    document.getElementById('app')!.textContent =
+      'The server is unavailable. Please try again in a moment.'
+    return
+  }
   app.mount('#app')
 }
 

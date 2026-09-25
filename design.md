@@ -40,7 +40,7 @@ Integration stories (FE-1.3, FE-2.3, ...) don't change the UI. They must still m
 
 ## Tokens
 
-They live in `frontend/src/assets/tokens.css` (created in FE-1.1). Use them everywhere with `var(--…)`. Spacing is available as `--space-1` … `--space-9`, `--space-12` and `--space-16` (the number × 4px; add a step when a frame needs it) and the float shadow as `--shadow-float`.
+They live in `frontend/src/assets/tokens.css` (created in FE-1.1). Use them everywhere with `var(--…)`. Spacing is available as `--space-1` … `--space-10`, `--space-12` and `--space-16` (the number × 4px; add a step when a frame needs it) and the float shadow as `--shadow-float`.
 
 ### Colour
 
@@ -84,7 +84,7 @@ Font: **Inter**, self-hosted from the `@fontsource-variable/inter` package (`--f
 ### Shape and spacing
 
 - Radius: `--radius-pill: 999px` (buttons, badges, segmented control) · `--radius-card: 16px` (cards, popovers) · `--radius-dialog: 20px` · `--radius-input: 10px` · `--radius-chip: 6px` (calendar chips).
-- Spacing is a 4px scale: 4, 8, 12, 16, 20, 24, 28, 32, 48. Pages have 48px side padding and 36px top padding. Cards have 24px padding. Gaps between sections are 24–28px.
+- Spacing is a 4px scale: 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 48, 64. Pages have 48px side padding and 36px top padding. Cards have 24px padding. Gaps between sections are 24–28px.
 - Header: 72px high, white, 1px bottom border, active nav item has a 3px primary underline.
 - Shadows only on floating things (dialogs, popovers, dropdowns): `0 24px 48px rgb(0 0 0 / 18%)`.
 

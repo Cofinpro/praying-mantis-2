@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { http, HttpResponse } from 'msw'
@@ -24,6 +24,12 @@ const navLabels = (wrapper: Awaited<ReturnType<typeof mountHeader>>['wrapper']) 
   wrapper.findAll('nav a').map((a) => a.text().replace('(opens in a new tab)', '').trim())
 
 describe('AppHeader', () => {
+  beforeEach(() => {
+    vi.stubEnv('VITE_TRAININGS_URL', 'https://trainings.example.com')
+    vi.stubEnv('VITE_SEATS_URL', 'https://seats.example.com')
+  })
+  afterEach(() => vi.unstubAllEnvs())
+
   it('shows the user with initials, level and client', async () => {
     const { wrapper } = await mountHeader({ name: 'Ana Silva', level: 'EXPERT', client: 'DEKA' })
 
@@ -48,10 +54,30 @@ describe('AppHeader', () => {
   it('marks the current page and opens external apps in a new tab', async () => {
     const { wrapper } = await mountHeader()
 
-    expect(wrapper.find('.nav__link--active').text()).toBe('Absences')
+    // RouterLink marks the current page for screen readers too
+    expect(wrapper.find('nav [aria-current="page"]').text()).toBe('Absences')
     const trainings = wrapper.findAll('nav a').find((a) => a.text().startsWith('Trainings'))!
     expect(trainings.attributes('target')).toBe('_blank')
     expect(trainings.attributes('rel')).toContain('noopener')
+  })
+
+  it('leaves out an external link without a configured URL', async () => {
+    vi.stubEnv('VITE_SEATS_URL', '')
+    const { wrapper } = await mountHeader()
+
+    expect(navLabels(wrapper)).not.toContain('Seats')
+    expect(navLabels(wrapper)).toContain('Trainings')
+  })
+
+  it('says so when logging out fails, and stays', async () => {
+    server.use(http.post('*/api/auth/logout', () => new HttpResponse(null, { status: 503 })))
+    const { wrapper, router } = await mountHeader()
+
+    await wrapper.find('button[aria-label="Log out"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[role="alert"]').text()).toBe("Couldn't log out. Try again.")
+    expect(router.currentRoute.value.name).toBe('absences')
   })
 
   it('logs out, clears the cache and goes to the login page', async () => {

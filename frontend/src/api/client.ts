@@ -1,6 +1,8 @@
 import createClient, { type Middleware } from 'openapi-fetch'
 
 import router from '@/router'
+import { queryClient } from './queryClient'
+import { queryKeys } from './queryKeys'
 import type { components, paths } from './generated/openapi'
 
 // The only module that talks to the backend (decision #6). Types come from api/openapi.yaml via
@@ -26,15 +28,20 @@ export class ApiError extends Error {
   }
 }
 
-// On 401, send the user to the login page and remember where they were (FE-1.1 sends them back).
-// Not for GET /me: the router guard (router/authGuard.ts) calls it during a navigation and decides
+// On 401 the session is gone: forget the cached user, so the route guard asks the server again,
+// then send the user to the login page and remember where they were (FE-1.1 sends them back).
+// No redirect for GET /me: the guard (router/authGuard.ts) calls it during a navigation and decides
 // itself; starting a second navigation from here would cancel the one the guard is running.
 const redirectOnUnauthorized: Middleware = {
   // openapi-fetch awaits middleware, so the navigation has finished by the time the caller sees the error
-  async onResponse({ request, response }) {
+  async onResponse({ response, schemaPath }) {
+    if (response.status !== 401) {
+      return
+    }
+    queryClient.removeQueries({ queryKey: queryKeys.me })
     const current = router.currentRoute.value
-    const isMe = new URL(request.url).pathname.endsWith('/api/me')
-    if (response.status === 401 && current.name !== 'login' && !isMe) {
+    // schemaPath is the path template from openapi.yaml, not the URL, so the base path can't fool it
+    if (current.name !== 'login' && schemaPath !== '/me') {
       await router.push({ name: 'login', query: { redirect: current.fullPath } })
     }
   },

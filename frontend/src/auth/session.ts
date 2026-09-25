@@ -16,7 +16,6 @@ export function useLogout() {
   return useMutation({
     mutationFn: api.logout,
     async onSuccess() {
-      // Clear first: with the user still cached, the guard would send us straight back home
       queryClient.clear()
       await router.push({ name: 'login' })
     },

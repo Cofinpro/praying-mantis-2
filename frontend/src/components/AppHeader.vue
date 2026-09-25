@@ -9,7 +9,7 @@ import { clientLabel, initials, levelLabel } from '@/format/labels'
 
 // FE-1.2, the header in Figma frame "02 Absences" (design.md)
 const { data: user } = useCurrentUser()
-const { mutate: logout, isPending: loggingOut } = useLogout()
+const { mutate: logout, isPending: loggingOut, isError: logoutFailed } = useLogout()
 
 // Hiding a link is only a convenience; the backend enforces who may do what (decision #11)
 const nav = computed(() => [
@@ -19,11 +19,12 @@ const nav = computed(() => [
   ...(user.value?.isAdmin ? [{ name: 'admin', label: 'Admin' }] : []),
 ])
 
-// Apps owned by other groups, opened in a new tab (CLAUDE.md: "a nav link at most")
+// Apps owned by other groups, opened in a new tab (CLAUDE.md: "a nav link at most"). A link
+// without a configured URL is left out rather than pointing at this app.
 const external = [
-  { label: 'Trainings', href: import.meta.env.VITE_TRAININGS_URL ?? '#' },
-  { label: 'Seats', href: import.meta.env.VITE_SEATS_URL ?? '#' },
-]
+  { label: 'Trainings', href: import.meta.env.VITE_TRAININGS_URL },
+  { label: 'Seats', href: import.meta.env.VITE_SEATS_URL },
+].filter((link): link is { label: string; href: string } => !!link.href)
 </script>
 
 <template>
@@ -73,6 +74,10 @@ const external = [
         </div>
       </div>
 
+      <!-- No frame for this state yet (decision #24): a short, announced message -->
+      <span v-if="logoutFailed" class="header__error" role="alert"
+        >Couldn't log out. Try again.</span
+      >
       <button
         type="button"
         class="icon-button"
@@ -105,7 +110,7 @@ const external = [
 }
 
 .header__left {
-  gap: 40px;
+  gap: var(--space-10);
 }
 
 .header__right {
@@ -191,7 +196,7 @@ const external = [
 .user {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2);
 }
 
 .user__avatar {
@@ -222,6 +227,12 @@ const external = [
 .user__role {
   font-size: 12px;
   color: var(--color-muted);
+}
+
+.header__error {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-danger);
 }
 
 .visually-hidden {

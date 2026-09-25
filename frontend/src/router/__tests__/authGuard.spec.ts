@@ -52,6 +52,16 @@ describe('auth guard', () => {
     expect(router.currentRoute.value.name).toBe('login')
   })
 
+  it('shows the login page when the session of the cached user has expired', async () => {
+    // client.ts sends an expired session here; the stale cached user must not bounce it home
+    queryClient.setQueryData(queryKeys.me, mockUser)
+
+    await router.push('/login?redirect=/timesheets')
+
+    expect(router.currentRoute.value.name).toBe('login')
+    expect(queryClient.getQueryData(queryKeys.me)).toBeUndefined()
+  })
+
   it('sends a logged-in user away from the login page', async () => {
     startMockSession()
 

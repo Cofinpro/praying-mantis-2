@@ -12,15 +12,25 @@ import { queryKeys } from '@/api/queryKeys'
 export function installAuthGuard(router: Router, queryClient: QueryClient) {
   router.beforeEach(async (to) => {
     try {
-      // Uses the cached user when there is one (login seeds it), so most navigations make no
-      // request. Without one, it calls GET /me, which also gives a fresh tab its CSRF cookie
-      // before the first POST.
-      await queryClient.ensureQueryData({ queryKey: queryKeys.me, queryFn: api.getMe })
+      await queryClient.fetchQuery({
+        queryKey: queryKeys.me,
+        queryFn: api.getMe,
+        // Other pages trust the cached user (login seeds it, client.ts drops it on a 401), so most
+        // navigations make no request. The login page always asks the server: a cached user may
+        // belong to a session that has just expired, and without asking we'd bounce them home.
+        // That GET /me also gives a fresh tab its CSRF cookie before the first POST.
+        staleTime: to.meta.public ? 0 : Infinity,
+      })
     } catch (error) {
+      const unauthorized = error instanceof ApiError && error.status === 401
+      if (unauthorized) {
+        // A failed fetch keeps the old data next to the error, so drop the user explicitly
+        queryClient.removeQueries({ queryKey: queryKeys.me })
+      }
       if (to.meta.public) {
         return true
       }
-      if (error instanceof ApiError && error.status === 401) {
+      if (unauthorized) {
         return { name: 'login', query: { redirect: to.fullPath } }
       }
       // Backend down or broken: cancel the navigation instead of pretending the user logged out
