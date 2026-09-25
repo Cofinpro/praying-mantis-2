@@ -33,4 +33,4 @@ Story:
 - [ ] Frontend uses pnpm only (D5)
 - [ ] No secrets, credentials, or PII committed
 - [ ] Accessibility checked: keyboard, labels, contrast (FE)
-- [ ] AI review findings addressed (🔴/🟠 fixed or justified)
+- [ ] Ran `/review-pr --post` in Claude Code and addressed its findings (🔴/🟠 fixed or justified)

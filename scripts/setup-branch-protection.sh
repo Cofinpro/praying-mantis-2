@@ -18,10 +18,7 @@ gh api -X PATCH "repos/$REPO" \
 echo "Protecting main..."
 gh api -X PUT "repos/$REPO/branches/main/protection" --input - >/dev/null <<'JSON'
 {
-  "required_status_checks": {
-    "strict": true,
-    "contexts": ["BE specialist review", "FE specialist review"]
-  },
+  "required_status_checks": null,
   "enforce_admins": false,
   "required_pull_request_reviews": {
     "required_approving_review_count": 1,
@@ -36,5 +33,4 @@ gh api -X PUT "repos/$REPO/branches/main/protection" --input - >/dev/null <<'JSO
 }
 JSON
 
-echo "Done. Remember to add the ANTHROPIC_API_KEY repository secret:"
-echo "  gh secret set ANTHROPIC_API_KEY --repo $REPO"
+echo "Done. Once the CI pipeline exists (BE-0.3 / FE-0.3), add its checks as required status checks."

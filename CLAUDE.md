@@ -108,7 +108,6 @@ What exists today:
 ## Pull requests and AI reviewers
 
 - PR policy: see `CONTRIBUTING.md`. One story per branch and PR (`SCRUM-12-be-login`), 1 code-owner approval, green build, squash merge.
-- Every PR is reviewed by an AI mentor in `.claude/agents/`: `be-specialist` for `backend/**`, `fe-specialist` for `frontend/**`, and both for `api/**` (contract changes).
+- Every PR is reviewed by an AI mentor in `.claude/agents/`: `be-specialist` for `backend/**`, `fe-specialist` for `frontend/**`, and both for `api/**` (contract changes). The reviews run locally via `/review-pr` (`--post` puts them on the PR). There is no GitHub Action for this.
 - The reviewers follow `decisions.md` first, then this file and `api/openapi.yaml`, then `.claude/skills/`. Where a skill disagrees with a decision (e.g. Flyway vs Liquibase, Pinia vs TanStack Query for server data), the decision wins.
 - They teach as they review and suggest entries for `learnings.md`.
-- To review locally before opening a PR, ask: "review my branch against main with the be-specialist / fe-specialist agent".

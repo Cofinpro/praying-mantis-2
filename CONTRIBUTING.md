@@ -25,7 +25,7 @@ Every change to `main` goes through a pull request (PR). This policy implements 
 - Fill in the PR template completely, including the Jira link and story ID (`BE-3.1`, `FE-3.2`, `T-3.0`).
 - **Size:** aim for under 400 changed lines, not counting generated code, lockfiles or Liquibase seed data.
 - **One concern per PR.** Don't mix refactors with features.
-- Open it as a **Draft** until it's ready. Marking it "Ready for review" starts the AI reviewers.
+- **Before marking it "Ready for review", run the AI review locally**: `/review-pr --post` in Claude Code (see section 4). Open the PR as a **Draft** until then.
 - **Contract first (D2):** a feature's `api/openapi.yaml` change is merged in its own `T` story PR before the BE and FE implementation PRs.
 
 ## 4. Review process
@@ -37,7 +37,7 @@ Every change to `main` goes through a pull request (PR). This policy implements 
 | `api/**`        | both                                | **both** BE and FE (D2)                         |
 | more than one   | each matching reviewer              | each matching owner                             |
 
-1. **The AI reviews run automatically** when a PR opens, gets new commits, or is marked ready.
+1. **The author runs the AI review locally** in Claude Code from the repo: `/review-pr` shows the review in the chat, and `/review-pr --post` also posts it as a comment on the PR. It runs the matching reviewer(s) from the table above, using your own Claude login, with no API key or GitHub Action. Run it again after significant changes.
 2. The author must address every 🔴 **Blocker** and 🟠 **Major** finding, either by fixing it or by replying with a justification.
 3. **At least 1 human approval** from the relevant code owner is required. Contract changes need both devs.
 4. Reviewers should respond within **1 business day**.
@@ -52,11 +52,11 @@ Every change to `main` goes through a pull request (PR). This policy implements 
 - 💬 **Nit / Question:** optional. This also covers deviations from a *Proposed* decision.
 - 📚 **Learning:** no action needed. A lesson about the framework.
 
-## 5. Merge requirements (enforced by branch protection)
+## 5. Merge requirements (branch protection enforces approvals, conversations and, once CI exists, the build; the AI review is by convention)
 
 - [ ] CI green: `./mvnw verify` (including Testcontainers) and `pnpm lint && pnpm test && pnpm build`, per BE-0.3 and FE-0.3, with generated code up to date with `openapi.yaml`
 - [ ] Tests included for new logic (D10)
-- [ ] AI review checks completed
+- [ ] AI review posted on the PR (`/review-pr --post`), and 🔴/🟠 findings addressed
 - [ ] ≥ 1 approval from a code owner (both BE and FE for `api/**`)
 - [ ] All conversations resolved
 - [ ] Branch up to date with `main`
