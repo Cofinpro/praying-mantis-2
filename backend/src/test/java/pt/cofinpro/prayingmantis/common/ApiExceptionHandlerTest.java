@@ -98,7 +98,9 @@ class ApiExceptionHandlerTest {
     void accessDeniedIsForbiddenNotInternalError() throws Exception {
         mockMvc.perform(get("/test/denied"))
                 .andExpect(status().isForbidden())
-                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON));
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(403))
+                .andExpect(jsonPath("$.detail").value("You are not allowed to do this"));
     }
 
     @Test

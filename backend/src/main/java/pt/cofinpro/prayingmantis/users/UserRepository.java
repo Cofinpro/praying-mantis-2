@@ -10,4 +10,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     /** True when someone has this user as team lead, which is what "is team lead" means (decision #9). */
     boolean existsByTeamLeadId(Long userId);
+
+    /** The fallback approver (decision #16): the first admin by id, never the requester themselves. */
+    Optional<User> findFirstByAdminTrueAndIdNotOrderByIdAsc(Long excludedUserId);
 }

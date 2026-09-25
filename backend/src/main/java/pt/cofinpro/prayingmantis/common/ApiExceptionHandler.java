@@ -88,7 +88,9 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     /** Thrown by method security inside a controller or service; without this the catch-all makes it a 500. */
     @ExceptionHandler(AccessDeniedException.class)
     ProblemDetail handleAccessDenied(AccessDeniedException ex) {
-        return ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
+        // The exception message stays in the log: it can name users or rules the caller shouldn't learn about
+        log.debug("Access denied: {}", ex.getMessage());
+        return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "You are not allowed to do this");
     }
 
     /** Anything unexpected: 500 without internals in the body; the stack trace goes to the log. */
