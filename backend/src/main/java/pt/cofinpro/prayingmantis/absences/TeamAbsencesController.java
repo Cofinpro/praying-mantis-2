@@ -1,9 +1,7 @@
 package pt.cofinpro.prayingmantis.absences;
 
 import java.util.List;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 import pt.cofinpro.prayingmantis.api.TeamAbsencesApi;
 import pt.cofinpro.prayingmantis.api.model.AbsenceDecision;
 import pt.cofinpro.prayingmantis.api.model.AbsenceRequest;
@@ -28,15 +26,14 @@ public class TeamAbsencesController implements TeamAbsencesApi {
                 .toList();
     }
 
-    /** BE-5.2 (SCRUM-50). The generated interface has no default methods, so it needs a body until then. */
+    /** The body is optional here: approving needs no comment. */
     @Override
-    public AbsenceRequest approveAbsenceRequest(Long id, AbsenceDecision absenceDecision) {
-        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Coming in BE-5.2");
+    public AbsenceRequest approveAbsenceRequest(Long id, AbsenceDecision decision) {
+        return AbsenceMapper.toApi(teamService.approve(id, decision == null ? null : decision.getComment()));
     }
 
-    /** BE-5.2 (SCRUM-50). */
     @Override
-    public AbsenceRequest rejectAbsenceRequest(Long id, AbsenceDecision absenceDecision) {
-        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Coming in BE-5.2");
+    public AbsenceRequest rejectAbsenceRequest(Long id, AbsenceDecision decision) {
+        return AbsenceMapper.toApi(teamService.reject(id, decision.getComment()));
     }
 }

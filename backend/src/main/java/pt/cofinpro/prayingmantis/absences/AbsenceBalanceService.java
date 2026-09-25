@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pt.cofinpro.prayingmantis.common.ConflictException;
 import pt.cofinpro.prayingmantis.holidays.PublicHoliday;
 import pt.cofinpro.prayingmantis.holidays.PublicHolidayRepository;
 
@@ -17,6 +18,8 @@ import pt.cofinpro.prayingmantis.holidays.PublicHolidayRepository;
  */
 @Service
 public class AbsenceBalanceService {
+
+    static final String INSUFFICIENT_BALANCE = "insufficient-balance";
 
     private static final List<AbsenceStatus> COUNTED = List.of(AbsenceStatus.APPROVED, AbsenceStatus.PENDING);
 
@@ -80,6 +83,31 @@ public class AbsenceBalanceService {
                 .map(TypeBalance::remainingDays)
                 .findFirst()
                 .orElse(BigDecimal.ZERO);
+    }
+
+    /**
+     * 409 /problems/insufficient-balance unless each year the period touches has enough days of this type left
+     * for its part of the period (decision #29). Only call it for types that deduct from the balance. Used when
+     * a request is created (BE-3.2) and again when it's approved (BE-5.2): something else may have been
+     * approved in between. Not @Transactional on purpose: it throws, and it always runs inside the caller's
+     * transaction anyway.
+     */
+    public void requireDaysLeft(Long userId, AbsenceType type, AbsencePeriod period) {
+        Set<LocalDate> periodHolidays = holidays.findByDateBetweenOrderByDate(period.start(), period.end()).stream()
+                .map(PublicHoliday::getDate)
+                .collect(Collectors.toSet());
+        for (int year = period.start().getYear(); year <= period.end().getYear(); year++) {
+            BigDecimal needed = period.workingDaysWithin(LocalDate.of(year, 1, 1), LocalDate.of(year, 12, 31), periodHolidays);
+            BigDecimal left = daysLeft(userId, type.getCode(), year);
+            if (needed.compareTo(left) > 0) {
+                throw new ConflictException(INSUFFICIENT_BALANCE, "Only %s %s days left in %d, but the request needs %s"
+                        .formatted(plain(left), type.getName().toLowerCase(), year, plain(needed)));
+            }
+        }
+    }
+
+    private static String plain(BigDecimal days) {
+        return days.stripTrailingZeros().toPlainString();
     }
 
     private static BigDecimal sum(

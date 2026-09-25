@@ -11,6 +11,8 @@ import pt.cofinpro.prayingmantis.notifications.NotificationType;
 @Component
 class StoredAbsenceNotifications implements AbsenceNotifications {
 
+    private static final int MAX_MESSAGE = 500;
+
     private final NotificationService notifications;
 
     StoredAbsenceNotifications(NotificationService notifications) {
@@ -34,6 +36,32 @@ class StoredAbsenceNotifications implements AbsenceNotifications {
                 "%s cancelled their %s (%s)".formatted(
                         request.getUser().getName(), typeName(request), range(request.getStartDate(), request.getEndDate())),
                 "/approvals");
+    }
+
+    /** To the requester: "Your vacation (2–6 Nov) was approved". Not who decided: an admin may have (decision #31). */
+    @Override
+    public void approved(AbsenceRequest request) {
+        notifications.notify(request.getUser(), NotificationType.ABSENCE_APPROVED,
+                "Your %s (%s) was approved".formatted(typeName(request), range(request.getStartDate(), request.getEndDate())),
+                linkTo(request));
+    }
+
+    /** To the requester, with the reason: "Your vacation (2–6 Nov) was rejected: Release week". */
+    @Override
+    public void rejected(AbsenceRequest request) {
+        String message = "Your %s (%s) was rejected: %s".formatted(
+                typeName(request), range(request.getStartDate(), request.getEndDate()), request.getDecisionComment());
+        notifications.notify(request.getUser(), NotificationType.ABSENCE_REJECTED, fit(message), linkTo(request));
+    }
+
+    /** The calendar, opened on the request (T-4.1). */
+    private static String linkTo(AbsenceRequest request) {
+        return "/absences?request=" + request.getId();
+    }
+
+    /** The comment alone can be 500 characters; the message column holds 500. */
+    private static String fit(String message) {
+        return message.length() <= MAX_MESSAGE ? message : message.substring(0, MAX_MESSAGE - 1) + "…";
     }
 
     private static String typeName(AbsenceRequest request) {
