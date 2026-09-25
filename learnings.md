@@ -128,6 +128,11 @@ in `Europe/Lisbon` (`TimeConfig`) makes the zone explicit, and a test can swap i
 port and database separately and can't concatenate them. Likewise `server.port: ${PORT:8080}`,
 because Render picks the port (decision #30).
 
+### `Propagation.MANDATORY` makes "same transaction" a rule, not a hope
+`NotificationService.notify` is `@Transactional(propagation = MANDATORY)`: called without a transaction
+it throws `IllegalTransactionStateException` instead of opening its own. So a notification can't be
+committed for a change that then rolls back, or the other way round. (BE-4.1)
+
 ### A throwing `@Transactional` helper can roll back its caller
 With the default `REQUIRED` propagation, a helper's `@Transactional` joins the caller's transaction. A `RuntimeException` leaving the helper's proxy marks the *whole* shared transaction rollback-only, even if the caller catches it, and the commit then fails with `UnexpectedRollbackException`. `Permissions` has no `@Transactional`: each check is one `existsBy...` query. (BE-1.3 review)
 
@@ -167,6 +172,12 @@ even when two requests arrive at the same moment. A check in the service followe
 can't guarantee that. GiST indexes know `&&` on ranges but not `=` on a plain `bigint`, so the
 `btree_gist` extension has to be installed first. `'[]'` makes both ends inclusive; the default
 `'[)'` would let a request start on the day another one ends. (BE-2.1, decision #14)
+
+### After one error, a Postgres transaction refuses everything else
+Once a statement fails inside a transaction, Postgres answers every following one with "current
+transaction is aborted" until the rollback. A `@Transactional` test that checks several invalid inserts
+in a loop only sees the first real error. Run such a test without a transaction, or use one statement
+per test. (BE-4.1)
 
 ### `numeric(4,1)` doesn't stop 2.3 days
 The type allows any single decimal. `check (x * 2 = trunc(x * 2))` only lets whole and half days

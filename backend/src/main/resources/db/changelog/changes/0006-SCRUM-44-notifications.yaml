@@ -1,0 +1,71 @@
+# BE-4.1: in-app notifications (plan.md §4, T-4.1). The message is written once, when the notification is
+# created, so it doesn't change later. read_at is null while unread.
+databaseChangeLog:
+  - changeSet:
+      id: 0006-notifications-table
+      author: praying-mantis
+      changes:
+        - createTable:
+            tableName: notifications
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  generationType: ALWAYS
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_notifications
+              - column:
+                  name: user_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_notifications_user
+                    references: users(id)
+              - column:
+                  name: type
+                  type: varchar(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: message
+                  type: varchar(500)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: link
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: read_at
+                  type: timestamptz
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        # The dropdown: "my newest notifications, before id X" (cursor pagination, T-4.1)
+        - createIndex:
+            tableName: notifications
+            indexName: idx_notifications_user_id
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: id
+                  descending: true
+        # The badge, polled every 30 s (decision #17): a partial index that only holds unread rows, so
+        # count(*) stays small however many old notifications pile up
+        - sql:
+            sql: >-
+              create index idx_notifications_unread on notifications (user_id) where read_at is null;
+              alter table notifications
+                add constraint ck_notifications_type check (type in ('ABSENCE_REQUESTED', 'ABSENCE_APPROVED',
+                  'ABSENCE_REJECTED', 'ABSENCE_CANCELLED', 'TIMESHEET_SUBMITTED', 'TIMESHEET_APPROVED', 'TIMESHEET_REJECTED')),
+                add constraint ck_notifications_link check (link ~ '^/[^/\\]')
+      rollback:
+        - dropTable:
+            tableName: notifications
