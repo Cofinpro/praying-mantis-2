@@ -18,6 +18,7 @@ import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CsrfAuthenticationStrategy;
 import org.springframework.security.web.csrf.CsrfLogoutHandler;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
+import org.springframework.security.web.csrf.XorCsrfTokenRequestAttributeHandler;
 import org.springframework.stereotype.Component;
 import pt.cofinpro.prayingmantis.config.SecurityConfig;
 
@@ -36,6 +37,7 @@ public class SessionLogin {
     private final CookieClearingLogoutHandler cookieClearing = new CookieClearingLogoutHandler(SecurityConfig.SESSION_COOKIE);
     private final SecurityContextLogoutHandler contextLogout = new SecurityContextLogoutHandler();
     private final CsrfLogoutHandler csrfLogout;
+    private final CsrfTokenRepository csrfTokenRepository;
 
     public SessionLogin(
             AuthenticationManager authenticationManager,
@@ -43,9 +45,10 @@ public class SessionLogin {
             CsrfTokenRepository csrfTokenRepository) {
         this.authenticationManager = authenticationManager;
         this.contextRepository = contextRepository;
+        this.csrfTokenRepository = csrfTokenRepository;
         this.sessionStrategy = new CompositeSessionAuthenticationStrategy(List.of(
                 new ChangeSessionIdAuthenticationStrategy(),
-                new CsrfAuthenticationStrategy(csrfTokenRepository)));
+                csrfRotation(csrfTokenRepository)));
         this.csrfLogout = new CsrfLogoutHandler(csrfTokenRepository);
     }
 
@@ -64,11 +67,27 @@ public class SessionLogin {
         return (AuthenticatedUser) authentication.getPrincipal();
     }
 
-    /** Invalidates the session, clears the session cookie and the CSRF token. Safe without a session. */
+    /** Invalidates the session, clears the session cookie and replaces the CSRF token. Safe without a session. */
     public void logout(HttpServletRequest request, HttpServletResponse response) {
         Authentication authentication = contextHolder.getContext().getAuthentication();
         csrfLogout.logout(request, response, authentication);
         cookieClearing.logout(request, response, authentication);
         contextLogout.logout(request, response, authentication);
+        // CsrfLogoutHandler only deletes the cookie. Load a new token now, so the response carries a fresh
+        // XSRF-TOKEN and the next login POST works without a GET first.
+        csrfTokenRepository.loadDeferredToken(request, response).get();
+    }
+
+    /**
+     * CSRF tokens are deferred: the cookie is only written when something reads the token. The strategy's
+     * default handler never reads it, so login would delete the old cookie and send no new one. A null
+     * attribute name makes the handler load the token right away, as csrf.spa() does for every request.
+     */
+    private static CsrfAuthenticationStrategy csrfRotation(CsrfTokenRepository csrfTokenRepository) {
+        var handler = new XorCsrfTokenRequestAttributeHandler();
+        handler.setCsrfRequestAttributeName(null);
+        var strategy = new CsrfAuthenticationStrategy(csrfTokenRepository);
+        strategy.setRequestHandler(handler);
+        return strategy;
     }
 }

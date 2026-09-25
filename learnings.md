@@ -39,6 +39,9 @@ use Node APIs. `pnpm build` runs it first, so a type error in a test fails the b
 
 ## Spring Boot
 
+### CSRF tokens are deferred: rotating one must also load the new one
+Since Spring Security 6 the `XSRF-TOKEN` cookie is only written when something reads the token. `csrf.spa()` does that on every request, but a hand-built `CsrfAuthenticationStrategy` doesn't: login deleted the old cookie and sent no new one, so the FE's next POST got a 403. Give the strategy a `XorCsrfTokenRequestAttributeHandler` with `setCsrfRequestAttributeName(null)`, and after logout call `csrfTokenRepository.loadDeferredToken(request, response).get()`. A test helper that fetches a fresh token before every request hid this; the tests now reuse the token from the previous response, like the browser. (BE-1.2 review)
+
 ### spring-security-test's `csrf()` changes the whole test context
 `.with(csrf())` replaces the CSRF token repository inside the `CsrfFilter`, and the filter lives in the cached Spring context. After one test uses it, other tests in the same context stop getting a real `XSRF-TOKEN` cookie. Our integration tests copy the cookie into the `X-XSRF-TOKEN` header like the browser does, and `CsrfCookieTest` checks the cookie in a fresh web slice. (BE-1.2)
 

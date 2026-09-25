@@ -1,5 +1,6 @@
 package pt.cofinpro.prayingmantis.auth;
 
+import java.io.Serial;
 import java.util.Collection;
 import java.util.List;
 import org.springframework.security.core.CredentialsContainer;
@@ -14,6 +15,10 @@ import pt.cofinpro.prayingmantis.users.User;
  * change (e.g. a new team lead) shows up without logging in again.
  */
 public final class AuthenticatedUser implements UserDetails, CredentialsContainer {
+
+    // Stored inside the session; a fixed id keeps harmless class changes from breaking stored sessions
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     public static final String ROLE_ADMIN = "ROLE_ADMIN";
 

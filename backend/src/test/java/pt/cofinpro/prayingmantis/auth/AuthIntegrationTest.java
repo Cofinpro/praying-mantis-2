@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import jakarta.servlet.http.Cookie;
+import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -146,6 +147,54 @@ class AuthIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json("ana.silva@cofinpro.pt", "password")))
                 .andExpect(status().isOk());
+    }
+
+    /** Login rotates the token: the response must carry the new one, and it must work for the next POST. */
+    @Test
+    void loginSendsANewXsrfTokenThatTheNextPostCanUse() throws Exception {
+        Cookie before = mockMvc.perform(get("/api/hello")).andReturn().getResponse().getCookie("XSRF-TOKEN");
+        MvcResult login = mockMvc.perform(post("/api/auth/login")
+                        .cookie(before)
+                        .header("X-XSRF-TOKEN", before.getValue())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json("ana.silva@cofinpro.pt", "password")))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Cookie after = lastXsrfCookie(login);
+        assertThat(after.getValue()).isNotBlank().isNotEqualTo(before.getValue());
+
+        mockMvc.perform(post("/api/auth/logout")
+                        .session((MockHttpSession) login.getRequest().getSession(false))
+                        .cookie(after)
+                        .header("X-XSRF-TOKEN", after.getValue()))
+                .andExpect(status().isNoContent());
+    }
+
+    /** Logout clears the token; the response must carry a fresh one, so logging in again works straight away. */
+    @Test
+    void logoutSendsAFreshXsrfTokenForTheNextLogin() throws Exception {
+        MvcResult logout = mockMvc.perform(post("/api/auth/logout").with(xsrfToken()))
+                .andExpect(status().isNoContent())
+                .andReturn();
+
+        Cookie fresh = lastXsrfCookie(logout);
+        assertThat(fresh.getValue()).isNotBlank();
+
+        mockMvc.perform(post("/api/auth/login")
+                        .cookie(fresh)
+                        .header("X-XSRF-TOKEN", fresh.getValue())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json("ana.silva@cofinpro.pt", "password")))
+                .andExpect(status().isOk());
+    }
+
+    /** A rotation writes two Set-Cookie headers: the deletion first, then the new token. */
+    private static Cookie lastXsrfCookie(MvcResult result) {
+        return Arrays.stream(result.getResponse().getCookies())
+                .filter(cookie -> cookie.getName().equals("XSRF-TOKEN"))
+                .reduce((first, last) -> last)
+                .orElseThrow(() -> new AssertionError("no XSRF-TOKEN cookie in the response"));
     }
 
     /** Like the FE: take the XSRF-TOKEN cookie from any response and send it back as the header too. */

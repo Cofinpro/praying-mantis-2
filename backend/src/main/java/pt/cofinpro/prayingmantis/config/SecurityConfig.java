@@ -1,13 +1,16 @@
 package pt.cofinpro.prayingmantis.config;
 
 import jakarta.servlet.DispatcherType;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.context.DelegatingSecurityContextRepository;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
@@ -51,10 +54,16 @@ public class SecurityConfig {
                 // 401 and 403 from the filter chain never reach @RestControllerAdvice on their own. Hand them to
                 // the MVC exception resolvers, so ApiExceptionHandler writes their Problem Details (decision #21).
                 .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint((request, response, authException) ->
-                                exceptionResolver.resolveException(request, response, null, authException))
-                        .accessDeniedHandler((request, response, accessDeniedException) ->
-                                exceptionResolver.resolveException(request, response, null, accessDeniedException)));
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            if (exceptionResolver.resolveException(request, response, null, authException) == null) {
+                                response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+                            }
+                        })
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            if (exceptionResolver.resolveException(request, response, null, accessDeniedException) == null) {
+                                response.sendError(HttpServletResponse.SC_FORBIDDEN);
+                            }
+                        }));
         return http.build();
     }
 
@@ -66,6 +75,8 @@ public class SecurityConfig {
 
     @Bean
     SecurityContextRepository securityContextRepository() {
-        return new HttpSessionSecurityContextRepository();
+        // Spring's default pair: the session for later requests, the request attribute for this one's dispatches
+        return new DelegatingSecurityContextRepository(
+                new RequestAttributeSecurityContextRepository(), new HttpSessionSecurityContextRepository());
     }
 }
