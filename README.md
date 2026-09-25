@@ -43,6 +43,21 @@ docker compose down                                                # stop, keep 
 docker compose down -v                                             # stop and wipe all data
 ```
 
+### Dev users
+
+Liquibase loads seed users in the `dev` context, which is the default (`LIQUIBASE_CONTEXTS`). Every password is `password`.
+
+| Email | Role | Team lead |
+|---|---|---|
+| `alex.admin@cofinpro.pt` | admin | – |
+| `ana.silva@cofinpro.pt` | team lead of Bruno, Carla, Diogo | – |
+| `bruno.costa@cofinpro.pt` | team lead of Eva, Filipe, Hugo | Ana |
+| `carla.mendes@cofinpro.pt`, `diogo.pereira@cofinpro.pt` | employee | Ana |
+| `eva.santos@cofinpro.pt`, `filipe.rocha@cofinpro.pt`, `hugo.marques@cofinpro.pt` | employee | Bruno |
+| `gabriela.lopes@cofinpro.pt` | employee without team lead (her approvals go to the admins, decision #16) | – |
+
+Any real environment must set `LIQUIBASE_CONTEXTS` to something other than `dev`.
+
 If port 5432 is taken (e.g. by a locally installed Postgres), stop that one first.
 
 The backend connects to it by default. Override with the `DB_URL`, `DB_USER` and `DB_PASSWORD` env vars. Liquibase applies the schema on start (decision #23).

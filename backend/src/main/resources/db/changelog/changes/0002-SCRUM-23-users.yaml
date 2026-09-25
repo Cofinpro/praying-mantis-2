@@ -1,0 +1,110 @@
+# BE-1.1: users (plan.md §4). "Is team lead" is derived from team_lead_id, not stored (decision #9).
+databaseChangeLog:
+  - changeSet:
+      id: 0002-users-table
+      author: praying-mantis
+      changes:
+        - createTable:
+            tableName: users
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  generationType: ALWAYS
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_users
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: email
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uq_users_email
+              - column:
+                  name: password_hash
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: client
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: level
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_admin
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: team_lead_id
+                  type: bigint
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_users_team_lead
+                    references: users(id)
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: users
+            indexName: idx_users_team_lead_id
+            columns:
+              - column:
+                  name: team_lead_id
+        # Enum values match the Java constant names (decision #8) and the API contract
+        - sql:
+            sql: >-
+              alter table users
+                add constraint ck_users_client check (client in ('DKB', 'DEKA', 'VV', 'DBIS', 'UNION')),
+                add constraint ck_users_level check (level in ('JUNIOR', 'EXPERT', 'SENIOR', 'ARCHITECT', 'SENIOR_ARCHITECT')),
+                add constraint ck_users_email_lowercase check (email = lower(email)),
+                add constraint ck_users_not_own_team_lead check (team_lead_id <> id)
+      rollback:
+        - dropTable:
+            tableName: users
+
+  # Dev-only seed: 1 admin, 2 team leads, 6 employees. Every password is "password".
+  # Runs only with the dev context (spring.liquibase.contexts, see application.yml).
+  - changeSet:
+      id: 0002-users-dev-seed
+      author: praying-mantis
+      context: dev
+      changes:
+        - sql:
+            sql: >-
+              insert into users (name, email, password_hash, client, level, is_admin, team_lead_id) values
+                ('Alex Admin', 'alex.admin@cofinpro.pt', '$2a$10$jHDIzAR7K6cpZ/5I6dRvj./R5TlVje.qKCNSSPQ0JMrG43Ux4mpJm', 'DBIS', 'ARCHITECT', true, null),
+                ('Ana Silva', 'ana.silva@cofinpro.pt', '$2a$10$jHDIzAR7K6cpZ/5I6dRvj./R5TlVje.qKCNSSPQ0JMrG43Ux4mpJm', 'DKB', 'SENIOR_ARCHITECT', false, null);
+              insert into users (name, email, password_hash, client, level, is_admin, team_lead_id)
+                select 'Bruno Costa', 'bruno.costa@cofinpro.pt', '$2a$10$jHDIzAR7K6cpZ/5I6dRvj./R5TlVje.qKCNSSPQ0JMrG43Ux4mpJm', 'DEKA', 'ARCHITECT', false, id
+                from users where email = 'ana.silva@cofinpro.pt';
+              insert into users (name, email, password_hash, client, level, is_admin, team_lead_id)
+                select v.name, v.email, '$2a$10$jHDIzAR7K6cpZ/5I6dRvj./R5TlVje.qKCNSSPQ0JMrG43Ux4mpJm', v.client, v.level, false, lead.id
+                from (values
+                  ('Carla Mendes', 'carla.mendes@cofinpro.pt', 'DKB', 'SENIOR', 'ana.silva@cofinpro.pt'),
+                  ('Diogo Pereira', 'diogo.pereira@cofinpro.pt', 'DKB', 'JUNIOR', 'ana.silva@cofinpro.pt'),
+                  ('Eva Santos', 'eva.santos@cofinpro.pt', 'VV', 'EXPERT', 'bruno.costa@cofinpro.pt'),
+                  ('Filipe Rocha', 'filipe.rocha@cofinpro.pt', 'DEKA', 'SENIOR', 'bruno.costa@cofinpro.pt'),
+                  ('Hugo Marques', 'hugo.marques@cofinpro.pt', 'DBIS', 'EXPERT', 'bruno.costa@cofinpro.pt'),
+                  ('Gabriela Lopes', 'gabriela.lopes@cofinpro.pt', 'UNION', 'JUNIOR', null)
+                ) as v(name, email, client, level, lead_email)
+                left join users lead on lead.email = v.lead_email;
+      rollback:
+        - sql:
+            sql: delete from users where email like '%@cofinpro.pt'
