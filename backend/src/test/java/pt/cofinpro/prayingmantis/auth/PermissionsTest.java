@@ -47,8 +47,9 @@ class PermissionsTest {
         assertThat(permissions.isAdmin()).isFalse();
     }
 
+    /** The principal from login says "not admin"; the check must follow the DB (flushed by the query). */
     @Test
-    void isAdminReadsTheCurrentFlagNotTheOneFromLogin() {
+    void isAdminReadsTheDbNotTheSessionPrincipal() {
         loginAs("carla.mendes@cofinpro.pt");
         user("carla.mendes@cofinpro.pt").setAdmin(true);
 
@@ -68,10 +69,11 @@ class PermissionsTest {
     }
 
     @Test
-    void isTeamLeadOfAnUnknownUserIsFalse() {
+    void isTeamLeadOfAnUnknownOrMissingUserIsFalse() {
         loginAs("ana.silva@cofinpro.pt");
 
         assertThat(permissions.isTeamLeadOf(999_999L)).isFalse();
+        assertThat(permissions.isTeamLeadOf(null)).isFalse();
     }
 
     @Test
@@ -84,10 +86,35 @@ class PermissionsTest {
     }
 
     @Test
-    void requireTeamLeadOfThrowsAccessDeniedForOthers() {
+    void theStoredApproverMayDecide() {
         loginAs("bruno.costa@cofinpro.pt");
-        assertThatCode(() -> permissions.requireTeamLeadOf(id("eva.santos@cofinpro.pt"))).doesNotThrowAnyException();
-        assertThatThrownBy(() -> permissions.requireTeamLeadOf(id("carla.mendes@cofinpro.pt")))
+
+        assertThatCode(() -> permissions.requireApproverOrAdmin(id("bruno.costa@cofinpro.pt"), id("eva.santos@cofinpro.pt")))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void anAdminMayDecideOnSomeoneElsesRequest() {
+        loginAs("alex.admin@cofinpro.pt");
+
+        assertThatCode(() -> permissions.requireApproverOrAdmin(id("bruno.costa@cofinpro.pt"), id("eva.santos@cofinpro.pt")))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void othersMayNotDecideEvenIfTheyAreTheCurrentTeamLead() {
+        // Carla's stored approver is Bruno (e.g. her team lead changed later): Ana, her lead now, may not decide
+        loginAs("ana.silva@cofinpro.pt");
+
+        assertThatThrownBy(() -> permissions.requireApproverOrAdmin(id("bruno.costa@cofinpro.pt"), id("carla.mendes@cofinpro.pt")))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void nobodyDecidesOnTheirOwnRequestNotEvenAnAdmin() {
+        loginAs("alex.admin@cofinpro.pt");
+
+        assertThatThrownBy(() -> permissions.requireApproverOrAdmin(id("alex.admin@cofinpro.pt"), id("alex.admin@cofinpro.pt")))
                 .isInstanceOf(AccessDeniedException.class);
     }
 
@@ -117,7 +144,7 @@ class PermissionsTest {
     @Test
     void anAdminNeverApprovesTheirOwnRequests() {
         // Alex is the only admin and has no team lead
-        assertThat(permissions.approverFor(user("alex.admin@cofinpro.pt"))).isEmpty();
+        assertThat(permissions.approverFor(id("alex.admin@cofinpro.pt"))).isEmpty();
 
         User second = user("diogo.pereira@cofinpro.pt");
         second.setAdmin(true);
@@ -127,8 +154,27 @@ class PermissionsTest {
         assertThat(approverOf("diogo.pereira@cofinpro.pt")).isEqualTo("alex.admin@cofinpro.pt");
     }
 
+    @Test
+    void theFallbackIsTheFirstAdminById() {
+        makeAdminWithoutLead("hugo.marques@cofinpro.pt");
+        makeAdminWithoutLead("eva.santos@cofinpro.pt");
+        Long alex = id("alex.admin@cofinpro.pt");
+        Long firstOther = Math.min(id("hugo.marques@cofinpro.pt"), id("eva.santos@cofinpro.pt"));
+
+        assertThat(permissions.approverFor(id("gabriela.lopes@cofinpro.pt")).orElseThrow().getId()).isEqualTo(alex);
+        // Alex is excluded from his own requests, so the next admin by id takes over
+        assertThat(permissions.approverFor(alex).orElseThrow().getId()).isEqualTo(firstOther);
+    }
+
+    private void makeAdminWithoutLead(String email) {
+        User user = user(email);
+        user.setAdmin(true);
+        user.setTeamLead(null);
+        users.flush();
+    }
+
     private String approverOf(String email) {
-        return permissions.approverFor(user(email)).orElseThrow().getEmail();
+        return permissions.approverFor(id(email)).orElseThrow().getEmail();
     }
 
     private void loginAs(String email) {
