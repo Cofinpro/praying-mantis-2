@@ -1,5 +1,7 @@
 package pt.cofinpro.prayingmantis.exports;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import pt.cofinpro.prayingmantis.users.Client;
 
 /**
@@ -16,4 +18,7 @@ public interface ExportTemplate {
 
     /** The client the template is for; null for the generic one. */
     Client client();
+
+    /** Writes the month as an .xlsx workbook to {@code out}. Doesn't close {@code out}. */
+    void write(MonthExport month, OutputStream out) throws IOException;
 }

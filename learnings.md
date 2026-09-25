@@ -166,6 +166,12 @@ Since Spring Security 6 the `XSRF-TOKEN` cookie is only written when something r
 ### A JSON login has to do what `formLogin` did
 With a custom `POST /api/auth/login`, Spring Security 6+ doesn't save the `SecurityContext` for you. `SessionLogin` authenticates, changes the session id (session fixation), rotates the CSRF token and calls `SecurityContextRepository.saveContext`. Without the last step, the next request is anonymous again. Filter-chain 401/403 never reach `@RestControllerAdvice`; the entry point and access-denied handler pass them to the MVC `HandlerExceptionResolver`, so `ApiExceptionHandler` writes the Problem Details. (BE-1.2)
 
+### A generated interface returns only the body; inject the response for headers
+With `useResponseEntity=false`, `ExportsApi.exportMyTimesheetMonth` returns a `Resource`, and there's no
+parameter for the download's `Content-Disposition`. Spring can inject `HttpServletResponse` into a
+singleton controller's constructor: it gets a request-scoped proxy, so each call writes to its own
+response. The `produces` from the contract sets the `.xlsx` content type. (BE-8.2)
+
 ### Hibernate flushes inserts before deletes
 Within one flush, Hibernate runs all INSERTs before all DELETEs, whatever order you called `remove` and
 `persist` in. Replacing a week's entries through a mapped collection (`clear()`, then `add()`) would
