@@ -20,6 +20,16 @@ spring:
 
 server:
   port: 8080
+  servlet:
+    session:
+      # Log out after 30 minutes without a request (decision #12)
+      timeout: 30m
+      cookie:
+        http-only: true
+        # Tomcat doesn't set SameSite unless told to
+        same-site: lax
+        # Local dev runs on plain http; set SESSION_COOKIE_SECURE=true anywhere with https
+        secure: ${SESSION_COOKIE_SECURE:false}
 
 management:
   endpoints:
