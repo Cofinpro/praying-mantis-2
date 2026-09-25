@@ -29,7 +29,18 @@ cd backend && ./mvnw spring-boot:run     # 2. backend  -> http://localhost:8080
 cd frontend && pnpm install && pnpm dev   # 3. frontend -> http://localhost:5173
 ```
 
-Then open http://localhost:5173.
+Then open http://localhost:5173. You land on the login page: sign in as one of the [dev users](#dev-users) (password `password`). The nav depends on the role: Approvals for team leads, Admin for admins.
+
+No Docker Desktop? [Colima](https://github.com/abiosoft/colima) gives you the same `docker` and `docker compose` commands, and Testcontainers works with it too:
+
+```bash
+brew install colima docker docker-compose
+# once: let the docker CLI find the compose plugin
+echo '{ "cliPluginsExtraDirs": ["/opt/homebrew/lib/docker/cli-plugins"] }' > ~/.docker/config.json
+colima start --cpu 2 --memory 4          # after each reboot
+```
+
+`pnpm` not found? Node ships Corepack, which runs the version pinned in `frontend/package.json`: run `corepack enable` once, or prefix commands with `corepack` (`corepack pnpm dev`).
 
 ## Database
 

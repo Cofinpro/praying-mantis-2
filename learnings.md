@@ -53,6 +53,14 @@ Throwing in `beforeEach` cancels a navigation. Later that just keeps the current
 load there is no page: `await router.isReady(); app.mount()` never mounts and the screen stays
 blank. `main.ts` catches that case and shows a fallback message (FE-1.2 review).
 
+### A fresh tab gets its CSRF cookie from the first GET, even a 401
+The FE copies the `XSRF-TOKEN` cookie into `X-XSRF-TOKEN` on unsafe requests, so the very first
+`POST /auth/login` needs that cookie already. Spring Security's `csrf.spa()` loads the token on every
+request, so the route guard's `GET /me` sets the cookie even though it answers 401. Checked against
+the real backend in FE-1.3: without the header login is a 403, with it a 200. Spring's
+`ProblemDetail` leaves out `type` when it's the default `about:blank`, although the contract marks it
+required; the FE doesn't rely on it (FE-1.3).
+
 ## TypeScript
 
 ### One tsconfig per environment, tied together with project references
