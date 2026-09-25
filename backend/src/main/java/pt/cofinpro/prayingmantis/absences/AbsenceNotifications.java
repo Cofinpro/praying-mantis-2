@@ -1,8 +1,8 @@
 package pt.cofinpro.prayingmantis.absences;
 
 /**
- * What the absence services tell other people about (plan.md epic 3). Epic 4 implements it with rows in
- * the notifications table; until then {@link LoggingAbsenceNotifications} only logs.
+ * What the absence services tell other people about (plan.md epic 3), as rows in the notifications table:
+ * {@link StoredAbsenceNotifications} (BE-4.1). Every call runs inside the business change's transaction.
  */
 public interface AbsenceNotifications {
 
