@@ -31,7 +31,7 @@ Three developers:
 - **FE dev**: frontend. Stories are `FE-x.y` and have the Jira label `frontend`.
 
 For every feature:
-1. **Together**: agree the questions, the screens and the **API contract** (endpoints, JSON, error codes). Jira label: `together`.
+1. **Together**: agree the questions, the screens and the **API contract** (endpoints, JSON, error codes). Jira label: `together`. The contract PR merges once CI is green, without waiting for the other dev (D30); adjustments go in a follow-up PR.
 2. **In parallel**: BE implements the contract. FE builds against MSW mocks that follow the contract.
 3. **Integrate**: FE switches from the mocks to the real API.
 4. **Demo and reflect**: add entries to `learnings.md`.
@@ -90,7 +90,7 @@ What exists today:
 - Use pnpm for the frontend, never npm or yarn.
 - **API:**
   - REST + JSON, all routes under /api
-- Contract-first: openapi.yaml in the repo is the source of truth, agreed together before implementing
+- Contract-first: openapi.yaml in the repo is the source of truth, merged in its `T` story PR before implementing (D30: it doesn't wait for the other dev)
 - **Backend:**
   - DB access goes through Spring Data JPA
   - Business rules live in @Service classes, not in @RestControllers
