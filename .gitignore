@@ -7,3 +7,6 @@
 
 # Logs
 *.log
+
+# Local H2 database
+data/

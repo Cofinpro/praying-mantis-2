@@ -5,7 +5,7 @@ Monorepo with a Spring Boot backend and a Vue.js frontend.
 ```
 .
 ├── backend/    Spring Boot 4 (Java 21, Maven)
-└── frontend/   Vue 3 + Vite + TypeScript (Vue Router, Pinia, Vitest)
+└── frontend/   Vue 3 + Vite + TypeScript (Vue Router, Pinia)
 ```
 
 ## Prerequisites
@@ -19,11 +19,9 @@ Monorepo with a Spring Boot backend and a Vue.js frontend.
 ```bash
 cd backend
 ./mvnw spring-boot:run    # http://localhost:8080
-./mvnw test
 ```
 
 Endpoints:
-- `GET /api/hello?name=...` – sample endpoint
 - `GET /actuator/health` – health check
 
 ## Frontend
@@ -32,7 +30,6 @@ Endpoints:
 cd frontend
 npm install
 npm run dev             # http://localhost:5173
-npm run test:unit
 npm run build
 ```
 
