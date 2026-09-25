@@ -1,6 +1,6 @@
 # Replace these placeholder teams with real Cofinpro teams or GitHub usernames.
 # Code owners are asked for a review automatically, but merging doesn't wait for their approval
-# (decisions.md D27). Contract changes don't wait for the other dev either (D30).
+# (decisions.md D27). Contract changes don't wait for the other dev either (D34).
 *               @Cofinpro/tech-leads
 /backend/       @Cofinpro/backend
 /frontend/      @Cofinpro/frontend

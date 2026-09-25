@@ -15,7 +15,7 @@ Story:
 ## Area
 - [ ] Backend (`backend/`)
 - [ ] Frontend (`frontend/`)
-- [ ] API contract (`api/openapi.yaml`): list the choices worth checking; merges without waiting for the other dev (D30)
+- [ ] API contract (`api/openapi.yaml`): list the choices worth checking; merges without waiting for the other dev (D34)
 
 ## How to test
 <!-- Which automated tests cover this, and any manual steps for the reviewer. -->
