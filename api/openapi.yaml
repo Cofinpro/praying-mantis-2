@@ -3,12 +3,16 @@ info:
   title: praying-mantis API
   version: 0.2.0
   description: |
-    Contract between backend and frontend (decision #2). Agree changes together in a `T` story
-    before implementing them. All routes are under /api. Errors are Problem Details (decision #21).
+    Contract between backend and frontend (decision 2). Agree changes together in a `T` story
+    before implementing them. All routes are under /api. Errors are Problem Details (decision 21).
 
-    Authentication (decision #12): `POST /auth/login` starts a server session, kept in an HttpOnly
+    Authentication (decision 12): `POST /auth/login` starts a server session, kept in an HttpOnly
     `SameSite=Lax` session cookie that the browser sends automatically. Every operation needs that
     session unless it says `security: []`. Without a valid session the answer is 401.
+
+    CSRF: every response sets a readable `XSRF-TOKEN` cookie. Unsafe requests (POST, PUT, PATCH,
+    DELETE), including login and logout, must copy it into the `X-XSRF-TOKEN` header; a missing or
+    wrong token is 403. The token changes on login, so read the cookie on every request.
 servers:
   - url: /api
 tags:
@@ -62,6 +66,8 @@ paths:
                 $ref: '#/components/schemas/CurrentUser'
         '400':
           $ref: '#/components/responses/ValidationProblem'
+        '403':
+          $ref: '#/components/responses/CsrfForbidden'
         '401':
           description: |
             Wrong email or password. The detail is the same in both cases, so it doesn't reveal
@@ -85,12 +91,14 @@ paths:
       operationId: logout
       summary: Log out
       description: |
-        Invalidates the session and clears the cookie. Always 204, also without a session, so the FE
-        can call it without checking first.
+        Invalidates the session and clears the cookie. 204 also without a session, so the FE can call
+        it without checking first. Like every unsafe request, it needs the CSRF header.
       security: []
       responses:
         '204':
           description: Logged out
+        '403':
+          $ref: '#/components/responses/CsrfForbidden'
         default:
           $ref: '#/components/responses/Problem'
 
@@ -117,7 +125,7 @@ paths:
 components:
   securitySchemes:
     sessionCookie:
-      description: Server session from `POST /auth/login` (decision #12)
+      description: Server session from `POST /auth/login` (decision 12)
       type: apiKey
       in: cookie
       name: JSESSIONID
@@ -143,7 +151,8 @@ components:
         password:
           type: string
           minLength: 1
-          maxLength: 128
+          # BCrypt only uses the first 72 bytes
+          maxLength: 72
           example: secret
 
     CurrentUser:
@@ -170,7 +179,7 @@ components:
           type: boolean
           example: false
         isTeamLead:
-          description: Derived, true when someone has this user as team lead (decision #9); shows Approvals
+          description: Derived, true when someone has this user as team lead (decision 9); shows Approvals
           type: boolean
           example: true
 
@@ -186,7 +195,7 @@ components:
       example: SENIOR
 
     Problem:
-      description: RFC 9457 Problem Details (decision #21)
+      description: RFC 9457 Problem Details (decision 21)
       type: object
       required: [type, title, status]
       properties:
@@ -241,6 +250,12 @@ components:
             errors:
               - field: email
                 message: must be a well-formed email address
+    CsrfForbidden:
+      description: Missing or wrong `X-XSRF-TOKEN` header
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
     Unauthorized:
       description: Not logged in, or the session expired
       content:

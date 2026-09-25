@@ -54,8 +54,8 @@ export interface paths {
         put?: never;
         /**
          * Log out
-         * @description Invalidates the session and clears the cookie. Always 204, also without a session, so the FE
-         *     can call it without checking first.
+         * @description Invalidates the session and clears the cookie. 204 also without a session, so the FE can call
+         *     it without checking first. Like every unsafe request, it needs the CSRF header.
          */
         post: operations["logout"];
         delete?: never;
@@ -123,7 +123,7 @@ export interface components {
              */
             isAdmin: boolean;
             /**
-             * @description Derived, true when someone has this user as team lead (decision
+             * @description Derived, true when someone has this user as team lead (decision 9); shows Approvals
              * @example true
              */
             isTeamLead: boolean;
@@ -139,7 +139,7 @@ export interface components {
          * @enum {string}
          */
         Level: "JUNIOR" | "EXPERT" | "SENIOR" | "ARCHITECT" | "SENIOR_ARCHITECT";
-        /** @description RFC 9457 Problem Details (decision */
+        /** @description RFC 9457 Problem Details (decision 21) */
         Problem: {
             /** Format: uri-reference */
             type: string;
@@ -189,6 +189,15 @@ export interface components {
                  *       ]
                  *     }
                  */
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description Missing or wrong `X-XSRF-TOKEN` header */
+        CsrfForbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
@@ -282,6 +291,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            403: components["responses"]["CsrfForbidden"];
             default: components["responses"]["Problem"];
         };
     };
@@ -301,6 +311,7 @@ export interface operations {
                 };
                 content?: never;
             };
+            403: components["responses"]["CsrfForbidden"];
             default: components["responses"]["Problem"];
         };
     };
