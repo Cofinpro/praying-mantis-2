@@ -9,6 +9,12 @@ const router = createRouter({
       name: 'home',
       component: HomeView,
     },
+    {
+      // src/api/client.ts redirects here on 401
+      path: '/login',
+      name: 'login',
+      component: () => import('../views/LoginView.vue'),
+    },
   ],
 })
 

@@ -68,7 +68,9 @@ The API contract is `api/openapi.yaml` (decision #2). On every build, `openapi-g
 ```bash
 cd frontend
 pnpm install
-pnpm dev                # http://localhost:5173
+pnpm dev                # http://localhost:5173, /api goes to the backend
+pnpm dev:mock           # same, but /api is served by the MSW mocks (no backend needed)
+pnpm gen:api            # regenerate src/api/generated/ after api/openapi.yaml changes
 pnpm lint               # ESLint (pnpm lint:fix to auto-fix)
 pnpm format             # Prettier (pnpm format:check only reports)
 pnpm test               # Vitest, single run (pnpm test:watch to watch)
@@ -77,6 +79,8 @@ pnpm build              # type-check + production build
 ```
 
 In development, Vite proxies `/api/*` to `http://localhost:8080`, so no CORS setup is needed.
+
+With `pnpm dev:mock` (decision #4), MSW answers the endpoints in `src/mocks/handlers.ts`. Other `/api` calls still go to the backend, with a console warning. Tests use the same handlers.
 
 > pnpm only (decision #5). Never commit a `package-lock.json` or `yarn.lock`.
 

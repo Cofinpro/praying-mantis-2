@@ -14,6 +14,12 @@ What surprised us or cost us time, what we now do instead. Link the PR, story or
 
 ## Vue
 
+### MSW has to patch `fetch` before anyone captures it
+In Vitest, MSW's `server.listen()` replaces `globalThis.fetch`. `openapi-fetch` keeps a reference to
+the `fetch` that existed when `createClient()` ran, at import time, so its requests bypassed the
+mocks and failed with "fetch failed". The client now passes `fetch: (request) => globalThis.fetch(request)`
+to look it up on each call. The same applies to any library that takes a `fetch` option (FE-0.2).
+
 ### `staleTime` decides whether TanStack Query refetches on mount and focus
 We set a global `staleTime: 30_000` in `main.ts`. Refetch-on-mount, refetch-on-window-focus and
 refetch-on-reconnect only fire for *stale* queries, so inside those 30 s they're skipped.
@@ -50,6 +56,11 @@ openapi-generator puts `@Validated` on the interfaces unless `useSpringBuiltInVa
 ## Liquibase
 
 ## Tooling (Vite, pnpm, Maven, Docker, OpenAPI)
+
+### ` #` starts a comment in YAML, even inside an unquoted string
+`description: Problem Details (decision #21)` parses as `Problem Details (decision`, and the
+generated TypeScript comment shows the cut. Quote values that contain ` #`:
+`description: 'Problem Details (decision #21)'` (FE-0.2).
 
 ### Pin pnpm with `packageManager` and Corepack
 `frontend/package.json` has `"packageManager": "pnpm@12.6.0"`. Corepack ships with Node 22–24

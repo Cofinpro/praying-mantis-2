@@ -11,14 +11,20 @@ export default defineConfigWithVueTs(
     files: ['**/*.{ts,mts,tsx,vue}'],
   },
 
-  globalIgnores(['**/dist/**', '**/coverage/**']),
+  // Generated files: the API types (pnpm gen:api) and the MSW service worker
+  globalIgnores([
+    '**/dist/**',
+    '**/coverage/**',
+    'src/api/generated/**',
+    'public/mockServiceWorker.js',
+  ]),
 
   pluginVue.configs['flat/essential'],
   vueTsConfigs.recommended,
 
   {
     ...pluginVitest.configs.recommended,
-    files: ['src/**/__tests__/*'],
+    files: ['src/**/__tests__/*', 'src/test/**'],
   },
 
   // Prettier owns formatting, so turn off every ESLint rule that would fight it
