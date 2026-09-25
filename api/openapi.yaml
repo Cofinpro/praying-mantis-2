@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: praying-mantis API
-  version: 0.10.0
+  version: 0.11.0
   description: |
     Contract between backend and frontend (decision 2). Agree changes together in a `T` story
     before implementing them. All routes are under /api. Errors are Problem Details (decision 21).
@@ -46,6 +46,8 @@ tags:
     description: Admin, manage public holidays (T-9.1, BE-9.4)
   - name: team-absences
     description: Absence requests I decide on as approver (T-5.1)
+  - name: team-calendar
+    description: Who on my team is away when (T-5.3, stretch)
   - name: notifications
     description: In-app notifications for the bell, polled by the FE (T-4.1, decision 17)
 security:
@@ -888,6 +890,59 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/TeamAbsenceRequest'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /team/absences:
+    get:
+      tags: [team-calendar]
+      operationId: getTeamAbsences
+      summary: My team's absences in a date range
+      description: |
+        For the team calendar (BE-5.3, frame "10 Approvals – Team calendar"): one row per person, so a
+        team lead sees who is away before approving (decision 36).
+
+        - **Who:** the caller first, then everyone whose team lead is the caller, by name. Someone
+          who leads nobody gets only their own row.
+        - **What:** pending and approved absences overlapping `from`..`to` (both inclusive). Rejected
+          and cancelled ones don't block anyone. Pending ones are marked, so the calendar can show
+          them as tentative.
+        - **Not shown:** the reason and the approver's comment, which stay between requester and
+          approver. The type is shown, sick leave included, as in the requester's own calendar.
+        - Days where two or more people are away are for the FE to highlight; the data has all it
+          needs.
+
+        400 when `to` is before `from`, or the range is longer than 366 days (as in
+        `GET /me/absence-requests`).
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+            example: '2026-10-01'
+        - name: to
+          in: query
+          description: Inclusive; not before `from`
+          required: true
+          schema:
+            type: string
+            format: date
+            example: '2026-10-31'
+      responses:
+        '200':
+          description: One row per person
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TeamMemberAbsences'
         '400':
           $ref: '#/components/responses/ValidationProblem'
         '401':
@@ -1924,6 +1979,47 @@ components:
           type: string
           maxLength: 500
           example: Sprint planning
+
+    TeamMemberAbsences:
+      description: One row of the team calendar
+      type: object
+      required: [user, absences]
+      properties:
+        user:
+          $ref: '#/components/schemas/UserRef'
+        absences:
+          description: Pending and approved absences in the range, by start date
+          type: array
+          items:
+            $ref: '#/components/schemas/TeamAbsence'
+
+    TeamAbsence:
+      description: An absence as the rest of the team sees it, without reason or comments (decision 36)
+      type: object
+      required: [id, type, startDate, endDate, startPart, endPart, status]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 42
+        type:
+          $ref: '#/components/schemas/AbsenceTypeCode'
+        startDate:
+          type: string
+          format: date
+          example: '2026-10-12'
+        endDate:
+          type: string
+          format: date
+          example: '2026-10-14'
+        startPart:
+          $ref: '#/components/schemas/DayPart'
+        endPart:
+          $ref: '#/components/schemas/DayPart'
+        status:
+          description: PENDING or APPROVED
+          allOf:
+            - $ref: '#/components/schemas/AbsenceStatus'
 
     TeamAbsenceRequest:
       description: A request as its approver sees it

@@ -43,6 +43,7 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 | 33 | Export templates: a generic one built in code first | Accepted |
 | 34 | Contract PRs merge without waiting for the other dev | Accepted |
 | 35 | Admin rules: no deletes of people or projects, guarded team leads | Accepted |
+| 36 | Team calendar: my direct reports, no reasons | Accepted |
 
 `plan.md` decisions D1–D12 map to #12–#23.
 
@@ -440,3 +441,16 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 - **Holidays can be added, edited and deleted.** Existing requests keep their stored working days (decision 15).
 
 **Why:** The history (requests, timesheets, exports) stays consistent, and no edit can leave the app without an approver or an admin.
+
+## 36. Team calendar: my direct reports, no reasons
+**Status:** Accepted · T-5.3 (stretch)
+
+**Decision:**
+- `GET /team/absences` shows the caller's own row first, then the people whose **team lead** is the caller, by name. It's about "who's away on my team", so it follows `team_lead_id`, not the stored approver of each request. Someone who leads nobody sees only their own row.
+- Only **pending and approved** absences. Pending ones are marked, so the calendar can show them as tentative.
+- The **reason and the decision comment are left out**: they stay between requester and approver. The type is shown, sick leave included, as the team lead approves or sees those anyway.
+- Conflict days (two or more people away) are computed by the FE from the rows. There's no extra endpoint.
+
+**Why:** A lead needs to see overlaps before approving, without the page exposing more than the approvals list already does.
+
+**Consequences:** Admins see the team calendar of the people they lead, not the whole company. A company-wide view would be an admin page (epic 9).
