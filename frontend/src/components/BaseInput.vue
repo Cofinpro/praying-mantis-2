@@ -11,10 +11,12 @@ const model = defineModel<string>({ required: true })
 
 const { type = 'text', error } = defineProps<{
   label: string
-  type?: 'text' | 'email' | 'password'
+  type?: 'text' | 'email' | 'password' | 'date'
   autocomplete?: string
   required?: boolean
   error?: string
+  /** A <textarea> instead of an <input>, e.g. for a reason */
+  multiline?: boolean
 }>()
 
 // Unique per component instance and stable between server and client render (Vue 3.5)
@@ -25,7 +27,20 @@ const errorId = `${id}-error`
 <template>
   <div class="field">
     <label :for="id" class="field__label">{{ label }}</label>
+    <textarea
+      v-if="multiline"
+      v-bind="$attrs"
+      :id="id"
+      v-model="model"
+      :required="required"
+      :aria-invalid="error ? 'true' : undefined"
+      :aria-describedby="error ? errorId : undefined"
+      rows="3"
+      class="field__input field__input--multiline"
+      :class="{ 'field__input--error': error }"
+    />
     <input
+      v-else
       v-bind="$attrs"
       :id="id"
       v-model="model"
@@ -62,6 +77,10 @@ const errorId = `${id}-error`
   color: var(--color-ink);
   font: inherit;
   font-size: 14px;
+}
+
+.field__input--multiline {
+  resize: vertical;
 }
 
 /* Focus and error use a 2px border; the shadow adds the second pixel so the layout doesn't shift */

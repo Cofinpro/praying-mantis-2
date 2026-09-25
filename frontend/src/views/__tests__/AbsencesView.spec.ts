@@ -66,4 +66,23 @@ describe('AbsencesView', () => {
 
     expect(wrapper.find('[aria-label="Vacation balance"]').exists()).toBe(true)
   })
+
+  it('opens the request dialog from the header and closes it again', async () => {
+    const wrapper = mount(AbsencesView, {
+      attachTo: document.body,
+      global: { plugins: [queryPlugin()] },
+    })
+    await flushPromises()
+
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Request absence')!
+      .trigger('click')
+    await flushPromises()
+    expect(wrapper.find('dialog').attributes('open')).toBeDefined()
+
+    await wrapper.find('button[aria-label="Close"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('dialog').exists()).toBe(false)
+  })
 })
