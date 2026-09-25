@@ -23,6 +23,9 @@ async function enableMocking() {
   }
   const { worker } = await import('./mocks/browser')
   await worker.start({
+    // The worker file is in public/, so it's served under the base path: /praying-mantis-2/ on
+    // GitHub Pages (decision #30), / everywhere else. MSW's default is always /mockServiceWorker.js
+    serviceWorker: { url: `${import.meta.env.BASE_URL}mockServiceWorker.js` },
     // /api calls without a handler go on to the real backend, with a console warning
     onUnhandledRequest(request, print) {
       if (new URL(request.url).pathname.startsWith('/api')) {

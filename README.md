@@ -124,6 +124,24 @@ pnpm install --frozen-lockfile && pnpm gen:api && git diff --exit-code -- src/ap
   && pnpm format:check && pnpm lint && pnpm test && pnpm build
 ```
 
+## Deployment (decision #30)
+
+| What | Where | How it deploys |
+|---|---|---|
+| Frontend demo, with mock data (MSW) | https://cofinpro.github.io/praying-mantis-2/ | `.github/workflows/pages.yml` on every push to `main` |
+| Backend API + Postgres | Render (`render.yaml` Blueprint) | Render redeploys after a push to `main` that touches `backend/` or `api/` and passes CI |
+
+The Pages demo never calls the Render backend: the login cookies wouldn't work across the two sites. Log in to the demo with any email and the password `secret`. On Render, the dev seed users are loaded (see "Dev users"). The free service sleeps when idle, so the first request after 15 minutes takes about a minute.
+
+One-time setup (needs admin rights): in the GitHub repo, go to Settings → Pages → Source and pick "GitHub Actions". In Render, go to New → Blueprint and pick this repo.
+
+To try either build locally:
+
+```bash
+cd frontend && pnpm exec vite build --mode mock --base=/praying-mantis-2/ && pnpm preview --base=/praying-mantis-2/
+docker build -f backend/Dockerfile -t praying-mantis-backend .    # from the repo root
+```
+
 ## Contributing & code review
 
 All changes go through a pull request. See [CONTRIBUTING.md](CONTRIBUTING.md) for the policy.

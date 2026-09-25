@@ -1,0 +1,72 @@
+# Publishes the frontend as a clickable demo on GitHub Pages (decision #30). It's built in mock mode,
+# so MSW in the browser answers /api: the demo never talks to the real backend on Render, because
+# the session and CSRF cookies wouldn't work across the two sites (decision #12).
+name: Frontend demo (GitHub Pages)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deployment at a time, and don't cancel one that's halfway through publishing
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: frontend/package.json
+          cache: true
+          cache_dependency_path: frontend/pnpm-lock.yaml
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # --mode mock loads .env.mock (VITE_API_MOCKS=true), so the MSW worker is bundled and started.
+      # A project site is served from /<repo>/, not /, so asset URLs and the router need that base.
+      - name: Build the mock demo
+        run: |
+          pnpm type-check
+          pnpm exec vite build --mode mock --base=/${{ github.event.repository.name }}/
+
+      # Pages has no SPA fallback: a reload on /praying-mantis-2/login would be a 404. Pages serves
+      # 404.html for unknown paths, so a copy of index.html lets Vue Router handle them.
+      - name: Add the SPA fallback
+        run: cp dist/index.html dist/404.html
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: frontend/dist
+
+  deploy:
+    name: deploy
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      # deploy-pages proves to Pages that the upload comes from this workflow run
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

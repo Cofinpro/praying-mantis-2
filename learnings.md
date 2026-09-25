@@ -104,6 +104,12 @@ test's thread, so it sees the rows a `@Transactional` test inserted, and they ro
 in `Europe/Lisbon` (`TimeConfig`) makes the zone explicit, and a test can swap in a fixed clock.
 (BE-2.2)
 
+### Placeholders nest, so a whole URL and its parts can both be overridden
+`${DB_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:prayingmantis}}` takes
+`DB_URL` if it's set, and otherwise builds the URL from the parts. Render's Blueprint hands out host,
+port and database separately and can't concatenate them. Likewise `server.port: ${PORT:8080}`,
+because Render picks the port (decision #30).
+
 ### A throwing `@Transactional` helper can roll back its caller
 With the default `REQUIRED` propagation, a helper's `@Transactional` joins the caller's transaction. A `RuntimeException` leaving the helper's proxy marks the *whole* shared transaction rollback-only, even if the caller catches it, and the commit then fails with `UnexpectedRollbackException`. `Permissions` has no `@Transactional`: each check is one `existsBy...` query. (BE-1.3 review)
 
@@ -154,6 +160,23 @@ through. (BE-2.1)
 Changesets without a `context` always run. A `context: dev` changeset runs when `dev` is active, but also when *no* context is set at all. So `spring.liquibase.contexts` defaults to the non-empty `default`, and only the `dev` profile (`./mvnw spring-boot:run`) and the test config switch on `dev`. (BE-1.1 review)
 
 ## Tooling (Vite, pnpm, Maven, Docker, OpenAPI)
+
+### A GitHub Pages project site lives under `/<repo>/`, not `/`
+`vite build --base=/praying-mantis-2/` prefixes every asset URL, and `createWebHistory(import.meta.env.BASE_URL)`
+makes the router follow it. Two things don't follow on their own. MSW registers `/mockServiceWorker.js`
+unless you pass `serviceWorker.url`, so `main.ts` builds that URL from `BASE_URL`. And Pages has no
+SPA fallback, so the workflow copies `index.html` to `404.html` (decision #30).
+
+### Cookie auth doesn't survive a split across two sites
+`*.github.io` and `*.onrender.com` are different *sites* (not only different origins), so the
+backend's cookies become third-party for the page, and Safari, and Chrome with third-party cookies
+blocked, drop them. A readable `XSRF-TOKEN` cookie doesn't help either: `document.cookie` only sees
+cookies of the page's own origin. That's why the Pages demo runs on MSW (decision #30).
+
+### `.gitattributes` keeps `mvnw` runnable in a container
+With `core.autocrlf=true` on Windows, `mvnw` is checked out with CRLF, and a `docker build` from that
+checkout fails with `/bin/sh^M: not found`. `backend/mvnw text eol=lf` in `.gitattributes` keeps it
+LF on every machine.
 
 ### A required status check must run on every PR
 The CI workflows have no `paths:` filter. If `frontend.yml` only ran on `frontend/**` changes, a

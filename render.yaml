@@ -1,0 +1,55 @@
+# Render Blueprint for the backend API and its database (decision #30).
+# Set up once: Render dashboard -> New -> Blueprint -> pick this repo. After that, Render redeploys
+# on every push to main that touches backend/ or api/, once the CI checks have passed.
+services:
+  - type: web
+    name: praying-mantis-api
+    runtime: docker
+    plan: free
+    region: frankfurt
+    branch: main
+    dockerfilePath: ./backend/Dockerfile
+    # The build reads api/openapi.yaml, so the context is the repo root, not backend/
+    dockerContext: .
+    autoDeployTrigger: checksPass
+    buildFilter:
+      paths:
+        - backend/**
+        - api/**
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: DB_HOST
+        fromDatabase:
+          name: praying-mantis-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: praying-mantis-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: praying-mantis-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: praying-mantis-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: praying-mantis-db
+          property: password
+      # Render serves the API over https only
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
+      # Loads the dev seed users (README, "Dev users") so the demo has accounts. Their passwords are
+      # public, so this database must only ever hold demo data.
+      - key: LIQUIBASE_CONTEXTS
+        value: dev
+
+databases:
+  - name: praying-mantis-db
+    plan: free
+    region: frankfurt
+    databaseName: prayingmantis
+    user: prayingmantis
+    postgresMajorVersion: "17"

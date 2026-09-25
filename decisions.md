@@ -37,6 +37,7 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 | 27 | PRs merge without waiting for an approval | Accepted |
 | 28 | Own month-calendar component, no calendar library | Proposed |
 | 29 | Absence request rules: balance limit, past dates | Accepted |
+| 30 | Hosting: mock demo on GitHub Pages, backend on Render | Accepted |
 
 `plan.md` decisions D1–D12 map to #12–#23.
 
@@ -343,3 +344,24 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 **Why:** The balance can't go negative through approved requests alone, while planning stays flexible.
 
 **Consequences:** Approving a request (BE-5.2) must check the balance again, because another request may have been approved in the meantime.
+
+## 30. Hosting: mock demo on GitHub Pages, backend on Render
+**Status:** Accepted
+
+**Decision:**
+- **Frontend:** `.github/workflows/pages.yml` builds the frontend in mock mode (`vite build --mode mock`) on every push to `main` and publishes it to GitHub Pages at `https://cofinpro.github.io/praying-mantis-2/`. MSW in the browser answers `/api` (decision #4), so it's a clickable demo that never calls the real backend.
+- **Backend:** `render.yaml` is a Render Blueprint: a Docker web service (`backend/Dockerfile`, built from the repo root so Maven can read `api/openapi.yaml`) plus a Postgres database, both on the free plan. Render redeploys after a push to `main` that touches `backend/` or `api/`, once CI has passed.
+- The backend reads Render's settings from env vars: `PORT`, `DB_HOST`/`DB_PORT`/`DB_NAME`/`DB_USER`/`DB_PASSWORD` (or `DB_URL` as a whole), `SESSION_COOKIE_SECURE=true`, and `LIQUIBASE_CONTEXTS=dev` so the demo has the seed users.
+
+**Alternatives considered:**
+- *Pages frontend calling the Render backend.* `*.github.io` and `*.onrender.com` are different sites, so the session and `XSRF-TOKEN` cookies (decision #12) would be third-party: browsers that block those drop the session, and `document.cookie` on the Pages origin can't read a cookie set by the backend's origin. It would need CORS with credentials, `SameSite=None` and a CSRF token outside cookies, and it would still fail in Safari.
+- *Both on Render*, with a static site that rewrites `/api/*` to the backend. That keeps one origin and a working login, but leaves GitHub Pages out.
+
+**Why:** Pages gives the FE a public demo for free with no auth changes. The backend is online to try the real API.
+
+**Consequences:**
+- The Pages demo shows mock data. A screen whose endpoint has no MSW handler shows an error there. Log in with any email and the password `secret` (`MOCK_PASSWORD` in `handlers.ts`).
+- The dev seed passwords are public (README), so the Render database only ever holds demo data.
+- Render's free web service sleeps after 15 minutes without traffic, so the first request after that takes about a minute. The free database expires after 30 days, unless it's upgraded or recreated.
+- One-time setup: in the repo settings, set Pages → Source to "GitHub Actions". In Render, create the Blueprint (New → Blueprint → this repo).
+- To get a real integrated deployment later, move the frontend to a Render static site that rewrites `/api` to the backend (the second alternative).
