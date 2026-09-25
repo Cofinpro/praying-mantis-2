@@ -98,6 +98,14 @@ absence dialogs now also invalidate in `onError` for those (`showsStaleData` in 
 Also: Spring answers an unreadable body with a 400 that has no `errors`, so a form that only shows
 field errors for 400s would show nothing (FE-3.3).
 
+### Testing a polling query: fake only `setInterval`, and drive focus with `focusManager`
+TanStack Query polls `refetchInterval` with `setInterval`. `vi.useFakeTimers({ toFake: ['setInterval'] })`
+lets a test jump 30 s with `vi.advanceTimersByTime(30_000)`, while MSW keeps its real `setTimeout`
+(faking everything makes requests hang). For refetch-on-focus, jsdom never loses focus, so call
+`focusManager.setFocused(false)`, then `true`, and reset it with `undefined`. The contract's
+`Notification` schema is exported as `AppNotification`, because `Notification` is already the
+browser's global notification API (FE-4.1).
+
 ## TypeScript
 
 ### One tsconfig per environment, tied together with project references
