@@ -73,6 +73,18 @@ use Node APIs. `pnpm build` runs it first, so a type error in a test fails the b
 
 ## Spring Boot
 
+### `@WithUserDetails` logs a test in as a real seed user
+`@WithUserDetails("carla.mendes@cofinpro.pt")` loads the user through our own `UserDetailsService`,
+so the principal is the real `AuthenticatedUser` and `AuthenticatedUsers.current()` works as in
+production. It skips the login and CSRF dance, which GET tests don't need. MockMvc runs in the
+test's thread, so it sees the rows a `@Transactional` test inserted, and they roll back afterwards.
+(BE-2.2)
+
+### Inject a `Clock` instead of calling `LocalDate.now()`
+"Today" depends on the time zone: Render runs on UTC, while our users are in Lisbon. A `Clock` bean
+in `Europe/Lisbon` (`TimeConfig`) makes the zone explicit, and a test can swap in a fixed clock.
+(BE-2.2)
+
 ### A throwing `@Transactional` helper can roll back its caller
 With the default `REQUIRED` propagation, a helper's `@Transactional` joins the caller's transaction. A `RuntimeException` leaving the helper's proxy marks the *whole* shared transaction rollback-only, even if the caller catches it, and the commit then fails with `UnexpectedRollbackException`. `Permissions` has no `@Transactional`: each check is one `existsBy...` query. (BE-1.3 review)
 
