@@ -33,6 +33,13 @@ export type NotificationsQuery = NonNullable<
 export type TeamAbsenceRequest = components['schemas']['TeamAbsenceRequest']
 export type AbsenceDecision = components['schemas']['AbsenceDecision']
 export type UserRef = components['schemas']['UserRef']
+export type Project = components['schemas']['Project']
+export type ProjectRef = components['schemas']['ProjectRef']
+export type Timesheet = components['schemas']['Timesheet']
+export type TimesheetStatus = components['schemas']['TimesheetStatus']
+export type TimeEntry = components['schemas']['TimeEntry']
+export type TimesheetEntries = components['schemas']['TimesheetEntries']
+export type TimeEntryInput = components['schemas']['TimeEntryInput']
 
 /** Thrown for every non-2xx response. `problem` is the RFC 9457 body (decision #21). */
 export class ApiError extends Error {
@@ -160,4 +167,15 @@ export const api = {
   markMyNotificationRead: (id: number) =>
     unwrap(client.POST('/me/notifications/{id}/read', { params: { path: { id } } })),
   markAllMyNotificationsRead: () => unwrap(client.POST('/me/notifications/read-all')),
+  /** Ordered by code. `active` defaults to true: the projects that take new hours. */
+  getProjects: (active = true) =>
+    unwrap(client.GET('/projects', { params: { query: { active } } })),
+  /** `weekStart` is a Monday. A week never saved comes back as a DRAFT without `id` (decision 32). */
+  getMyTimesheet: (weekStart: string) =>
+    unwrap(client.GET('/me/timesheets/{weekStart}', { params: { path: { weekStart } } })),
+  /** Replaces the whole week: entries missing from the body are deleted */
+  saveMyTimesheetEntries: (weekStart: string, body: TimesheetEntries) =>
+    unwrap(
+      client.PUT('/me/timesheets/{weekStart}/entries', { params: { path: { weekStart } }, body }),
+    ),
 }

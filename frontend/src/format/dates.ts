@@ -30,6 +30,29 @@ export function weekday(iso: string): number {
 
 export const yearOf = (iso: string) => Number(iso.slice(0, 4))
 
+/** The Monday of the week `iso` falls in (weeks run Monday to Sunday, as timesheets do) */
+export const weekStartOf = (iso: string) => addDays(iso, -weekday(iso))
+
+/**
+ * The ISO 8601 week number: week 1 is the week with the year's first Thursday, so 29 Dec 2025 is
+ * in week 1 of 2026 and 1 Jan 2027 is in week 53 of 2026.
+ */
+export function isoWeek(iso: string): number {
+  // The Thursday of the same week decides the year the week belongs to
+  const thursday = addDays(iso, 3 - weekday(iso))
+  const firstOfYear = `${thursday.slice(0, 4)}-01-01`
+  return Math.floor((toUtc(thursday) - toUtc(firstOfYear)) / DAY_MS / 7) + 1
+}
+
+/** A real calendar day as `YYYY-MM-DD`, e.g. to trust a `?week=` from the URL */
+export function isIsoDate(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+    fromUtc(toUtc(value)) === value
+  )
+}
+
 /** The first day of the month `iso` falls in */
 export const monthStart = (iso: string) => `${iso.slice(0, 7)}-01`
 
@@ -102,6 +125,16 @@ const WEEKDAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 /** "Mon" */
 export const weekdayName = (iso: string) => WEEKDAY_NAMES[weekday(iso)]!
+
+const weekdayDate = new Intl.DateTimeFormat('en-GB', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'short',
+  timeZone: 'UTC',
+})
+
+/** "Monday 19 Oct", e.g. to label a timesheet cell */
+export const formatWeekdayDate = (iso: string) => weekdayDate.format(toUtc(iso))
 
 const localDate = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',

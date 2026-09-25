@@ -132,6 +132,29 @@ every cached range with `queryClient.getQueriesData({ queryKey: ['absences', 're
 clicking the same notification again is a navigation to the current URL, which Vue Router ignores
 (FE-4.2).
 
+### `onBeforeRouteLeave` doesn't see a query change, and needs a `<RouterView>`
+The timesheet week lives in `?week=`. Going to the next week keeps the same route and reuses the
+component, so `onBeforeRouteLeave` never runs: the unsaved-changes guard also needs
+`onBeforeRouteUpdate`. Both hooks look up the route record the component was rendered for, so a
+test that mounts the view directly gets a warning and no guard; mount `h(RouterView)` with the
+router instead (and `vi.waitFor` the lazy route). A guard can return a promise, which lets a
+`BaseDialog` answer "Discard changes?" instead of `window.confirm` (FE-6.1).
+
+### An editable copy of server data: don't reset it on every cache update
+The grid edits a copy of the fetched week. Watching the query's `data` and copying it every time
+would wipe unsaved typing on any background refetch. The watcher now takes the server's week only
+for another week, or when the copy still equals the previous data (nothing typed) or already equals
+the new data (right after a save, whose response goes into the cache with `setQueryData`). "Dirty"
+is a comparison of the normalized PUT bodies, not a flag, so typing a value and deleting it again
+isn't dirty (FE-6.1).
+
+### Everything inside a row header is repeated for every cell
+A screen reader announces the row header (`<th scope="row">`) before each cell of the row. With
+the row's icon buttons inside it, every hour input was announced as "DKB-COREDKB · DKB core
+banking Descriptions for DKB-CORE Remove DKB-CORE". The buttons moved to their own `<td>`, and a
+visually hidden ", " separates the code from the subtitle, since two block `<span>`s concatenate
+without a space in `textContent` (FE-6.1).
+
 ## TypeScript
 
 ### One tsconfig per environment, tied together with project references

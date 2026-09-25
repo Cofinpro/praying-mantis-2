@@ -27,8 +27,8 @@ export const routes: RouteRecordRaw[] = [
   {
     path: '/timesheets',
     name: 'timesheets',
-    component: placeholder,
-    props: { title: 'Timesheets', story: 'FE-6.1' },
+    // `?week=YYYY-MM-DD` opens that week (notifications link there)
+    component: () => import('../views/TimesheetsView.vue'),
   },
   {
     // In the nav for team leads only. Anyone can open the URL; the backend decides what they see

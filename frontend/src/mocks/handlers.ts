@@ -13,15 +13,20 @@ import type {
   NewAbsenceRequest,
   NotificationPage,
   Problem,
+  Project,
   PublicHoliday,
   TeamAbsenceRequest,
+  TimeEntry,
+  Timesheet,
+  TimesheetEntries,
   UnreadCount,
 } from '@/api/client'
 import { workingDays } from '@/absences/workingDays'
-import { today } from '@/format/dates'
+import { addDays, today, weekday } from '@/format/dates'
 import { absenceRequests, absenceTypes, balances, publicHolidays } from './data/absences'
 import { mockNotifications } from './data/notifications'
 import { teamAbsenceRequests } from './data/team'
+import { projects, timesheets, type StoredTimesheet } from './data/timesheets'
 import { findMockUser } from './data/users'
 
 // Mock backend that follows api/openapi.yaml (decision #4). Used by `pnpm dev:mock` and by Vitest.
@@ -53,6 +58,19 @@ let teamRequests: TeamAbsenceRequest[] = structuredClone(teamAbsenceRequests)
 let notifications: AppNotification[] | null = null
 const myNotifications = () => (notifications ??= mockNotifications())
 
+// Timesheets per user and week (T-6.1). Only Ana has stored weeks; the rest are lazy drafts.
+const ANA_ID = 2
+const seedTimesheets = () =>
+  new Map(Object.values(timesheets).map((t) => [`${ANA_ID}|${t.weekStart}`, structuredClone(t)]))
+let myTimesheets: Map<string, StoredTimesheet> = seedTimesheets()
+let nextTimesheetId = 100
+let nextEntryId = 1000
+
+/** Store a week for the logged-in user (tests) */
+export function setMockTimesheet(userId: number, timesheet: StoredTimesheet) {
+  myTimesheets.set(`${userId}|${timesheet.weekStart}`, structuredClone(timesheet))
+}
+
 /** Replace the logged-in user's notifications (tests) */
 export function setMockNotifications(list: AppNotification[]) {
   notifications = structuredClone(list)
@@ -64,6 +82,7 @@ export function resetMockSession() {
   requests = structuredClone(absenceRequests)
   notifications = null
   teamRequests = structuredClone(teamAbsenceRequests)
+  myTimesheets = seedTimesheets()
 }
 
 const problem = (status: number, body: Omit<Problem, 'status'>) =>
@@ -370,6 +389,110 @@ export const handlers = [
     },
   ),
 
+  // T-6.1: ordered by code; `active` defaults to true
+  http.get<never, never, Project[] | Problem>('*/api/projects', ({ request }) => {
+    if (!loggedInAs) {
+      return unauthorized('/api/projects')
+    }
+    const active = new URL(request.url).searchParams.get('active') !== 'false'
+    return HttpResponse.json(
+      projects.filter((p) => p.isActive === active).sort((a, b) => a.code.localeCompare(b.code)),
+    )
+  }),
+
+  // Decision 32: a week never saved is an empty DRAFT without id, and GET stores nothing
+  http.get<{ weekStart: string }, never, Timesheet | Problem>(
+    '*/api/me/timesheets/:weekStart',
+    ({ params }) => {
+      if (!loggedInAs) {
+        return unauthorized(`/api/me/timesheets/${params.weekStart}`)
+      }
+      if (!isMonday(params.weekStart)) {
+        return invalid('weekStart', 'must be a Monday')
+      }
+      return HttpResponse.json(timesheetView(loggedInAs.id, params.weekStart))
+    },
+  ),
+
+  http.put<{ weekStart: string }, TimesheetEntries, Timesheet | Problem>(
+    '*/api/me/timesheets/:weekStart/entries',
+    async ({ params, request }) => {
+      const { weekStart } = params
+      const instance = `/api/me/timesheets/${weekStart}/entries`
+      if (!loggedInAs) {
+        return unauthorized(instance)
+      }
+      if (!isMonday(weekStart)) {
+        return invalid('weekStart', 'must be a Monday')
+      }
+      const key = `${loggedInAs.id}|${weekStart}`
+      const existing = myTimesheets.get(key)
+      if (existing && (existing.status === 'SUBMITTED' || existing.status === 'APPROVED')) {
+        return problem(409, {
+          type: '/problems/timesheet-not-editable',
+          title: 'Conflict',
+          detail: `This week is ${existing.status.toLowerCase()} and can't be changed`,
+          instance,
+        })
+      }
+      const { entries } = await request.json()
+      const weekEnd = addDays(weekStart, 6)
+      const onSheet = new Set(existing?.entries.map((e) => e.project.id))
+      const cells = new Set<string>()
+      const perDay = new Map<string, number>()
+      const saved: TimeEntry[] = []
+      for (const [i, e] of entries.entries()) {
+        const at = `entries[${i}].`
+        if (e.workDate < weekStart || e.workDate > weekEnd) {
+          return invalid(`${at}workDate`, `must be inside the week of ${weekStart}`)
+        }
+        const found = projects.find((p) => p.id === e.projectId)
+        if (!found) {
+          return invalid(`${at}projectId`, 'no such project')
+        }
+        if (!found.isActive && !onSheet.has(found.id)) {
+          return invalid(`${at}projectId`, `project ${found.code} is inactive`)
+        }
+        if (!(e.hours > 0 && e.hours <= 24)) {
+          return invalid(`${at}hours`, 'must be more than 0 and at most 24')
+        }
+        if (!Number.isInteger(e.hours * 4)) {
+          return invalid(`${at}hours`, 'must be in quarter hours')
+        }
+        if ((e.description?.length ?? 0) > 500) {
+          return invalid(`${at}description`, 'size must be between 0 and 500')
+        }
+        if (cells.has(`${e.projectId}|${e.workDate}`)) {
+          return invalid(`${at}workDate`, `a second entry for ${found.code} on ${e.workDate}`)
+        }
+        cells.add(`${e.projectId}|${e.workDate}`)
+        perDay.set(e.workDate, (perDay.get(e.workDate) ?? 0) + e.hours)
+        const { id, code, name } = found
+        saved.push({
+          id: nextEntryId++,
+          project: { id, code, name },
+          workDate: e.workDate,
+          hours: e.hours,
+          ...(e.description ? { description: e.description } : {}),
+        })
+      }
+      const tooLong = [...perDay].find(([, hours]) => hours > 24)
+      if (tooLong) {
+        return invalid('entries', `more than 24 hours on ${tooLong[0]}`)
+      }
+      // Ordered by project code, then day, as the contract says
+      saved.sort(
+        (a, b) =>
+          a.project.code.localeCompare(b.project.code) || a.workDate.localeCompare(b.workDate),
+      )
+      myTimesheets.set(key, {
+        ...(existing ?? { id: nextTimesheetId++, weekStart, status: 'DRAFT' }),
+        entries: saved,
+      })
+      return HttpResponse.json(timesheetView(loggedInAs.id, weekStart))
+    },
+  ),
+
   http.get<never, never, PublicHoliday[] | Problem>('*/api/public-holidays', ({ request }) => {
     if (!loggedInAs) {
       return unauthorized('/api/public-holidays')
@@ -381,4 +504,27 @@ export const handlers = [
 /** `?year=` or the current year, as the contract says */
 function yearParam(request: Request): number {
   return Number(new URL(request.url).searchParams.get('year') ?? new Date().getFullYear())
+}
+
+const isMonday = (iso: string) => /^\d{4}-\d{2}-\d{2}$/.test(iso) && weekday(iso) === 0
+
+/** The week as GET returns it: the stored one or an empty draft, plus absences and holidays */
+function timesheetView(userId: number, weekStart: string): Timesheet {
+  const weekEnd = addDays(weekStart, 6)
+  const sheet = myTimesheets.get(`${userId}|${weekStart}`) ?? {
+    weekStart,
+    status: 'DRAFT' as const,
+    entries: [],
+  }
+  const years = new Set([weekStart.slice(0, 4), weekEnd.slice(0, 4)].map(Number))
+  return {
+    ...structuredClone(sheet),
+    totalHours: sheet.entries.reduce((sum, e) => sum + e.hours, 0),
+    absences: requests.filter(
+      (r) => r.status === 'APPROVED' && r.startDate <= weekEnd && r.endDate >= weekStart,
+    ),
+    holidays: [...years]
+      .flatMap((year) => publicHolidays[year] ?? [])
+      .filter((h) => h.date >= weekStart && h.date <= weekEnd),
+  }
 }

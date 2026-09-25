@@ -25,4 +25,10 @@ export const queryKeys = {
     list: ['notifications', 'list'] as const,
     unreadCount: ['notifications', 'unread-count'] as const,
   },
+  projects: (active: boolean) => ['projects', { active }] as const,
+  // My own weeks (FE-6.1). The approver's view of other people's weeks gets its own key (FE-7.1).
+  timesheets: {
+    all: ['timesheets'] as const,
+    week: (weekStart: string) => ['timesheets', weekStart] as const,
+  },
 }
