@@ -18,4 +18,15 @@ public interface AbsenceRequestRepository extends JpaRepository<AbsenceRequest, 
             @Param("from") LocalDate from,
             @Param("to") LocalDate to,
             @Param("statuses") Collection<AbsenceStatus> statuses);
+
+    /**
+     * Every request of a user that overlaps {@code from..to} (inclusive), in any status, with the type and
+     * the approver loaded for the API, ordered by start date (BE-2.3).
+     */
+    @Query("""
+            select r from AbsenceRequest r join fetch r.type left join fetch r.approver
+            where r.user.id = :userId and r.startDate <= :to and r.endDate >= :from
+            order by r.startDate, r.id""")
+    List<AbsenceRequest> findForCalendar(
+            @Param("userId") Long userId, @Param("from") LocalDate from, @Param("to") LocalDate to);
 }
