@@ -161,7 +161,8 @@ export interface paths {
         };
         /**
          * Public holidays of one year
-         * @description Shown in the calendar and used for the working-days preview of the request form (T-3.1).
+         * @description Portugal's national holidays. Shown in the calendar and used for the working-days preview of
+         *     the request form (T-3.1).
          *     The backend's working-days count is the authoritative one (decision 15).
          */
         get: operations["getPublicHolidays"];
@@ -274,7 +275,9 @@ export interface components {
             remainingDays?: number;
         };
         /**
-         * @description Which part of the start or end day is taken
+         * @description Which part of the start or end day is taken. On a multi-day request the first day is FULL or
+         *     AFTERNOON and the last day FULL or MORNING, so there's no gap in the middle. A single day has
+         *     the same part at both ends, and MORNING or AFTERNOON makes it a half day (0.5).
          * @example FULL
          * @enum {string}
          */
@@ -570,7 +573,7 @@ export interface operations {
     getMyAbsenceBalance: {
         parameters: {
             query?: {
-                /** @description Defaults to the current year */
+                /** @description Defaults to the current year in Europe/Lisbon */
                 year?: number;
             };
             header?: never;
@@ -623,7 +626,7 @@ export interface operations {
     getPublicHolidays: {
         parameters: {
             query?: {
-                /** @description Defaults to the current year */
+                /** @description Defaults to the current year in Europe/Lisbon */
                 year?: number;
             };
             header?: never;

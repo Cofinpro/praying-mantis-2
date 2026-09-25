@@ -166,11 +166,11 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 ## 15. Working days exclude weekends and public holidays
 **Status:** Proposed · plan D4
 
-**Decision:** New table `public_holidays(date, name)`. A request's working days leave out weekends and holidays. Morning or afternoon on the start or end day counts as 0.5.
+**Decision:** New table `public_holidays(date, name)`, holding Portugal's national holidays. A request's working days leave out weekends and holidays. Morning or afternoon on the start or end day counts as 0.5: a multi-day request can start in the afternoon and end in the morning, and a single day can be a morning or an afternoon (T-2.1).
 
 **Why:** Without holidays, balances are wrong around Christmas and Easter.
 
-**Open:** If colleagues work in different German states, one holiday list may not be enough. Revisit if needed.
+**Open:** Municipal holidays (e.g. Lisbon's 13 June) aren't in the list. If colleagues work in different cities or countries, one holiday list may not be enough. Revisit if needed.
 
 ## 16. Approver fallback
 **Status:** Proposed · plan D5
