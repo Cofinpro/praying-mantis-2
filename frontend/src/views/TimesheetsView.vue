@@ -15,6 +15,7 @@ import BaseButton from '@/components/BaseButton.vue'
 import BaseDialog from '@/components/BaseDialog.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import EntryDescriptionsDialog from '@/components/timesheets/EntryDescriptionsDialog.vue'
+import SubmitTimesheetDialog from '@/components/timesheets/SubmitTimesheetDialog.vue'
 import TimesheetGrid, { type DayMark } from '@/components/timesheets/TimesheetGrid.vue'
 import { useAbsenceTypes } from '@/absences/queries'
 import { typeColor, typeName } from '@/absences/types'
@@ -32,6 +33,7 @@ import {
   cellKey,
   emptyRow,
   entriesKey,
+  formatHours,
   toEntries,
   toRows,
   validate,
@@ -235,6 +237,15 @@ const saveError = computed(
       : null),
 )
 
+// --- Submitting (FE-6.2) ------------------------------------------------------------------------
+
+const submitting = ref(false)
+const saveFirstId = useId()
+const savedTotal = computed(() => {
+  const total = timesheet.data.value?.totalHours ?? 0
+  return total ? formatHours(total) : '–'
+})
+
 // --- Week navigation and the unsaved-changes guard ----------------------------------------------
 
 function goToWeek(week: string) {
@@ -398,7 +409,7 @@ const rejection = computed(() => {
           read-only.
         </p>
         <div v-if="editable" class="footer__actions">
-          <p v-if="dirty" class="footer__note">Save before submitting</p>
+          <p v-if="dirty" :id="saveFirstId" class="footer__note">Save before submitting</p>
           <BaseButton
             variant="secondary"
             :disabled="!dirty || hasErrors || save.isPending.value"
@@ -406,9 +417,25 @@ const rejection = computed(() => {
           >
             {{ save.isPending.value ? 'Saving…' : 'Save' }}
           </BaseButton>
+          <!-- FE-6.2: only what's saved can be submitted, so unsaved changes disable it -->
+          <BaseButton
+            :disabled="dirty || save.isPending.value"
+            :aria-describedby="dirty ? saveFirstId : undefined"
+            @click="submitting = true"
+          >
+            Submit week
+          </BaseButton>
         </div>
       </footer>
     </template>
+
+    <SubmitTimesheetDialog
+      v-if="submitting && timesheet.data.value"
+      :week-start="weekStart"
+      :title="title"
+      :total-hours="savedTotal"
+      @close="submitting = false"
+    />
 
     <EntryDescriptionsDialog
       v-if="describingRow"

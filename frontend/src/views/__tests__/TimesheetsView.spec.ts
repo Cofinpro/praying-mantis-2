@@ -7,6 +7,7 @@ import { RouterView, createMemoryHistory, createRouter } from 'vue-router'
 import { server } from '@/mocks/node'
 import { mockUser, setMockTimesheet, startMockSession } from '@/mocks/handlers'
 import { timesheets } from '@/mocks/data/timesheets'
+import { findMockUser } from '@/mocks/data/users'
 import { routes } from '@/router'
 import { queryPlugin } from '@/test/query'
 
@@ -358,5 +359,122 @@ describe('TimesheetsView', () => {
     expect(wrapper.find('[role="alert"]').text()).toBe(
       'Some hours weren’t accepted. See the list under the grid.',
     )
+  })
+
+  describe('submitting (FE-6.2)', () => {
+    /** Collects the weeks the page submits, without replacing the mock's handler */
+    function recordSubmits() {
+      const weeks: string[] = []
+      server.use(
+        http.post('*/api/me/timesheets/:weekStart/submit', ({ params }) => {
+          weeks.push(String(params.weekStart))
+        }),
+      )
+      return weeks
+    }
+    const submitButton = (wrapper: Wrapper) =>
+      wrapper.findAll('.footer button').find((b) => b.text() === 'Submit week')!
+    const dialog = (wrapper: Wrapper) => wrapper.find('dialog[open]')
+
+    it('submits the week after confirming, and shows it read-only', async () => {
+      const weeks = recordSubmits()
+      const { wrapper } = await mountPage()
+
+      await submitButton(wrapper).trigger('click')
+      expect(dialog(wrapper).find('h2').text()).toBe('Submit this week?')
+      expect(dialog(wrapper).find('p').text()).toContain('Week 43 · 19–25 Oct 2026, 38 hours.')
+      await dialog(wrapper)
+        .findAll('button')
+        .find((b) => b.text() === 'Submit week')!
+        .trigger('click')
+      await flushPromises()
+
+      expect(weeks).toEqual(['2026-10-19'])
+      expect(dialog(wrapper).exists()).toBe(false)
+      expect(wrapper.find('.badge').text()).toBe('Submitted')
+      expect(wrapper.findAll('input')).toHaveLength(0)
+      expect(submitButton(wrapper)).toBeUndefined()
+      expect(wrapper.find('[role="note"]').text()).toBe(
+        'Submitted on 25 Sept 2026. Alex Admin decides on it next. The week is read-only.',
+      )
+    })
+
+    it('can’t submit with unsaved changes', async () => {
+      const { wrapper } = await mountPage()
+      expect(submitButton(wrapper).attributes('disabled')).toBeUndefined()
+
+      await input(wrapper, 'DKB-APP, Friday 23 Oct').setValue('2')
+
+      const button = submitButton(wrapper)
+      expect(button.attributes('disabled')).toBeDefined()
+      expect(wrapper.find(`#${button.attributes('aria-describedby')}`).text()).toBe(
+        'Save before submitting',
+      )
+
+      await saveButton(wrapper).trigger('click')
+      await flushPromises()
+      expect(submitButton(wrapper).attributes('disabled')).toBeUndefined()
+    })
+
+    it('keeps the week a draft when cancelled', async () => {
+      const weeks = recordSubmits()
+      const { wrapper } = await mountPage()
+
+      await submitButton(wrapper).trigger('click')
+      await buttonByText(wrapper, 'Cancel')!.trigger('click')
+      await flushPromises()
+
+      expect(weeks).toEqual([])
+      expect(dialog(wrapper).exists()).toBe(false)
+      expect(wrapper.find('.badge').text()).toBe('Draft')
+    })
+
+    it('submits a week with no hours, e.g. a week of vacation', async () => {
+      const { wrapper } = await mountPage('/timesheets')
+
+      await submitButton(wrapper).trigger('click')
+      expect(dialog(wrapper).find('p').text()).toContain('Week 39 · 21–27 Sept 2026, no hours.')
+      await dialog(wrapper)
+        .findAll('button')
+        .find((b) => b.text() === 'Submit week')!
+        .trigger('click')
+      await flushPromises()
+
+      expect(wrapper.find('.badge').text()).toBe('Submitted')
+      expect(wrapper.text()).toContain('No hours were recorded this week.')
+    })
+
+    it('resubmits a rejected week, and the old comment goes', async () => {
+      const { wrapper } = await mountPage('/timesheets?week=2026-10-05')
+      expect(wrapper.text()).toContain('Please book Thursday on DKB-CORE')
+
+      await submitButton(wrapper).trigger('click')
+      await dialog(wrapper)
+        .findAll('button')
+        .find((b) => b.text() === 'Submit week')!
+        .trigger('click')
+      await flushPromises()
+
+      expect(wrapper.find('.badge').text()).toBe('Submitted')
+      expect(wrapper.text()).not.toContain('Please book Thursday on DKB-CORE')
+    })
+
+    it('explains when nobody can approve the week', async () => {
+      // The admin has no team lead and there's no other admin (decision 16)
+      startMockSession(findMockUser('alex.admin@cofinpro.pt')!)
+      const { wrapper } = await mountPage()
+
+      await submitButton(wrapper).trigger('click')
+      await dialog(wrapper)
+        .findAll('button')
+        .find((b) => b.text() === 'Submit week')!
+        .trigger('click')
+      await flushPromises()
+
+      expect(dialog(wrapper).find('[role="alert"]').text()).toBe(
+        'Nobody can approve this week yet. Please ask an admin.',
+      )
+      expect(wrapper.find('.badge').text()).toBe('Draft')
+    })
   })
 })

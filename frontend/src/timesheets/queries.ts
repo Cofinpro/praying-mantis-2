@@ -45,3 +45,22 @@ export function useSaveTimesheet() {
     },
   })
 }
+
+/**
+ * DRAFT or REJECTED → SUBMITTED. Like saving, the answer is the whole week, so it replaces the
+ * cached one and the page turns read-only without a refetch.
+ */
+export function useSubmitTimesheet() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (weekStart: string) => api.submitMyTimesheet(weekStart),
+    onSuccess(submitted) {
+      queryClient.setQueryData(queryKeys.timesheets.week(submitted.weekStart), submitted)
+    },
+    onError(error, weekStart) {
+      if (showsStaleData(error)) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.timesheets.week(weekStart) })
+      }
+    },
+  })
+}
