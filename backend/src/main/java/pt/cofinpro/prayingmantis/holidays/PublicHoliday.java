@@ -43,4 +43,10 @@ public class PublicHoliday {
     public String getName() {
         return name;
     }
+
+    /** BE-9.4. Existing absence requests keep their stored working days (decision #15). */
+    public void update(LocalDate date, String name) {
+        this.date = date;
+        this.name = name;
+    }
 }
