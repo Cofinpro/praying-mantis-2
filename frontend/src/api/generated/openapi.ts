@@ -228,6 +228,115 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Projects to book hours on
+         * @description BE-6.1. Ordered by code. `active` defaults to `true`, the projects that can take new hours.
+         *     `active=false` returns the inactive ones only, e.g. to label old entries.
+         */
+        get: operations["getProjects"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/timesheets/{weekStart}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My timesheet for one week
+         * @description BE-6.2. Any week can be opened, past or future. A week that has never been saved comes back as
+         *     an empty `DRAFT` without an `id`: nothing is stored until the first save or submit
+         *     (decision 32). So opening a week has no side effects, and browsing doesn't create rows.
+         *
+         *     Also returns the week's approved absences and public holidays, read-only, so the grid can
+         *     mark those days.
+         *
+         *     **400** on `weekStart` when it isn't a Monday.
+         */
+        get: operations["getMyTimesheet"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/timesheets/{weekStart}/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Replace all entries of my week
+         * @description BE-6.3. The body is the whole grid: every entry of the week. Entries missing from it are
+         *     deleted, so an empty list clears the week. All of it happens in one transaction. Creates the
+         *     timesheet on the first save.
+         *
+         *     **400** (`errors[].field` is e.g. `entries[2].hours`):
+         *     - `weekStart` isn't a Monday
+         *     - a `workDate` outside the week
+         *     - an unknown project, or an inactive one that isn't already on this timesheet
+         *     - `hours` not in (0, 24], or not in quarter hours
+         *     - two entries for the same project and day (the grid has one cell each)
+         *     - a day with more than 24 hours in total (field `entries`)
+         *     - a `description` over 500 characters
+         *
+         *     **409** `/problems/timesheet-not-editable`: the week is `SUBMITTED` or `APPROVED`. A
+         *     `REJECTED` week can be edited again.
+         */
+        put: operations["saveMyTimesheetEntries"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/timesheets/{weekStart}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit my week for approval
+         * @description BE-6.4. `DRAFT` or `REJECTED` → `SUBMITTED`. Sets `submittedAt` and the approver, with the same
+         *     rule as for absences (decision 16), and notifies them (`TIMESHEET_SUBMITTED`, T-4.1). A
+         *     week with no hours can be submitted too, e.g. a week spent on vacation. The previous
+         *     rejection's `decisionComment` is cleared.
+         *
+         *     **409**:
+         *     - `/problems/timesheet-not-editable`: it's already `SUBMITTED` or `APPROVED`
+         *     - `/problems/no-approver`: the sole admin without a team lead (decision 16)
+         */
+        post: operations["submitMyTimesheet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -360,6 +469,122 @@ export interface components {
             endPart: components["schemas"]["DayPart"];
             /** @example Long weekend in Lisbon */
             reason?: string;
+        };
+        Project: {
+            /**
+             * Format: int64
+             * @example 3
+             */
+            id: number;
+            /** @example DKB-CORE */
+            code: string;
+            /** @example DKB core banking */
+            name: string;
+            /** @description Absent for internal projects */
+            client?: components["schemas"]["Client"];
+            /** @example true */
+            isBillable: boolean;
+            /**
+             * @description Only active projects take new hours
+             * @example true
+             */
+            isActive: boolean;
+        };
+        /**
+         * @description DRAFT → SUBMITTED → APPROVED or REJECTED; REJECTED → SUBMITTED again after edits
+         * @example DRAFT
+         * @enum {string}
+         */
+        TimesheetStatus: "DRAFT" | "SUBMITTED" | "APPROVED" | "REJECTED";
+        Timesheet: {
+            /**
+             * Format: int64
+             * @description Absent for a week that has never been saved (decision 32)
+             * @example 12
+             */
+            id?: number;
+            /**
+             * Format: date
+             * @example 2026-09-28
+             */
+            weekStart: string;
+            status: components["schemas"]["TimesheetStatus"];
+            /** @description Set on submit */
+            approver?: components["schemas"]["UserRef"];
+            /**
+             * Format: date-time
+             * @example 2026-10-02T16:30:00Z
+             */
+            submittedAt?: string;
+            /**
+             * Format: date-time
+             * @example 2026-10-05T09:00:00Z
+             */
+            decidedAt?: string;
+            /**
+             * @description The approver's comment, e.g. why the week was rejected
+             * @example Please book Thursday on DKB-CORE
+             */
+            decisionComment?: string;
+            /** @description Ordered by project code, then day */
+            entries: components["schemas"]["TimeEntry"][];
+            /** @example 38.5 */
+            totalHours: number;
+            /** @description The user's approved absences that overlap the week, read-only */
+            absences: components["schemas"]["AbsenceRequest"][];
+            /** @description Public holidays in the week */
+            holidays: components["schemas"]["PublicHoliday"][];
+        };
+        TimeEntry: {
+            /**
+             * Format: int64
+             * @example 101
+             */
+            id: number;
+            project: components["schemas"]["ProjectRef"];
+            /**
+             * Format: date
+             * @example 2026-09-29
+             */
+            workDate: string;
+            /** @example 7.5 */
+            hours: number;
+            /** @example Sprint planning */
+            description?: string;
+        };
+        /** @description Enough of a project to label an entry, even an inactive one */
+        ProjectRef: {
+            /**
+             * Format: int64
+             * @example 3
+             */
+            id: number;
+            /** @example DKB-CORE */
+            code: string;
+            /** @example DKB core banking */
+            name: string;
+        };
+        TimesheetEntries: {
+            entries: components["schemas"]["TimeEntryInput"][];
+        };
+        TimeEntryInput: {
+            /**
+             * Format: int64
+             * @example 3
+             */
+            projectId: number;
+            /**
+             * Format: date
+             * @example 2026-09-29
+             */
+            workDate: string;
+            /**
+             * @description More than 0, at most 24, in quarter hours
+             * @example 7.5
+             */
+            hours: number;
+            /** @example Sprint planning */
+            description?: string;
         };
         UserRef: {
             /**
@@ -542,7 +767,10 @@ export interface components {
             };
         };
     };
-    parameters: never;
+    parameters: {
+        /** @description The Monday of the week */
+        WeekStart: string;
+    };
     requestBodies: never;
     headers: never;
     pathItems: never;
@@ -814,6 +1042,118 @@ export interface operations {
             };
             400: components["responses"]["ValidationProblem"];
             401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    getProjects: {
+        parameters: {
+            query?: {
+                /** @description Defaults to `true` */
+                active?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The projects */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Project"][];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    getMyTimesheet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The Monday of the week */
+                weekStart: components["parameters"]["WeekStart"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The week */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Timesheet"];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    saveMyTimesheetEntries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The Monday of the week */
+                weekStart: components["parameters"]["WeekStart"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TimesheetEntries"];
+            };
+        };
+        responses: {
+            /** @description The saved week */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Timesheet"];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["CsrfForbidden"];
+            409: components["responses"]["Conflict"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    submitMyTimesheet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The Monday of the week */
+                weekStart: components["parameters"]["WeekStart"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The submitted week */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Timesheet"];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["CsrfForbidden"];
+            409: components["responses"]["Conflict"];
             default: components["responses"]["Problem"];
         };
     };
