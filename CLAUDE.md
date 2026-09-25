@@ -93,7 +93,7 @@ What exists today:
 - **Backend:**
   - DB access goes through Spring Data JPA
   - Business rules live in @Service classes, not in @RestControllers
-  - Every schema change needs a Flyway migration (src/main/resources/db/migration, no ddl-auto=update)
+  - Every schema change needs a Liquibase changeset (src/main/resources/db/changelog, no ddl-auto=update)
   - Enums are stored as VARCHAR (@Enumerated(EnumType.STRING))
   - Controllers implement the interfaces generated from openapi.yaml (openapi-generator-maven-plugin)
   - Tests use JUnit 5 + @SpringBootTest against a real Postgres test database (Testcontainers)

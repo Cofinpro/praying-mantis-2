@@ -20,6 +20,12 @@ What surprised us or cost us time, what we now do instead. Link the PR, story or
 
 ## Spring Boot
 
+### Boot 4 splits features into their own starters
+Spring Boot 4 has a starter per technology, and a test starter for each: `spring-boot-starter-liquibase`, `spring-boot-starter-webmvc-test`, `spring-boot-starter-security-test`. Snippets written for Boot 3 (plain `liquibase-core`, `spring-boot-starter-test`) still compile but miss the auto-configuration. Check the Boot 4 starter name first. (BE-0.1)
+
+### Security also authorizes the /error forward
+Since Spring Security 6 the filter chain also runs on the ERROR dispatch. With `anyRequest().authenticated()`, a 404/500 on a public endpoint reaches an anonymous caller as 401. Permit `DispatcherType.ERROR`. (BE-0.1 review)
+
 ## Postgres
 
 ## Liquibase
