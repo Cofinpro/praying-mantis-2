@@ -14,11 +14,15 @@ import type {
   NotificationPage,
   Problem,
   Project,
+  ProjectHours,
   PublicHoliday,
   TeamAbsenceRequest,
+  TeamTimesheet,
   TimeEntry,
   Timesheet,
+  TimesheetDecision,
   TimesheetEntries,
+  TimesheetStatus,
   UnreadCount,
 } from '@/api/client'
 import { workingDays } from '@/absences/workingDays'
@@ -26,7 +30,7 @@ import { addDays, today, weekday } from '@/format/dates'
 import { absenceRequests, absenceTypes, balances, publicHolidays } from './data/absences'
 import { mockNotifications } from './data/notifications'
 import { teamAbsenceRequests } from './data/team'
-import { projects, timesheets, type StoredTimesheet } from './data/timesheets'
+import { projects, teamTimesheets, timesheets, type StoredTimesheet } from './data/timesheets'
 import { findMockUser, mockUsers } from './data/users'
 
 // Mock backend that follows api/openapi.yaml (decision #4). Used by `pnpm dev:mock` and by Vitest.
@@ -58,10 +62,18 @@ let teamRequests: TeamAbsenceRequest[] = structuredClone(teamAbsenceRequests)
 let notifications: AppNotification[] | null = null
 const myNotifications = () => (notifications ??= mockNotifications())
 
-// Timesheets per user and week (T-6.1). Only Ana has stored weeks; the rest are lazy drafts.
+// Timesheets per user and week (T-6.1), keyed `userId|weekStart`: Ana's own weeks and the ones
+// her team submitted to her (T-7.1). Every other week is a lazy draft.
 const ANA_ID = 2
 const seedTimesheets = () =>
-  new Map(Object.values(timesheets).map((t) => [`${ANA_ID}|${t.weekStart}`, structuredClone(t)]))
+  new Map([
+    ...Object.values(timesheets).map(
+      (t) => [`${ANA_ID}|${t.weekStart}`, structuredClone(t)] as const,
+    ),
+    ...teamTimesheets.map(
+      ({ userId, sheet }) => [`${userId}|${sheet.weekStart}`, structuredClone(sheet)] as const,
+    ),
+  ])
 let myTimesheets: Map<string, StoredTimesheet> = seedTimesheets()
 let nextTimesheetId = 100
 let nextEntryId = 1000
@@ -541,6 +553,83 @@ export const handlers = [
     },
   ),
 
+  // T-7.1: the weeks whose approver is the caller, so anyone else gets an empty list
+  http.get<never, never, TeamTimesheet[] | Problem>('*/api/team/timesheets', ({ request }) => {
+    if (!loggedInAs) {
+      return unauthorized('/api/team/timesheets')
+    }
+    const status = (new URL(request.url).searchParams.get('status') ??
+      'SUBMITTED') as TimesheetStatus
+    const me = loggedInAs.id
+    const mine = [...myTimesheets.entries()]
+      .filter(([, t]) => t.approver?.id === me && t.status === status)
+      .map(([key, t]) => ({ userId: Number(key.split('|')[0]), t }))
+      // Submitted ones oldest week first (they waited longest), the others newest first
+      .sort((a, b) => {
+        const order = a.t.weekStart.localeCompare(b.t.weekStart) || a.t.id! - b.t.id!
+        return status === 'SUBMITTED' ? order : -order
+      })
+    return HttpResponse.json(mine.map(({ userId, t }) => teamTimesheetView(userId, t.weekStart)))
+  }),
+
+  // BE-7.2: the same order of checks as the backend: 400 (reject without comment), 404, 403, 409
+  http.post<{ id: string; decision: string }, TimesheetDecision | null, Timesheet | Problem>(
+    '*/api/team/timesheets/:id/:decision',
+    async ({ params, request }) => {
+      const instance = `/api/team/timesheets/${params.id}/${params.decision}`
+      if (!loggedInAs) {
+        return unauthorized(instance)
+      }
+      if (params.decision !== 'approve' && params.decision !== 'reject') {
+        return problem(404, { type: 'about:blank', title: 'Not Found', instance })
+      }
+      // The approve body is optional
+      const comment = ((await request.json().catch(() => null)) ?? {}).comment?.trim()
+      if (params.decision === 'reject' && !comment) {
+        return invalid('comment', 'must not be blank')
+      }
+      if ((comment?.length ?? 0) > 500) {
+        return invalid('comment', 'size must be between 0 and 500')
+      }
+      const found = [...myTimesheets.entries()].find(([, t]) => t.id === Number(params.id))
+      if (!found) {
+        return problem(404, {
+          type: 'about:blank',
+          title: 'Not Found',
+          detail: 'Timesheet not found',
+          instance,
+        })
+      }
+      const [key, sheet] = found
+      const userId = Number(key.split('|')[0])
+      const mayDecide = sheet.approver?.id === loggedInAs.id || loggedInAs.isAdmin
+      if (userId === loggedInAs.id || !mayDecide) {
+        return problem(403, {
+          type: 'about:blank',
+          title: 'Forbidden',
+          detail: 'You may not decide this timesheet',
+          instance,
+        })
+      }
+      if (sheet.status !== 'SUBMITTED') {
+        return problem(409, {
+          type: '/problems/timesheet-not-submitted',
+          title: 'Conflict',
+          detail: `Only submitted timesheets can be decided; this one is ${sheet.status.toLowerCase()}`,
+          instance,
+        })
+      }
+      sheet.status = params.decision === 'approve' ? 'APPROVED' : 'REJECTED'
+      sheet.decidedAt = new Date().toISOString()
+      if (comment) {
+        sheet.decisionComment = comment
+      } else {
+        delete sheet.decisionComment
+      }
+      return HttpResponse.json(timesheetView(userId, sheet.weekStart))
+    },
+  ),
+
   http.get<never, never, PublicHoliday[] | Problem>('*/api/public-holidays', ({ request }) => {
     if (!loggedInAs) {
       return unauthorized('/api/public-holidays')
@@ -578,11 +667,31 @@ function timesheetView(userId: number, weekStart: string): Timesheet {
   return {
     ...structuredClone(sheet),
     totalHours: sheet.entries.reduce((sum, e) => sum + e.hours, 0),
-    absences: requests.filter(
-      (r) => r.status === 'APPROVED' && r.startDate <= weekEnd && r.endDate >= weekStart,
-    ),
+    // The mock only has Ana's absences
+    absences:
+      userId === ANA_ID
+        ? requests.filter(
+            (r) => r.status === 'APPROVED' && r.startDate <= weekEnd && r.endDate >= weekStart,
+          )
+        : [],
     holidays: [...years]
       .flatMap((year) => publicHolidays[year] ?? [])
       .filter((h) => h.date >= weekStart && h.date <= weekEnd),
+  }
+}
+
+/** A week as its approver sees it (T-7.1): the whole week plus hours per project, by code */
+function teamTimesheetView(userId: number, weekStart: string): TeamTimesheet {
+  const timesheet = timesheetView(userId, weekStart)
+  const user = mockUsers.find((u) => u.id === userId)!
+  const byProject = new Map<number, ProjectHours>()
+  for (const e of timesheet.entries) {
+    const hours = (byProject.get(e.project.id)?.hours ?? 0) + e.hours
+    byProject.set(e.project.id, { project: e.project, hours })
+  }
+  return {
+    timesheet,
+    user: { id: user.id, name: user.name },
+    projectHours: [...byProject.values()],
   }
 }

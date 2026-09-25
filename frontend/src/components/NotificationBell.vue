@@ -52,13 +52,15 @@ watch(count, () => {
   }
 })
 
-// More unread than at the last poll: someone requested, decided or cancelled an absence. Refresh
-// what the pages show, so the Approvals list and the calendar update without a reload (workflow
-// step 7). Only active queries refetch; the rest are just marked stale. Not on the first load.
+// More unread than at the last poll: someone requested, decided or cancelled an absence, or
+// submitted or decided a week. Refresh what the pages show, so both Approvals tabs (['team']
+// covers them), the calendar and my week's status update without a reload (workflow step 7).
+// Only active queries refetch; the rest are just marked stale. Not on the first load.
 watch(unreadCount, (now, before) => {
   if (now !== undefined && before !== undefined && now > before) {
     void queryClient.invalidateQueries({ queryKey: queryKeys.team.all })
     void queryClient.invalidateQueries({ queryKey: queryKeys.absences.all })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.timesheets.all })
   }
 })
 

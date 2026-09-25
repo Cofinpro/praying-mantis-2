@@ -2,47 +2,50 @@
 import { computed, ref, useId, useTemplateRef } from 'vue'
 import { TriangleAlert } from 'lucide-vue-next'
 
-import type { AbsenceType, TeamAbsenceRequest } from '@/api/client'
 import { fieldErrors, problemMessage } from '@/api/problems'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseDialog from '@/components/BaseDialog.vue'
 import BaseInput from '@/components/BaseInput.vue'
 import { APPROVAL_MESSAGES } from '@/approvals/messages'
-import { useDecideAbsenceRequest } from '@/approvals/queries'
-import { typeName } from '@/absences/types'
 
-// FE-5.1, the reject popover in Figma frame "04 Approvals". It's a modal <dialog> (BaseDialog)
-// instead of a popover anchored to the row: focus trap, Esc and the inert page come for free,
-// and there's no positioning code. The comment is required (decision 31).
-const { item, types } = defineProps<{
-  item: TeamAbsenceRequest
-  types: AbsenceType[] | undefined
+// FE-5.1, the reject popover in Figma frame "04 Approvals", for absence requests and (FE-7.1)
+// weeks alike. It's a modal <dialog> (BaseDialog) instead of a popover anchored to the row: focus
+// trap, Esc and the inert page come for free, and there's no positioning code. The comment is
+// required (decision 31). The parent mounts it only while open, so every rejection starts empty.
+const { title, confirmLabel, reject } = defineProps<{
+  /** "Reject Diogo’s training request?" */
+  title: string
+  /** "Reject request", "Reject week" */
+  confirmLabel: string
+  /** Sends the rejection; the dialog closes when it resolves and shows why when it throws */
+  reject: (comment: string) => Promise<unknown>
 }>()
 const emit = defineEmits<{ close: [] }>()
 
 const dialog = useTemplateRef<InstanceType<typeof BaseDialog>>('dialog')
 const titleId = useId()
 
-const title = computed(() => {
-  const firstName = item.requester.name.trim().split(/\s+/)[0]
-  return `Reject ${firstName}’s ${typeName(item.request.type, types).toLowerCase()} request?`
-})
-
 const comment = ref('')
 /** Set on submit, so the field isn't red before the user tried */
 const blank = ref(false)
+const isPending = ref(false)
+const error = ref<unknown>(null)
 
-const { mutate, isPending, error } = useDecideAbsenceRequest()
-
-function submit() {
+async function submit() {
   blank.value = comment.value.trim() === ''
-  if (blank.value) {
+  if (blank.value || isPending.value) {
     return
   }
-  mutate(
-    { item, decision: 'reject', comment: comment.value.trim() },
-    { onSuccess: () => dialog.value?.close() },
-  )
+  isPending.value = true
+  error.value = null
+  try {
+    await reject(comment.value.trim())
+    dialog.value?.close()
+  } catch (e) {
+    error.value = e
+  } finally {
+    isPending.value = false
+  }
 }
 
 const commentError = computed(() =>
@@ -73,7 +76,7 @@ const banner = computed(() => problemMessage(error.value, APPROVAL_MESSAGES))
       <footer class="reject__footer">
         <BaseButton variant="ghost" size="small" @click="dialog?.close()">Cancel</BaseButton>
         <BaseButton type="submit" variant="dark" size="small" :disabled="isPending">
-          {{ isPending ? 'Rejecting…' : 'Reject request' }}
+          {{ isPending ? 'Rejecting…' : confirmLabel }}
         </BaseButton>
       </footer>
     </form>

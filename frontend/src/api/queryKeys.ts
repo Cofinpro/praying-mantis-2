@@ -1,4 +1,4 @@
-import type { AbsenceStatus } from './client'
+import type { AbsenceStatus, TimesheetStatus } from './client'
 
 // All TanStack Query keys in one place, so the code that writes a cache entry and the code that
 // reads it can't drift apart (a typo would silently mean an extra request instead of a cache hit).
@@ -13,10 +13,12 @@ export const queryKeys = {
     allRequests: ['absences', 'requests'] as const,
     requests: (from: string, to: string) => ['absences', 'requests', from, to] as const,
   },
-  // Requests I decide on as approver (FE-5.1). Separate from `absences`, which are my own.
+  // What I decide on as approver: absence requests (FE-5.1) and weeks (FE-7.1). Separate from
+  // `absences` and `timesheets`, which are my own; invalidating ['team'] refreshes both tabs.
   team: {
     all: ['team'] as const,
     absenceRequests: (status: AbsenceStatus) => ['team', 'absence-requests', status] as const,
+    timesheets: (status: TimesheetStatus) => ['team', 'timesheets', status] as const,
   },
   publicHolidays: (year: number) => ['public-holidays', year] as const,
   // Invalidating ['notifications'] after marking something read refreshes the badge and the list
@@ -26,7 +28,7 @@ export const queryKeys = {
     unreadCount: ['notifications', 'unread-count'] as const,
   },
   projects: (active: boolean) => ['projects', { active }] as const,
-  // My own weeks (FE-6.1). The approver's view of other people's weeks gets its own key (FE-7.1).
+  // My own weeks (FE-6.1). The approver's view of other people's weeks is under `team`.
   timesheets: {
     all: ['timesheets'] as const,
     week: (weekStart: string) => ['timesheets', weekStart] as const,

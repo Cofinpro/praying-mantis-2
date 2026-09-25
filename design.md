@@ -45,10 +45,16 @@ States and choices the code has that Figma doesn't show yet. Add them to Figma w
 - **04 Approvals (FE-5.1):**
   - The reject comment opens in a narrow `BaseDialog` (460px, no title row, 16px bold heading) instead of a popover anchored to the row: the native modal gives focus trap, Esc and an inert page without positioning code. Same copy and buttons (ghost "Cancel", dark "Reject request").
   - The person cell shows avatar and name only. "Level · Client" needs the requester's level and client, which `TeamAbsenceRequest.requester` (a `UserRef`) doesn't have yet (asked on #39).
-  - The Timesheets tab is shown disabled, without a count, until FE-7.1.
+  - Tabs are real ARIA tabs (arrow keys, Home, End) and the selected one is in the URL: `?tab=timesheets` (the TIMESHEET_SUBMITTED notification links there). The inactive tab's count is grey on muted, the active one white on primary, as in the frame.
   - Balance: "–" for types without a balance (only VACATION has one); the "after" number turns danger red when the request no longer fits (approving it answers a 409).
   - States: loading ("Loading requests…"), empty ("Nothing to approve right now.", also what non-team-leads see), load error with "Try again", and a danger banner above the table when an approval fails. Reject errors show inside the dialog (banner, or under the field for a 400 on `comment`).
   - Avatars cycle through primary, training, info and success-ink by user id.
+
+- **04 Approvals, Timesheets tab (FE-7.1):** the frame only shows the Absences tab, so this tab reuses its table, states and reject dialog:
+  - Columns: a 32px round chevron button (`aria-expanded`, turns 180° when open), person (avatar and name), week ("Week 38 · 14–20 Sept"), total ("40 h", semibold), projects ("DKB-CORE 32 · TRAINING 8", muted, cut with an ellipsis), then small Reject (secondary) and Approve (primary), oldest week first.
+  - The chevron opens a row under it, on surface-alt, with the read-only week grid of "05 Timesheets" (`TimesheetGrid` with `read-only`: hours as text, absence and holiday chips, descriptions as a list). Several rows can be open.
+  - The reject dialog says "Reject Diogo’s week 38?" and "Reject week"; the comment is required.
+  - States: "Loading timesheets…", empty "No timesheets to approve right now.", load error with "Try again", the danger banner "Couldn’t approve Diogo Pereira’s week 38. …" above the table. Footnote: "The approver is the person’s team lead. A rejected week goes back to them to correct."
 
 - **05 Timesheets (FE-6.1):**
   - **Descriptions per entry** (the contract's `TimeEntry.description`): a message icon button in each row (between the project and Monday, in its own cell) opens a `BaseDialog` (520px) "Descriptions · DKB-CORE" with one text field per day that has hours ("Monday 19 Oct · 6 h", 500 characters max). Secondary "Cancel", primary "Apply"; Apply updates the grid and the week's Save sends it. The icon turns primary with a count when the row has descriptions. Read-only weeks show them as a list with "Close".

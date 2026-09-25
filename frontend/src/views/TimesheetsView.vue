@@ -16,9 +16,8 @@ import BaseDialog from '@/components/BaseDialog.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import EntryDescriptionsDialog from '@/components/timesheets/EntryDescriptionsDialog.vue'
 import SubmitTimesheetDialog from '@/components/timesheets/SubmitTimesheetDialog.vue'
-import TimesheetGrid, { type DayMark } from '@/components/timesheets/TimesheetGrid.vue'
+import TimesheetGrid from '@/components/timesheets/TimesheetGrid.vue'
 import { useAbsenceTypes } from '@/absences/queries'
-import { typeColor, typeName } from '@/absences/types'
 import {
   addDays,
   formatInstantDate,
@@ -26,7 +25,6 @@ import {
   isIsoDate,
   isoWeek,
   today,
-  weekday,
   weekStartOf,
 } from '@/format/dates'
 import {
@@ -40,6 +38,7 @@ import {
   weekDays,
   type GridRow,
 } from '@/timesheets/grid'
+import { dayMarks } from '@/timesheets/marks'
 import { useActiveProjects, useMyTimesheet, useSaveTimesheet } from '@/timesheets/queries'
 
 // FE-6.1, Figma frame "05 Timesheets": my hours for one week, per project and day.
@@ -159,48 +158,7 @@ function onApplyDescriptions(descriptions: Record<string, string>) {
 
 // --- Header chips: approved absences and public holidays (from the GET, decision 32) --------------
 
-const marks = computed(() => {
-  const sheet = timesheet.data.value
-  const result: Record<string, DayMark[]> = {}
-  if (!sheet) {
-    return result
-  }
-  for (const day of days.value) {
-    const list: DayMark[] = []
-    for (const absence of sheet.absences) {
-      // Weekends aren't absence days (decision 15), even inside a Friday-to-Monday range
-      if (
-        absence.status !== 'APPROVED' ||
-        weekday(day) >= 5 ||
-        day < absence.startDate ||
-        day > absence.endDate
-      ) {
-        continue
-      }
-      const name = typeName(absence.type, types.value)
-      const half =
-        (day === absence.startDate && absence.startPart !== 'FULL') ||
-        (day === absence.endDate && absence.endPart !== 'FULL')
-      const { solid, soft } = typeColor(absence.type)
-      list.push({
-        label: half ? `${name} ½` : name,
-        title: `${name}${half ? ', half day' : ''} (approved absence)`,
-        color: solid,
-        background: soft,
-      })
-    }
-    for (const holiday of sheet.holidays.filter((h) => h.date === day)) {
-      list.push({
-        label: holiday.name,
-        title: `${holiday.name} (public holiday)`,
-        color: 'var(--color-muted)',
-        background: 'var(--color-grey)',
-      })
-    }
-    result[day] = list
-  }
-  return result
-})
+const marks = computed(() => dayMarks(timesheet.data.value, days.value, types.value))
 
 // --- Saving ---------------------------------------------------------------------------------------
 
