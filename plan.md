@@ -152,7 +152,7 @@ All routes under `/api`. Errors: 400 validation, 401 not logged in, 403 not allo
 As the team, we want one agreed local setup so that everyone can run the whole stack in minutes.
 - `docker-compose.yml` with Postgres for local dev
 - README: how to start BE, FE, DB
-- Branch/PR rules written down (story branch, 1 review, green build)
+- Branch/PR rules written down (story branch, green build; no approval needed to merge, D25)
 - `decisions.md` and `learnings.md` created with D1–D11 reviewed
 
 **BE-0.1 Spring Boot skeleton with Postgres and Liquibase** · `backend` · M

@@ -32,6 +32,7 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 | 22 | Date and time format | Proposed |
 | 23 | Schema migrations with Liquibase | Accepted |
 | 24 | The Figma file is the UI source of truth | Accepted |
+| 25 | PRs merge without waiting for an approval | Accepted |
 | 25 | Frontend lint, format and test tooling | Accepted |
 | 26 | Frontend API client with openapi-fetch, committed generated types | Accepted |
 
@@ -53,7 +54,7 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 
 **Why:** Once the contract is merged, BE and FE can work in parallel and meet at a known interface.
 
-**Consequences:** A contract change needs a PR that both devs review.
+**Consequences:** A contract change needs a PR that both devs review. *Changed by #25: both devs agree the contract in its `together` story; the PR itself no longer waits for an approval.*
 
 ## 3. Generated code on both sides of the contract
 **Status:** Accepted
@@ -295,3 +296,18 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 **Why:** Paths, parameters and bodies are checked against the contract at compile time, with no runtime code generated. Committing the types means `pnpm install && pnpm dev` works without a generate step, and a contract change shows up in the PR diff.
 
 **Consequences:** After changing `api/openapi.yaml`, run `pnpm gen:api` and commit the result. CI (`.github/workflows/frontend.yml`, FE-0.3) runs `pnpm gen:api` and fails if `src/api/generated/` changed.
+
+## 25. PRs merge without waiting for an approval
+**Status:** Accepted
+
+**Decision:**
+- Every change still goes through a PR with a green build and the checklist in `CONTRIBUTING.md`. But the author merges it without waiting for a code-owner approval.
+- Human reviews are optional. Ask a code owner when you want one; a review can also happen after the merge, with fixes in a follow-up PR.
+- Contract changes are still agreed by both devs, in their `together` story (#2).
+
+**Alternatives considered:** 1 code-owner approval before merge (the original PR policy from T-0.1).
+
+**Why:** The team chose not to block merges on an approval (2026-09-25). GitHub couldn't enforce the old rule on this private repo anyway: branch protection needs a paid plan (GitHub Pro/Team).
+
+**Consequences:** Reviews happen by asking, not by default, so it's on each author to ask for one on risky changes. The AI mentor review (`/review-pr`) stays in the checklist.
+

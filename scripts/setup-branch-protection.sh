@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Applies the PR policy from CONTRIBUTING.md to a GitHub repo.
+# Applies the PR policy from CONTRIBUTING.md to a GitHub repo: PRs only, green checks, no
+# required approval (decisions.md D25). Branch protection on a private repo needs GitHub Pro/Team.
 # Usage: ./scripts/setup-branch-protection.sh <owner>/<repo>
 # Requires: gh CLI authenticated with admin rights on the repo.
 set -euo pipefail
@@ -21,16 +22,16 @@ gh api -X PUT "repos/$REPO/branches/main/protection" --input - >/dev/null <<'JSO
   "required_status_checks": { "strict": true, "contexts": ["backend", "frontend"] },
   "enforce_admins": false,
   "required_pull_request_reviews": {
-    "required_approving_review_count": 1,
-    "require_code_owner_reviews": true,
-    "dismiss_stale_reviews": true,
-    "require_last_push_approval": true
+    "required_approving_review_count": 0,
+    "require_code_owner_reviews": false,
+    "dismiss_stale_reviews": false,
+    "require_last_push_approval": false
   },
-  "required_conversation_resolution": true,
+  "required_conversation_resolution": false,
   "restrictions": null,
   "allow_force_pushes": false,
   "allow_deletions": false
 }
 JSON
 
-echo "Done. Required checks: backend (BE-0.3), frontend (FE-0.3)."
+echo "Done. Every change needs a PR with green checks (backend, frontend); no approval needed (D25)."

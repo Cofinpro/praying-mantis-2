@@ -1,6 +1,6 @@
 # Contributing: Pull Request Policy
 
-Every change to `main` goes through a pull request (PR). This policy implements the "Branch/PR rules" item of **T-0.1** in `plan.md`: story branch, 1 review, green build. Architecture choices live in `decisions.md`, and this document refers to them as D1, D2, ...
+Every change to `main` goes through a pull request (PR). This policy implements the "Branch/PR rules" item of **T-0.1** in `plan.md`: story branch and a green build. A review is welcome, but merging doesn't wait for an approval (D25). Architecture choices live in `decisions.md`, and this document refers to them as D1, D2, ...
 
 ## 1. Branches
 
@@ -31,17 +31,17 @@ Every change to `main` goes through a pull request (PR). This policy implements 
 
 ## 4. Review process
 
-| Changed path    | AI reviewer                         | Human approval needed                           |
+| Changed path    | AI reviewer                         | Who to ask for a human review (optional)        |
 |-----------------|-------------------------------------|-------------------------------------------------|
 | `backend/**`    | `be-specialist`                     | BE code owner                                   |
 | `frontend/**`   | `fe-specialist`                     | FE code owner                                   |
-| `api/**`        | both                                | **both** BE and FE (D2)                         |
+| `api/**`        | both                                | both BE and FE; the contract itself is agreed together in its `T` story (D2) |
 | more than one   | each matching reviewer              | each matching owner                             |
 
 1. **The author runs the AI review locally** in Claude Code from the repo: `/review-pr` shows the review in the chat, and `/review-pr --post` also posts it as a comment on the PR. It runs the matching reviewer(s) from the table above, using your own Claude login, with no API key or GitHub Action. Run it again after significant changes.
 2. The author must address every 🔴 **Blocker** and 🟠 **Major** finding, either by fixing it or by replying with a justification.
-3. **At least 1 human approval** from the relevant code owner is required. Contract changes need both devs.
-4. Reviewers should respond within **1 business day**.
+3. **No approval is needed to merge** (D25). The author merges once the build is green and the checklist in section 5 is done. Ask a code owner for a review when you want a second pair of eyes; they can also review after the merge, and fixes go in a follow-up PR.
+4. When someone asks you for a review, respond within **1 business day**.
 5. The AI review supports human review. It does not replace it.
 6. **This is a learning project.** The AI reviewers act as mentors: each finding explains the framework concept behind it, and 📚 **Learning** notes point out useful patterns even when nothing is wrong. Ask follow-up questions in the thread. Each review ends with suggested `learnings.md` entries. Add the useful ones at the demo and reflect step.
 
@@ -53,16 +53,14 @@ Every change to `main` goes through a pull request (PR). This policy implements 
 - 💬 **Nit / Question:** optional. This also covers deviations from a *Proposed* decision.
 - 📚 **Learning:** no action needed. A lesson about the framework.
 
-## 5. Merge requirements (branch protection enforces approvals, conversations and, once CI exists, the build; the AI review is by convention)
+## 5. Merge requirements (the author checks them; nothing waits for an approval, D25)
 
 - [ ] CI green: `./mvnw verify` (including Testcontainers) and `pnpm format:check && pnpm lint && pnpm test && pnpm build`, per BE-0.3 and FE-0.3, with generated code up to date with `openapi.yaml`
 - [ ] Tests included for new logic (D10)
 - [ ] FE changes match their Figma frame, with the frame linked and a screenshot in the PR (D24)
 - [ ] AI review posted on the PR (`/review-pr --post`), and 🔴/🟠 findings addressed
-- [ ] ≥ 1 approval from a code owner (both BE and FE for `api/**`)
 - [ ] All conversations resolved
 - [ ] Branch up to date with `main`
-- [ ] Stale approvals dismissed on new commits
 
 **Merge strategy:** squash merge only. The PR title becomes the commit message. The branch is deleted automatically after merging.
 
