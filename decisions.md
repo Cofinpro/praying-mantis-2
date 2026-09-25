@@ -176,6 +176,8 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 
 **Decision:** The approver is the user's team lead. A user without a team lead has their requests go to the admins. A team lead's own requests go to *their* team lead. The same rule applies to timesheets.
 
+**Refined in BE-1.3 (to confirm together, since #16 is Proposed):** `approver_id` holds one user, so "the admins" means one of them: the first admin by id who isn't the requester. Who may *decide*: the stored approver, or any admin, but **never the requester**, not even an admin (`Permissions.requireApproverOrAdmin`). The only user without an approver is the sole admin who has no team lead; creating their request is rejected with 409 until they get a team lead or a second admin exists (BE-3.2, BE-6.4). `Permissions.approverFor` implements the choice.
+
 **Why:** No request or timesheet can get stuck without an approver.
 
 ## 17. Notifications by polling

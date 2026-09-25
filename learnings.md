@@ -52,6 +52,12 @@ use Node APIs. `pnpm build` runs it first, so a type error in a test fails the b
 
 ## Spring Boot
 
+### A throwing `@Transactional` helper can roll back its caller
+With the default `REQUIRED` propagation, a helper's `@Transactional` joins the caller's transaction. A `RuntimeException` leaving the helper's proxy marks the *whole* shared transaction rollback-only, even if the caller catches it, and the commit then fails with `UnexpectedRollbackException`. `Permissions` has no `@Transactional`: each check is one `existsBy...` query. (BE-1.3 review)
+
+### Lazy proxies belong to the session that loaded them
+With `open-in-view: false`, touching a lazy `@ManyToOne` after its persistence context closed throws `LazyInitializationException`, and a new transaction elsewhere can't fix that. `approverFor` takes an id and loads the approver with its own query, so callers get a fully loaded user. (BE-1.3 review)
+
 ### CSRF tokens are deferred: rotating one must also load the new one
 Since Spring Security 6 the `XSRF-TOKEN` cookie is only written when something reads the token. `csrf.spa()` does that on every request, but a hand-built `CsrfAuthenticationStrategy` doesn't: login deleted the old cookie and sent no new one, so the FE's next POST got a 403. Give the strategy a `XorCsrfTokenRequestAttributeHandler` with `setCsrfRequestAttributeName(null)`, and after logout call `csrfTokenRepository.loadDeferredToken(request, response).get()`. A test helper that fetches a fresh token before every request hid this; the tests now reuse the token from the previous response, like the browser. (BE-1.2 review)
 
