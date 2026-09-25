@@ -33,13 +33,14 @@ class ExportTemplatesIntegrationTest {
 
     @Test
     @WithUserDetails("eva.santos@cofinpro.pt")
-    void theGenericTemplateIsListed() throws Exception {
+    void theGenericAndOneTemplatePerClientByName() throws Exception {
         mockMvc.perform(get("/api/export-templates"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].code").value("GENERIC"))
-                .andExpect(jsonPath("$[0].name").value("Generic monthly timesheet"))
-                .andExpect(jsonPath("$[0].client").doesNotExist());
+                .andExpect(jsonPath("$", hasSize(6)))
+                .andExpect(jsonPath("$[*].code", org.hamcrest.Matchers.contains("DBIS", "DEKA", "DKB", "GENERIC", "UNION", "VV")))
+                .andExpect(jsonPath("$[?(@.code == 'GENERIC')].client").value(org.hamcrest.Matchers.contains((Object) null)))
+                .andExpect(jsonPath("$[?(@.code == 'DKB')].client").value("DKB"))
+                .andExpect(jsonPath("$[?(@.code == 'GENERIC')].name").value("Generic monthly timesheet"));
     }
 
     @Test
@@ -50,7 +51,7 @@ class ExportTemplatesIntegrationTest {
     @Test
     void anUnknownCodeIsAFieldErrorOnTemplate() {
         assertThat(registry.get("GENERIC").code()).isEqualTo("GENERIC");
-        assertThatThrownBy(() -> registry.get("DKB"))
+        assertThatThrownBy(() -> registry.get("NOPE"))
                 .isInstanceOfSatisfying(InvalidFieldException.class, e -> assertThat(e.getField()).isEqualTo("template"));
     }
 
