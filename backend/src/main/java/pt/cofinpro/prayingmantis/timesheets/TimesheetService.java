@@ -1,7 +1,9 @@
 package pt.cofinpro.prayingmantis.timesheets;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.DayOfWeek;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -15,18 +17,21 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pt.cofinpro.prayingmantis.absences.AbsenceRequestService;
 import pt.cofinpro.prayingmantis.absences.AbsenceStatus;
+import pt.cofinpro.prayingmantis.auth.Permissions;
 import pt.cofinpro.prayingmantis.common.ConflictException;
 import pt.cofinpro.prayingmantis.common.InvalidFieldException;
 import pt.cofinpro.prayingmantis.holidays.PublicHolidayRepository;
 import pt.cofinpro.prayingmantis.projects.Project;
 import pt.cofinpro.prayingmantis.projects.ProjectRepository;
+import pt.cofinpro.prayingmantis.users.User;
 import pt.cofinpro.prayingmantis.users.UserRepository;
 
-/** A user's own weekly timesheets (epic 6): opening a week (BE-6.2) and saving its entries (BE-6.3). */
+/** A user's own weekly timesheets (epic 6): opening a week (BE-6.2), saving its entries (BE-6.3), submitting it (BE-6.4). */
 @Service
 public class TimesheetService {
 
     static final String NOT_EDITABLE = "timesheet-not-editable";
+    static final String NO_APPROVER = "no-approver";
 
     private static final BigDecimal MAX_DAY = new BigDecimal("24");
     private static final BigDecimal QUARTERS = new BigDecimal("4");
@@ -37,6 +42,9 @@ public class TimesheetService {
     private final UserRepository users;
     private final AbsenceRequestService absences;
     private final PublicHolidayRepository holidays;
+    private final Permissions permissions;
+    private final TimesheetNotifications notifications;
+    private final Clock clock;
 
     public TimesheetService(
             TimesheetRepository timesheets,
@@ -44,13 +52,19 @@ public class TimesheetService {
             ProjectRepository projects,
             UserRepository users,
             AbsenceRequestService absences,
-            PublicHolidayRepository holidays) {
+            PublicHolidayRepository holidays,
+            Permissions permissions,
+            TimesheetNotifications notifications,
+            Clock clock) {
         this.timesheets = timesheets;
         this.entries = entries;
         this.projects = projects;
         this.users = users;
         this.absences = absences;
         this.holidays = holidays;
+        this.permissions = permissions;
+        this.notifications = notifications;
+        this.clock = clock;
     }
 
     /**
@@ -92,6 +106,33 @@ public class TimesheetService {
             entries.save(new TimeEntry(timesheet, projectsById.get(e.projectId()), e.workDate(), e.hours(), blankToNull(e.description())));
         }
         entries.flush();
+        return view(userId, weekStart, timesheet);
+    }
+
+    /**
+     * DRAFT or REJECTED → SUBMITTED (BE-6.4). Sets the approver with the same rule as for absences (decision
+     * #16) and tells them. Works for a week that has never been saved, and for one without hours (decision
+     * #32). A resubmitted week loses the previous rejection's comment and decision time.
+     */
+    @Transactional
+    public Week submit(Long userId, LocalDate weekStart) {
+        requireMonday(weekStart);
+        Timesheet timesheet = timesheets.findWeek(userId, weekStart).orElse(null);
+        if (timesheet != null) {
+            requireEditable(timesheet);
+        }
+        User approver = permissions.approverFor(userId).orElseThrow(() -> new ConflictException(NO_APPROVER,
+                "Nobody can approve this timesheet: you have no team lead and there is no other admin"));
+        if (timesheet == null) {
+            timesheet = timesheets.save(new Timesheet(users.getReferenceById(userId), weekStart));
+        }
+        timesheet.setStatus(TimesheetStatus.SUBMITTED);
+        timesheet.setApprover(approver);
+        timesheet.setSubmittedAt(Instant.now(clock));
+        timesheet.setDecidedAt(null);
+        timesheet.setDecisionComment(null);
+        timesheets.flush();
+        notifications.submitted(timesheet);
         return view(userId, weekStart, timesheet);
     }
 
