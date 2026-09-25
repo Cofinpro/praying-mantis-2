@@ -61,6 +61,19 @@ the real backend in FE-1.3: without the header login is a 403, with it a 200. Sp
 `ProblemDetail` leaves out `type` when it's the default `about:blank`, although the contract marks it
 required; the FE doesn't rely on it (FE-1.3).
 
+### Reactive query keys: pass getters, compute the key
+`useMyAbsenceRequests(() => range.value.from, () => range.value.to)` takes getters, and the composable
+builds its `queryKey` with `computed(() => [..., toValue(from), toValue(to)])`. When the calendar
+moves a month, the key changes and TanStack Query fetches the new range, while the old month stays
+cached. Passing `range.value.from` directly would capture one string at setup time, and the query
+would never change (FE-2.2).
+
+### Vue drops whitespace between elements on separate lines
+`<span>{{ n }}</span>` on one line and `<span>days left</span>` on the next render as "18.5days
+left", because the template compiler removes whitespace that contains a newline between elements.
+A flex `gap` hides it visually, but screen readers and `text()` in tests don't. Keep the space inside
+a text node (`<span>{{ n }}</span> {{ unit }}`) or build the string in a `computed` (FE-2.1).
+
 ## TypeScript
 
 ### One tsconfig per environment, tied together with project references

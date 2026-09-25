@@ -33,6 +33,7 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 | 23 | Schema migrations with Liquibase | Accepted |
 | 24 | The Figma file is the UI source of truth | Accepted |
 | 25 | PRs merge without waiting for an approval | Accepted |
+| 26 | Own month-calendar component, no calendar library | Proposed |
 | 25 | Frontend lint, format and test tooling | Accepted |
 | 26 | Frontend API client with openapi-fetch, committed generated types | Accepted |
 
@@ -310,4 +311,21 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 **Why:** The team chose not to block merges on an approval (2026-09-25). GitHub couldn't enforce the old rule on this private repo anyway: branch protection needs a paid plan (GitHub Pro/Team).
 
 **Consequences:** Reviews happen by asking, not by default, so it's on each author to ask for one on risky changes. The AI mentor review (`/review-pr`) stays in the checklist.
+
+## 26. Own month-calendar component, no calendar library
+**Status:** Proposed · FE-2.2 ("decide together: own component vs library")
+
+**Decision:** The absence calendar is our own Vue component (`AbsenceCalendar.vue`). A pure `absences/calendar.ts` builds the weeks, and dates are `YYYY-MM-DD` strings with UTC-based helpers in `format/dates.ts` (#22). No calendar library, and no date library either.
+
+**Alternatives considered:** FullCalendar or v-calendar, and a date library such as date-fns or Day.js.
+
+**Why:**
+- We only need a month grid with coloured chips, half days, holidays and a pending style. The design is specific (Figma frame "02 Absences"), and a library would need as much custom rendering and CSS as the component itself.
+- The team is here to learn Vue: computed data, reactive query keys and scoped CSS are the lesson.
+- Calendar days as plain strings avoid the timezone bugs that `Date` objects bring (#22).
+
+**Consequences:**
+- We maintain about 300 lines of component and helpers ourselves, with unit tests for the week building.
+- The team calendar (FE-5.3) can reuse `calendar.ts`.
+- If we later need week views, drag-to-book or recurring events, revisit this.
 

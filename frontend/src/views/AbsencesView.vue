@@ -5,12 +5,13 @@ import BaseButton from '@/components/BaseButton.vue'
 import BaseSelect from '@/components/BaseSelect.vue'
 import BalanceCard from '@/components/absences/BalanceCard.vue'
 import UpcomingAbsences from '@/components/absences/UpcomingAbsences.vue'
+import AbsenceCalendar from '@/components/absences/AbsenceCalendar.vue'
 import { useAbsenceBalance, useAbsenceTypes, useMyAbsenceRequests } from '@/absences/queries'
 import { byTypeOrder, typeName } from '@/absences/types'
 import { addDays, today, yearOf } from '@/format/dates'
 
-// The Absences page, Figma frame "02 Absences": balance cards (FE-2.1). The calendar comes with
-// FE-2.2 and the "Request absence" button with FE-3.1.
+// The Absences page, Figma frame "02 Absences": balance cards (FE-2.1) and the calendar (FE-2.2).
+// The "Request absence" button comes with FE-3.1.
 const now = today()
 const year = ref(yearOf(now))
 const years = [year.value - 1, year.value, year.value + 1].map((y) => ({
@@ -57,6 +58,8 @@ const balances = computed(() => [...(balance.data.value ?? [])].sort(byTypeOrder
 
       <UpcomingAbsences v-if="upcoming.data.value" :requests="upcoming.data.value" :types="types" />
     </section>
+
+    <AbsenceCalendar :types="types" />
   </div>
 </template>
 
