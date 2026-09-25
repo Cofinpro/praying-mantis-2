@@ -85,6 +85,95 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/absence-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * All absence types
+         * @description Small, rarely changing list. The FE uses it for type names and for the request form (T-3.1).
+         *     Balances and requests refer to a type by its `code`.
+         */
+        get: operations["getAbsenceTypes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/absence-balance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My balance per absence type for one year
+         * @description One entry per type the user has an entitlement for in that year (BE-2.2). Days count in the
+         *     year they fall in, so a request across New Year counts partly in each year. Half days are 0.5.
+         *     `remainingDays` = entitled + carried over − used, and only types that deduct from the
+         *     balance have it (decision 9: computed, not stored). Pending days aren't subtracted; the FE
+         *     shows them next to the remaining days.
+         */
+        get: operations["getMyAbsenceBalance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/absence-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My absence requests that overlap a date range
+         * @description For the calendar (BE-2.3). Returns every request that overlaps `[from, to]` (both
+         *     inclusive), in any status, ordered by start date. The FE hides rejected and cancelled ones
+         *     by default. The range may be at most 366 days.
+         */
+        get: operations["getMyAbsenceRequests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public-holidays": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Public holidays of one year
+         * @description Portugal's national holidays. Shown in the calendar and used for the working-days preview of
+         *     the request form (T-3.1).
+         *     The backend's working-days count is the authoritative one (decision 15).
+         */
+        get: operations["getPublicHolidays"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -139,6 +228,128 @@ export interface components {
          * @enum {string}
          */
         Level: "JUNIOR" | "EXPERT" | "SENIOR" | "ARCHITECT" | "SENIOR_ARCHITECT";
+        /**
+         * @example VACATION
+         * @enum {string}
+         */
+        AbsenceTypeCode: "VACATION" | "SICK" | "PARENTAL" | "UNPAID" | "TRAINING";
+        AbsenceType: {
+            code: components["schemas"]["AbsenceTypeCode"];
+            /** @example Vacation */
+            name: string;
+            /** @example true */
+            isPaid: boolean;
+            /**
+             * @description Only these types have a `remainingDays` in the balance
+             * @example true
+             */
+            deductsFromBalance: boolean;
+            /**
+             * @description Without approval a new request is `APPROVED` right away (e.g. sick leave)
+             * @example true
+             */
+            requiresApproval: boolean;
+        };
+        AbsenceBalance: {
+            type: components["schemas"]["AbsenceTypeCode"];
+            /** @example 2026 */
+            year: number;
+            /** @example 25 */
+            entitledDays: number;
+            /** @example 3 */
+            carriedOverDays: number;
+            /**
+             * @description Working days of approved requests in this year
+             * @example 9.5
+             */
+            usedDays: number;
+            /**
+             * @description Working days of pending requests in this year
+             * @example 2
+             */
+            pendingDays: number;
+            /**
+             * @description entitled + carried over − used. Only for types that deduct from the balance.
+             * @example 18.5
+             */
+            remainingDays?: number;
+        };
+        /**
+         * @description Which part of the start or end day is taken. On a multi-day request the first day is FULL or
+         *     AFTERNOON and the last day FULL or MORNING, so there's no gap in the middle. A single day has
+         *     the same part at both ends, and MORNING or AFTERNOON makes it a half day (0.5).
+         * @example FULL
+         * @enum {string}
+         */
+        DayPart: "FULL" | "MORNING" | "AFTERNOON";
+        /**
+         * @description See decision 13 (`CANCELLED`, not `withdrawn`)
+         * @example PENDING
+         * @enum {string}
+         */
+        AbsenceStatus: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+        UserRef: {
+            /**
+             * Format: int64
+             * @example 1
+             */
+            id: number;
+            /** @example Alex Admin */
+            name: string;
+        };
+        AbsenceRequest: {
+            /**
+             * Format: int64
+             * @example 42
+             */
+            id: number;
+            type: components["schemas"]["AbsenceTypeCode"];
+            /**
+             * Format: date
+             * @example 2026-10-26
+             */
+            startDate: string;
+            /**
+             * Format: date
+             * @description Inclusive; same as `startDate` for a single day
+             * @example 2026-10-27
+             */
+            endDate: string;
+            startPart: components["schemas"]["DayPart"];
+            /** @description For a single day, `startPart` and `endPart` are the same */
+            endPart: components["schemas"]["DayPart"];
+            /**
+             * @description Computed by the backend when the request was created (decision 15)
+             * @example 2
+             */
+            workingDays: number;
+            status: components["schemas"]["AbsenceStatus"];
+            /** @example Long weekend in Lisbon */
+            reason?: string;
+            /** @description Who decides; normally the team lead (decision 16). Absent when no approval is needed. */
+            approver?: components["schemas"]["UserRef"];
+            /**
+             * Format: date-time
+             * @example 2026-09-26T09:15:00Z
+             */
+            decidedAt?: string;
+            /** @description Optional comment from the approver, e.g. why it was rejected */
+            decisionComment?: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-25T14:02:00Z
+             */
+            createdAt: string;
+        };
+        PublicHoliday: {
+            /**
+             * Format: date
+             * @example 2026-10-05
+             */
+            date: string;
+            /** @example Republic Day */
+            name: string;
+        };
         /** @description RFC 9457 Problem Details (decision 21) */
         Problem: {
             /** Format: uri-reference */
@@ -333,6 +544,107 @@ export interface operations {
                     "application/json": components["schemas"]["CurrentUser"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    getAbsenceTypes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every type, ordered by name */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AbsenceType"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    getMyAbsenceBalance: {
+        parameters: {
+            query?: {
+                /** @description Defaults to the current year in Europe/Lisbon */
+                year?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The balances, in absence type name order */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AbsenceBalance"][];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    getMyAbsenceRequests: {
+        parameters: {
+            query: {
+                from: string;
+                /** @description Inclusive; not before `from` */
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The requests, by start date */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AbsenceRequest"][];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    getPublicHolidays: {
+        parameters: {
+            query?: {
+                /** @description Defaults to the current year in Europe/Lisbon */
+                year?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The holidays, by date */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicHoliday"][];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
             401: components["responses"]["Unauthorized"];
             default: components["responses"]["Problem"];
         };
