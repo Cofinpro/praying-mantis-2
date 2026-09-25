@@ -38,6 +38,7 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 | 28 | Own month-calendar component, no calendar library | Proposed |
 | 29 | Absence request rules: balance limit, past dates | Accepted |
 | 30 | Hosting: mock demo on GitHub Pages, backend on Render | Accepted |
+| 31 | Team approval rules | Accepted |
 
 `plan.md` decisions D1–D12 map to #12–#23.
 
@@ -365,3 +366,17 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 - Render's free web service sleeps after 15 minutes without traffic, so the first request after that takes about a minute. The free database expires after 30 days, unless it's upgraded or recreated.
 - One-time setup: in the repo settings, set Pages → Source to "GitHub Actions". In Render, create the Blueprint (New → Blueprint → this repo).
 - To get a real integrated deployment later, move the frontend to a Render static site that rewrites `/api` to the backend (the second alternative).
+
+## 31. Team approval rules
+**Status:** Accepted · T-5.1 (settles "reject comment required?" in `plan.md` epic 5)
+
+**Decision:**
+- **Rejecting needs a comment** (1–500 characters), so the requester learns why. Approving takes an optional one.
+- `GET /team/absence-requests` lists only the requests whose **stored approver** is the caller. Admins may decide any request (decision 16), but their list only shows their own, i.e. the admin fallback; deciding someone else's is for the admin pages (epic 9).
+- Deciding without being the approver or an admin is a **403**, not a 404: approvers see these requests in their list, so their ids aren't secret to them, and a 403 says what went wrong.
+- Approving checks the balance again (decision 29) and can answer 409 `/problems/insufficient-balance`. Rejecting never can.
+- Only `PENDING` requests can be decided; anything else is 409 `/problems/absence-not-pending`.
+
+**Why:** A rejection without a reason leaves the requester guessing. Showing each approver only their own requests keeps the Approvals page focused.
+
+**Consequences:** A request's `approver_id` isn't changed when an admin decides it. Who actually decided isn't stored yet; add a `decided_by` column if the admin pages need it.

@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: praying-mantis API
-  version: 0.4.0
+  version: 0.6.0
   description: |
     Contract between backend and frontend (decision 2). Agree changes together in a `T` story
     before implementing them. All routes are under /api. Errors are Problem Details (decision 21).
@@ -28,6 +28,8 @@ tags:
     description: Public holidays, excluded from working days (T-2.1, decision 15)
   - name: absence-requests
     description: Request and cancel my absences (T-3.1)
+  - name: team-absences
+    description: Absence requests I decide on as approver (T-5.1)
 security:
   - sessionCookie: []
 paths:
@@ -355,6 +357,125 @@ paths:
         default:
           $ref: '#/components/responses/Problem'
 
+  /team/absence-requests:
+    get:
+      tags: [team-absences]
+      operationId: getTeamAbsenceRequests
+      summary: Absence requests I'm the approver of
+      description: |
+        For the Approvals page (BE-5.1). Returns the requests whose approver is the logged-in user
+        (decision 16): their team members' requests, a team lead's lead's, or, for the admin
+        fallback, the requests of people without a team lead. Someone who approves nobody gets an
+        empty list, not a 403, so the page can just say "nothing to approve".
+
+        Filtered by `status`, which defaults to `PENDING`. Pending requests come oldest start date
+        first, since the soonest need a decision first. Other statuses come newest start first.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Defaults to `PENDING`
+          schema:
+            $ref: '#/components/schemas/AbsenceStatus'
+      responses:
+        '200':
+          description: The requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TeamAbsenceRequest'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /team/absence-requests/{id}/approve:
+    post:
+      tags: [team-absences]
+      operationId: approveAbsenceRequest
+      summary: Approve a pending request
+      description: |
+        BE-5.2. Sets `APPROVED` and `decidedAt`, stores the optional comment, and notifies the
+        requester (`ABSENCE_APPROVED`, T-4.1).
+
+        - **403** unless the caller is the request's approver or an admin. Nobody decides on their
+          own request, not even an admin (decision 16).
+        - **409** `/problems/absence-not-pending`: it's already decided or cancelled.
+        - **409** `/problems/insufficient-balance`: a VACATION request that no longer fits, because
+          another request was approved in the meantime (decision 29). The approver can still reject
+          it.
+      parameters:
+        - $ref: '#/components/parameters/AbsenceRequestId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AbsenceDecision'
+      responses:
+        '200':
+          description: The approved request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AbsenceRequest'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /team/absence-requests/{id}/reject:
+    post:
+      tags: [team-absences]
+      operationId: rejectAbsenceRequest
+      summary: Reject a pending request
+      description: |
+        BE-5.2. Sets `REJECTED` and `decidedAt`, stores the comment, and notifies the requester
+        (`ABSENCE_REJECTED`, T-4.1). **The comment is required**, so the requester learns why; a
+        missing or blank one is a 400 on `comment`.
+
+        Same 403, 404 and 409 `/problems/absence-not-pending` as approve. There's no balance check:
+        a rejection frees days, it never uses them.
+      parameters:
+        - $ref: '#/components/parameters/AbsenceRequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AbsenceDecision'
+      responses:
+        '200':
+          description: The rejected request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AbsenceRequest'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Problem'
+
 components:
   securitySchemes:
     sessionCookie:
@@ -362,6 +483,16 @@ components:
       type: apiKey
       in: cookie
       name: JSESSIONID
+
+  parameters:
+    AbsenceRequestId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+        example: 42
 
   schemas:
     Hello:
@@ -527,6 +658,34 @@ components:
           maxLength: 500
           example: Long weekend in Lisbon
 
+    TeamAbsenceRequest:
+      description: A request as its approver sees it
+      type: object
+      required: [request, requester]
+      properties:
+        request:
+          $ref: '#/components/schemas/AbsenceRequest'
+        requester:
+          $ref: '#/components/schemas/UserRef'
+        remainingDays:
+          description: |
+            The requester's days left of this type in the year the request starts: entitled +
+            carried over − approved (decision 29). Only for types that deduct from the balance
+            (VACATION). A pending request isn't subtracted yet, so it fits while `workingDays` ≤
+            `remainingDays`.
+          type: number
+          multipleOf: 0.5
+          example: 12.5
+
+    AbsenceDecision:
+      type: object
+      properties:
+        comment:
+          description: Required to reject (1–500 characters), optional to approve
+          type: string
+          maxLength: 500
+          example: Release week, please pick another one
+
     UserRef:
       type: object
       required: [id, name]
@@ -677,6 +836,18 @@ components:
             title: Unauthorized
             status: 401
             instance: /api/me
+    Forbidden:
+      description: Logged in, but not allowed to do this; also a missing or wrong CSRF token
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: about:blank
+            title: Forbidden
+            status: 403
+            detail: You are not allowed to do this
+            instance: /api/team/absence-requests/42/approve
     NotFound:
       description: No such resource, or it isn't yours
       content:
