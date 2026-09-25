@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { TriangleAlert } from 'lucide-vue-next'
 
 import { api, type AbsenceRequest, type AbsenceType } from '@/api/client'
-import { problemMessage } from '@/api/problems'
+import { problemMessage, showsStaleData } from '@/api/problems'
 import { queryKeys } from '@/api/queryKeys'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseDialog from '@/components/BaseDialog.vue'
@@ -34,6 +34,11 @@ const { mutate, isPending, error } = useMutation({
     await queryClient.invalidateQueries({ queryKey: queryKeys.absences.all })
     emit('cancelled', cancelled)
     dialog.value?.close()
+  },
+  onError(error) {
+    if (showsStaleData(error)) {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.absences.all })
+    }
   },
 })
 

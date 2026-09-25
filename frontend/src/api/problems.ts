@@ -11,13 +11,14 @@ const CONFLICTS: Record<string, string> = {
   '/problems/absence-not-cancellable': 'This absence can’t be cancelled any more.',
 }
 
-/** A message for the form's banner, or null for a 400 (those go under the fields) */
+/** A message for the form's banner, or null for a 400 with field errors (those go under the fields) */
 export function problemMessage(error: unknown): string | null {
   if (!(error instanceof ApiError)) {
     return error ? 'Something went wrong. Please try again.' : null
   }
   if (error.status === 400) {
-    return null
+    // Spring answers an unreadable body with a 400 without `errors`: nothing to show under a field
+    return error.problem.errors?.length ? null : 'Something went wrong. Please try again.'
   }
   const known = CONFLICTS[error.problem.type]
   if (known) {
@@ -35,4 +36,12 @@ export function fieldErrors(error: unknown): Record<string, string> {
     return {}
   }
   return Object.fromEntries((error.problem.errors ?? []).map((e) => [e.field, e.message]))
+}
+
+/**
+ * A 404 or 409 usually means the data on screen is out of date: the request was cancelled in
+ * another tab, or a new one overlaps. The caller then refetches, so the page shows the real state.
+ */
+export function showsStaleData(error: unknown): boolean {
+  return error instanceof ApiError && (error.status === 404 || error.status === 409)
 }

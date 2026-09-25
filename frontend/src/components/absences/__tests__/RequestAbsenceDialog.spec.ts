@@ -6,12 +6,13 @@ import RequestAbsenceDialog from '../RequestAbsenceDialog.vue'
 import type { NewAbsenceRequest } from '@/api/client'
 import { server } from '@/mocks/node'
 import { startMockSession } from '@/mocks/handlers'
-import { queryPlugin } from '@/test/query'
+import { queryKeys } from '@/api/queryKeys'
+import { queryPlugin, testQueryClient } from '@/test/query'
 
-async function mountDialog() {
+async function mountDialog(queryClient = testQueryClient()) {
   const wrapper = mount(RequestAbsenceDialog, {
     attachTo: document.body,
-    global: { plugins: [queryPlugin()] },
+    global: { plugins: [queryPlugin(queryClient)] },
   })
   await flushPromises()
   return wrapper
@@ -113,8 +114,10 @@ describe('RequestAbsenceDialog', () => {
     expect(wrapper.emitted('close')).toHaveLength(1)
   })
 
-  it('explains an overlap with another absence', async () => {
-    const wrapper = await mountDialog()
+  it('explains an overlap with another absence and refreshes the absences', async () => {
+    const queryClient = testQueryClient()
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+    const wrapper = await mountDialog(queryClient)
 
     await field(wrapper, 'Start date').setValue('2026-10-12') // the approved 12–16 Oct
     await wrapper.find('form').trigger('submit')
@@ -124,6 +127,8 @@ describe('RequestAbsenceDialog', () => {
       'These days overlap another absence of yours that is pending or approved.',
     )
     expect(wrapper.emitted('close')).toBeUndefined()
+    // The overlapping absence may come from another tab: the calendar behind should show it
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.absences.all })
   })
 
   it('warns early about a short balance and shows the backend’s numbers', async () => {

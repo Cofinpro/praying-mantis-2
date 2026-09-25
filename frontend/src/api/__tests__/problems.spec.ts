@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 
 import { ApiError } from '../client'
-import { fieldErrors, problemMessage } from '../problems'
+import { fieldErrors, problemMessage, showsStaleData } from '../problems'
 
 const conflict = (type: string, detail?: string) =>
   new ApiError({ type, title: 'Conflict', status: 409, detail })
@@ -37,5 +37,26 @@ describe('problems', () => {
       'Something went wrong. Please try again.',
     )
     expect(problemMessage(null)).toBeNull()
+  })
+  it('shows a banner for a 400 without field errors (e.g. an unreadable body)', () => {
+    // What Spring sends for JSON it can't read, checked against the real backend (FE-3.3)
+    const unreadable = new ApiError({
+      title: 'Bad Request',
+      status: 400,
+      detail: 'Failed to read request',
+    } as ApiError['problem'])
+    expect(problemMessage(unreadable)).toBe('Something went wrong. Please try again.')
+    expect(fieldErrors(unreadable)).toEqual({})
+  })
+
+  it('treats a 404 or 409 as a sign that the data on screen is out of date', () => {
+    expect(showsStaleData(conflict('/problems/absence-not-cancellable'))).toBe(true)
+    expect(
+      showsStaleData(new ApiError({ title: 'Not Found', status: 404 } as ApiError['problem'])),
+    ).toBe(true)
+    expect(showsStaleData(new ApiError({ type: 'about:blank', title: 'Oops', status: 500 }))).toBe(
+      false,
+    )
+    expect(showsStaleData(new Error('offline'))).toBe(false)
   })
 })
