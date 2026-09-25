@@ -1,0 +1,6 @@
+# The backend image is built from the repo root (backend/Dockerfile), so keep the context small:
+# it only needs backend/ and api/
+*
+!api/
+!backend/
+backend/target/

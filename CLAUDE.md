@@ -83,6 +83,7 @@ What exists today:
 - `backend/`: OpenAPI + Java springboot
 - `frontend/`: Vue + TypeScript on Vite, managed with **pnpm**
 - `api/`: openAPI files
+- Hosting (decision #30): `.github/workflows/pages.yml` publishes a mock-mode frontend demo to GitHub Pages; `render.yaml` + `backend/Dockerfile` run the backend and Postgres on Render
 
 ## Conventions
 
