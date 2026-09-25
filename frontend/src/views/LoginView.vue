@@ -126,7 +126,7 @@ const formError = computed(() => {
           label="Password"
           type="password"
           autocomplete="current-password"
-          maxlength="128"
+          maxlength="72"
           required
           :error="fieldErrors.password"
         />

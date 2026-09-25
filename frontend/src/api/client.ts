@@ -35,6 +35,27 @@ const redirectOnUnauthorized: Middleware = {
   },
 }
 
+// CSRF (openapi.yaml): the backend sets a readable XSRF-TOKEN cookie, and every unsafe request has
+// to send it back in the X-XSRF-TOKEN header, or it gets a 403. A cross-site page can make the
+// browser send our cookies, but it can't read them, so it can't copy the token into a header.
+// Read the cookie on every request: it changes on login.
+const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
+const sendCsrfToken: Middleware = {
+  onRequest({ request }) {
+    const token = readCookie('XSRF-TOKEN')
+    if (token && UNSAFE_METHODS.has(request.method)) {
+      request.headers.set('X-XSRF-TOKEN', token)
+    }
+    return request
+  },
+}
+
+function readCookie(name: string): string | undefined {
+  const prefix = `${name}=`
+  const cookie = document.cookie.split('; ').find((c) => c.startsWith(prefix))
+  return cookie === undefined ? undefined : decodeURIComponent(cookie.slice(prefix.length))
+}
+
 const client = createClient<paths>({
   // Absolute URL: the Request constructor rejects relative URLs outside a browser (Vitest)
   baseUrl: new URL('/api', window.location.origin).href,
@@ -42,7 +63,7 @@ const client = createClient<paths>({
   // time, and MSW in Vitest only patches globalThis.fetch later, in server.listen()
   fetch: (request) => globalThis.fetch(request),
 })
-client.use(redirectOnUnauthorized)
+client.use(sendCsrfToken, redirectOnUnauthorized)
 
 // openapi-fetch returns { data, error, response } instead of throwing. TanStack Query needs a
 // rejected promise to show an error, so turn every failed response into an ApiError.
