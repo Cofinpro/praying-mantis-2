@@ -151,4 +151,19 @@ describe('AbsenceCalendar', () => {
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
     expect(cell(wrapper, '2026-10-12').find('.chip').exists()).toBe(true)
   })
+
+  it('selects a request from its chip, with one tab stop per labelled chip', async () => {
+    const wrapper = await mountCalendar()
+
+    const first = cell(wrapper, '2026-10-12').find('.chip')
+    expect(first.element.tagName).toBe('BUTTON')
+    expect(first.attributes('tabindex')).toBe('0')
+    // The rest of the same week is clickable but not another tab stop
+    expect(cell(wrapper, '2026-10-13').find('.chip').attributes('tabindex')).toBe('-1')
+
+    await cell(wrapper, '2026-10-14').find('.chip').trigger('click')
+
+    const selected = wrapper.emitted('select')![0]![0] as AbsenceRequest
+    expect([selected.startDate, selected.endDate]).toEqual(['2026-10-12', '2026-10-16'])
+  })
 })

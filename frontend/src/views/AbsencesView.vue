@@ -7,13 +7,15 @@ import BalanceCard from '@/components/absences/BalanceCard.vue'
 import UpcomingAbsences from '@/components/absences/UpcomingAbsences.vue'
 import AbsenceCalendar from '@/components/absences/AbsenceCalendar.vue'
 import RequestAbsenceDialog from '@/components/absences/RequestAbsenceDialog.vue'
+import AbsenceDetailsDialog from '@/components/absences/AbsenceDetailsDialog.vue'
+import type { AbsenceRequest } from '@/api/client'
 import { Plus } from 'lucide-vue-next'
 import { useAbsenceBalance, useAbsenceTypes, useMyAbsenceRequests } from '@/absences/queries'
 import { byTypeOrder, typeName } from '@/absences/types'
 import { addDays, today, yearOf } from '@/format/dates'
 
 // The Absences page, Figma frame "02 Absences": balance cards (FE-2.1), the calendar (FE-2.2) and
-// the "Request absence" dialog (FE-3.1)
+// the "Request absence" dialog (FE-3.1) and the details of an absence, to cancel it (FE-3.2)
 const now = today()
 const year = ref(yearOf(now))
 const years = [year.value - 1, year.value, year.value + 1].map((y) => ({
@@ -27,6 +29,8 @@ const balance = useAbsenceBalance(year)
 const upcoming = useMyAbsenceRequests(now, addDays(now, 365))
 
 const requesting = ref(false)
+/** The absence whose details are open, from a calendar chip or "Coming up" */
+const selected = ref<AbsenceRequest | null>(null)
 
 const balances = computed(() => [...(balance.data.value ?? [])].sort(byTypeOrder))
 </script>
@@ -66,13 +70,25 @@ const balances = computed(() => [...(balance.data.value ?? [])].sort(byTypeOrder
         :name="typeName(b.type, types)"
       />
 
-      <UpcomingAbsences v-if="upcoming.data.value" :requests="upcoming.data.value" :types="types" />
+      <UpcomingAbsences
+        v-if="upcoming.data.value"
+        :requests="upcoming.data.value"
+        :types="types"
+        @select="selected = $event"
+      />
     </section>
 
-    <AbsenceCalendar :types="types" />
+    <AbsenceCalendar :types="types" @select="selected = $event" />
 
     <!-- Mounted only while open, so each request starts with a fresh form -->
     <RequestAbsenceDialog v-if="requesting" @close="requesting = false" />
+    <AbsenceDetailsDialog
+      v-if="selected"
+      :key="selected.id"
+      :request="selected"
+      :types="types"
+      @close="selected = null"
+    />
   </div>
 </template>
 

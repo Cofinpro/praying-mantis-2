@@ -20,7 +20,9 @@ import {
 
 // FE-2.2: month view of my absences, Figma frame "02 Absences". Our own component rather than a
 // calendar library (decision #28, proposed).
+// Clicking a chip selects its request (FE-3.2 opens the details dialog for it)
 const { types } = defineProps<{ types: AbsenceType[] | undefined }>()
+const emit = defineEmits<{ select: [request: AbsenceRequest] }>()
 
 const todayIso = today()
 const month = ref(monthStart(todayIso))
@@ -158,21 +160,25 @@ const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
             <span class="day__number">{{ dayOfMonth(day.date) }}</span>
             <span v-if="day.holiday" class="day__holiday">{{ day.holiday }}</span>
             <ul v-if="day.entries.length" class="day__entries">
-              <li
-                v-for="entry in day.entries"
-                :key="entry.request.id"
-                class="chip"
-                :class="[
-                  `chip--${entry.request.status.toLowerCase()}`,
-                  entry.half && `chip--${entry.half.toLowerCase()}`,
-                ]"
-                :style="chipStyle(entry)"
-                :title="chipDescription(entry.request)"
-              >
-                <span v-if="entry.showLabel || entry.half" aria-hidden="true">
-                  {{ chipLabel(entry) }}
-                </span>
-                <span class="visually-hidden">{{ chipDescription(entry.request) }}</span>
+              <li v-for="entry in day.entries" :key="entry.request.id">
+                <!-- One tab stop per labelled chip, not one per day of a long absence -->
+                <button
+                  type="button"
+                  class="chip"
+                  :class="[
+                    `chip--${entry.request.status.toLowerCase()}`,
+                    entry.half && `chip--${entry.half.toLowerCase()}`,
+                  ]"
+                  :style="chipStyle(entry)"
+                  :title="chipDescription(entry.request)"
+                  :tabindex="entry.showLabel || entry.half ? 0 : -1"
+                  @click="emit('select', entry.request)"
+                >
+                  <span v-if="entry.showLabel || entry.half" aria-hidden="true">
+                    {{ chipLabel(entry) }}
+                  </span>
+                  <span class="visually-hidden">{{ chipDescription(entry.request) }}</span>
+                </button>
               </li>
             </ul>
           </td>
@@ -364,16 +370,27 @@ const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 }
 
 .chip {
+  display: block;
+  width: 100%;
   min-height: 24px;
   padding: 5px var(--space-2);
   overflow: hidden;
+  border: none;
   border-radius: var(--radius-chip);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
   color: var(--color-surface);
   font-size: 12px;
   font-weight: 600;
   line-height: 14px;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+.chip:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
 }
 
 .chip--pending {

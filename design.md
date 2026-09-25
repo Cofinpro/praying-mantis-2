@@ -96,7 +96,7 @@ Build these once as Vue components and reuse them. The names are a suggestion:
 - `BaseButton`: variants `primary` · `secondary` (ink outline) · `dark` · `ghost` · `danger` (red outline) · `danger-fill` (destructive confirm), sizes default/small, optional leading icon. Disabled = 40% opacity.
 - `StatusBadge`: the five statuses above.
 - `BaseInput` (error state: 2px danger border + danger helper text), `BaseSelect`, `SegmentedControl` (full day / morning / afternoon), `BaseToggle`.
-- `BaseDialog`: overlay, 20px radius, title plus close icon, actions right-aligned (secondary, then primary).
+- `BaseDialog`: overlay, 20px radius, title plus close icon, actions right-aligned (secondary, then primary). Widths 580px (forms), 520px (details) and 460px (confirmations, which have no title row: an icon, a heading and the actions).
 - `BalanceCard`, `AbsenceCalendar` (month grid, chips, half days), `TeamCalendar` (people × days, conflict days highlighted), `TimesheetGrid`, `NotificationBell`, `DataTable` (uppercase muted header on surface-alt, 1px row dividers).
 - Admin pages share a layout: page title, a 220px sub-nav on the left (active item white with a 3px primary bar), and the section on the right.
 

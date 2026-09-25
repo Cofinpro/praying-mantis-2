@@ -80,3 +80,34 @@ export const formatNumber = (value: number) => number.format(value)
 
 /** 1 → "1 day", 0.5 → "0.5 day", 5 → "5 days" */
 export const formatDays = (days: number) => `${number.format(days)} ${days > 1 ? 'days' : 'day'}`
+
+const fullDate = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  timeZone: 'UTC',
+})
+
+/** "26 Oct 2026" */
+export const formatDate = (iso: string) => fullDate.format(toUtc(iso))
+
+/** "26–27 Oct 2026", "30 Oct – 3 Nov 2026", "30 Dec 2026 – 2 Jan 2027" */
+export function formatRangeWithYear(from: string, to: string): string {
+  return yearOf(from) === yearOf(to)
+    ? `${formatRange(from, to)} ${yearOf(to)}`
+    : `${formatDate(from)} – ${formatDate(to)}`
+}
+
+const WEEKDAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+/** "Mon" */
+export const weekdayName = (iso: string) => WEEKDAY_NAMES[weekday(iso)]!
+
+const localDate = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+})
+
+/** The day of an instant such as `createdAt`, in the user's time zone: "25 Sep 2026" */
+export const formatInstantDate = (instant: string) => localDate.format(new Date(instant))

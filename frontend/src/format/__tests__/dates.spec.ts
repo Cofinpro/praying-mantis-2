@@ -1,6 +1,15 @@
 import { afterEach, describe, it, expect, vi } from 'vitest'
 
-import { addDays, formatDays, formatRange, today, weekday } from '../dates'
+import {
+  addDays,
+  formatDate,
+  formatDays,
+  formatRange,
+  formatRangeWithYear,
+  today,
+  weekday,
+  weekdayName,
+} from '../dates'
 
 describe('dates', () => {
   afterEach(() => vi.useRealTimers())
@@ -31,5 +40,13 @@ describe('dates', () => {
     expect(formatDays(0.5)).toBe('0.5 day')
     expect(formatDays(1)).toBe('1 day')
     expect(formatDays(2.5)).toBe('2.5 days')
+  })
+
+  it('formats dates and ranges with the year', () => {
+    expect(formatDate('2026-10-26')).toBe('26 Oct 2026')
+    expect(formatRangeWithYear('2026-10-26', '2026-10-27')).toBe('26–27 Oct 2026')
+    expect(formatRangeWithYear('2026-10-30', '2026-11-03')).toBe('30 Oct – 3 Nov 2026')
+    expect(formatRangeWithYear('2026-12-30', '2027-01-02')).toBe('30 Dec 2026 – 2 Jan 2027')
+    expect(weekdayName('2026-10-26')).toBe('Mon')
   })
 })
