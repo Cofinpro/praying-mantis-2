@@ -32,5 +32,8 @@ export const queryKeys = {
   timesheets: {
     all: ['timesheets'] as const,
     week: (weekStart: string) => ['timesheets', weekStart] as const,
+    /** What an export of the month would contain (FE-8.1); under ['timesheets'], so it's mine too */
+    month: (month: string) => ['timesheets', 'month', month] as const,
   },
+  exportTemplates: ['export-templates'] as const,
 }

@@ -8,6 +8,7 @@ import type {
   AbsenceType,
   AppNotification,
   CurrentUser,
+  ExportTemplate,
   Hello,
   LoginRequest,
   NewAbsenceRequest,
@@ -22,12 +23,14 @@ import type {
   Timesheet,
   TimesheetDecision,
   TimesheetEntries,
+  TimesheetMonth,
   TimesheetStatus,
   UnreadCount,
 } from '@/api/client'
 import { workingDays } from '@/absences/workingDays'
-import { addDays, today, weekday } from '@/format/dates'
+import { addDays, daysInMonth, today, weekStartOf, weekday } from '@/format/dates'
 import { absenceRequests, absenceTypes, balances, publicHolidays } from './data/absences'
+import { exportTemplates, XLSX_TYPE } from './data/exports'
 import { mockNotifications } from './data/notifications'
 import { teamAbsenceRequests } from './data/team'
 import { projects, teamTimesheets, timesheets, type StoredTimesheet } from './data/timesheets'
@@ -630,6 +633,52 @@ export const handlers = [
     },
   ),
 
+  // BE-8.1: ordered by name
+  http.get<never, never, ExportTemplate[] | Problem>('*/api/export-templates', () => {
+    if (!loggedInAs) {
+      return unauthorized('/api/export-templates')
+    }
+    return HttpResponse.json(exportTemplates)
+  }),
+
+  // BE-8.2: every week that touches the month; a week never saved is a DRAFT with 0 hours
+  http.get<{ month: string }, never, TimesheetMonth | Problem>(
+    '*/api/me/timesheet-months/:month',
+    ({ params }) => {
+      if (!loggedInAs) {
+        return unauthorized(`/api/me/timesheet-months/${params.month}`)
+      }
+      if (!isMonth(params.month)) {
+        return invalid('month', 'must match YYYY-MM')
+      }
+      return HttpResponse.json(timesheetMonth(loggedInAs.id, params.month))
+    },
+  ),
+
+  // BE-8.2: the real backend builds the workbook with Apache POI. The mock sends a few placeholder
+  // bytes with the contract's headers: enough to test the download, but Excel won't open it.
+  http.get('*/api/me/timesheet-exports', ({ request }) => {
+    if (!loggedInAs) {
+      return unauthorized('/api/me/timesheet-exports')
+    }
+    const query = new URL(request.url).searchParams
+    const month = query.get('month') ?? ''
+    const template = query.get('template') ?? ''
+    if (!isMonth(month)) {
+      return invalid('month', 'must match YYYY-MM')
+    }
+    if (!exportTemplates.some((t) => t.code === template)) {
+      return invalid('template', `unknown template ${template}`)
+    }
+    const login = loggedInAs.email.split('@')[0]
+    return new HttpResponse(`Mock export of ${month} (${template})`, {
+      headers: {
+        'Content-Type': XLSX_TYPE,
+        'Content-Disposition': `attachment; filename="timesheet-${month}-${login}-${template}.xlsx"`,
+      },
+    })
+  }),
+
   http.get<never, never, PublicHoliday[] | Problem>('*/api/public-holidays', ({ request }) => {
     if (!loggedInAs) {
       return unauthorized('/api/public-holidays')
@@ -654,6 +703,23 @@ function approverFor(userId: number) {
 }
 
 const isMonday = (iso: string) => /^\d{4}-\d{2}-\d{2}$/.test(iso) && weekday(iso) === 0
+
+const isMonth = (value: string) => /^\d{4}-(0[1-9]|1[0-2])$/.test(value)
+
+/** What an export of the month would contain (BE-8.2) */
+function timesheetMonth(userId: number, month: string): TimesheetMonth {
+  const first = `${month}-01`
+  const last = `${month}-${String(daysInMonth(first)).padStart(2, '0')}`
+  const weeks = []
+  for (let weekStart = weekStartOf(first); weekStart <= last; weekStart = addDays(weekStart, 7)) {
+    const sheet = myTimesheets.get(`${userId}|${weekStart}`)
+    const hoursInMonth = (sheet?.entries ?? [])
+      .filter((e) => e.workDate >= first && e.workDate <= last)
+      .reduce((sum, e) => sum + e.hours, 0)
+    weeks.push({ weekStart, status: sheet?.status ?? ('DRAFT' as const), hoursInMonth })
+  }
+  return { month, totalHours: weeks.reduce((sum, w) => sum + w.hoursInMonth, 0), weeks }
+}
 
 /** The week as GET returns it: the stored one or an empty draft, plus absences and holidays */
 function timesheetView(userId: number, weekStart: string): Timesheet {

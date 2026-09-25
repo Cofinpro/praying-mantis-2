@@ -190,6 +190,23 @@ reuses the component and only the query changes), and a reload keeps it. `replac
 `push`, so switching tabs doesn't fill Back's history. The ARIA tabs pattern adds a roving
 `tabindex` (only the selected tab is 0) and arrow keys, Home and End (FE-7.1).
 
+### A file download through the API client: `parseAs: 'blob'`, then an object URL
+An `.xlsx` from `GET /me/timesheet-exports` still goes through `client.ts`, so the CSRF and 401
+middleware run as for every call; a plain `<a href="/api/…">` would skip them and show a raw 401
+page. openapi-fetch's `parseAs: 'blob'` keeps the body binary, and an error body is still parsed as
+JSON on its own, so a 400 becomes the usual `ApiError`. The file name comes from the
+`Content-Disposition` header (prefer `filename*=UTF-8''…` when Spring writes it for non-ASCII names).
+To save it: `URL.createObjectURL(blob)`, click a temporary `<a download="name">` that's in the
+document (Firefox ignores a detached one), and revoke the URL on the next task. In Vitest, jsdom has
+no `createObjectURL` and a link click tries to navigate, so assign a `vi.fn()` to `URL.createObjectURL`
+and spy on `HTMLAnchorElement.prototype.click` (FE-8.1).
+
+### MSW in Vitest: send a string body, not a jsdom `Blob`
+`new HttpResponse(new Blob([...]))` in a handler arrived as the text "[object Blob]": the test
+environment's `Blob` is jsdom's, and Node's `Response` doesn't recognise it, so it stringifies it.
+A string (or `ArrayBuffer`) body with the right `Content-Type` works in the browser and in Node, and
+`response.blob()` on the client side is fine (FE-8.1).
+
 ## TypeScript
 
 ### One tsconfig per environment, tied together with project references

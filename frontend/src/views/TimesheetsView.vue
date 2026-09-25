@@ -7,7 +7,7 @@ import {
   useRouter,
   type LocationQuery,
 } from 'vue-router'
-import { ChevronLeft, ChevronRight, Info, TriangleAlert } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, Download, Info, TriangleAlert } from 'lucide-vue-next'
 
 import type { Project, Timesheet, TimeEntryInput, TimesheetStatus } from '@/api/client'
 import { fieldErrors, problemMessage } from '@/api/problems'
@@ -15,6 +15,7 @@ import BaseButton from '@/components/BaseButton.vue'
 import BaseDialog from '@/components/BaseDialog.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import EntryDescriptionsDialog from '@/components/timesheets/EntryDescriptionsDialog.vue'
+import ExportMonthDialog from '@/components/timesheets/ExportMonthDialog.vue'
 import SubmitTimesheetDialog from '@/components/timesheets/SubmitTimesheetDialog.vue'
 import TimesheetGrid from '@/components/timesheets/TimesheetGrid.vue'
 import { useAbsenceTypes } from '@/absences/queries'
@@ -204,6 +205,10 @@ const savedTotal = computed(() => {
   return total ? formatHours(total) : '–'
 })
 
+// --- Export (FE-8.1) ------------------------------------------------------------------------------
+
+const exporting = ref(false)
+
 // --- Week navigation and the unsaved-changes guard ----------------------------------------------
 
 function goToWeek(week: string) {
@@ -284,8 +289,14 @@ const rejection = computed(() => {
 <template>
   <div class="timesheets">
     <header class="page-header">
-      <h1 class="page-header__title">Timesheets</h1>
-      <p class="page-header__subtitle">Record your hours per project, then submit the week</p>
+      <div>
+        <h1 class="page-header__title">Timesheets</h1>
+        <p class="page-header__subtitle">Record your hours per project, then submit the week</p>
+      </div>
+      <BaseButton variant="secondary" @click="exporting = true">
+        <Download :size="18" aria-hidden="true" />
+        Export month
+      </BaseButton>
     </header>
 
     <div class="toolbar">
@@ -395,6 +406,8 @@ const rejection = computed(() => {
       @close="submitting = false"
     />
 
+    <ExportMonthDialog v-if="exporting" @close="exporting = false" />
+
     <EntryDescriptionsDialog
       v-if="describingRow"
       :key="describingRow.project.id"
@@ -433,6 +446,14 @@ const rejection = computed(() => {
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
+}
+
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
 }
 
 .page-header__title {

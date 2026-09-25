@@ -43,6 +43,15 @@ export type TimeEntryInput = components['schemas']['TimeEntryInput']
 export type TeamTimesheet = components['schemas']['TeamTimesheet']
 export type TimesheetDecision = components['schemas']['TimesheetDecision']
 export type ProjectHours = components['schemas']['ProjectHours']
+export type ExportTemplate = components['schemas']['ExportTemplate']
+export type TimesheetMonth = components['schemas']['TimesheetMonth']
+export type TimesheetMonthWeek = components['schemas']['TimesheetMonthWeek']
+
+/** A downloaded file: the body and the name the server gave it in `Content-Disposition` */
+export interface DownloadedFile {
+  blob: Blob
+  filename: string
+}
 
 /** Thrown for every non-2xx response. `problem` is the RFC 9457 body (decision #21). */
 export class ApiError extends Error {
@@ -132,6 +141,27 @@ function toProblem(body: unknown, response: Response): Problem {
   }
 }
 
+/**
+ * The file name from `attachment; filename="x.xlsx"`. Spring writes `filename*=UTF-8''…` (RFC 6266)
+ * instead when the name has non-ASCII characters, so that form wins when it's there.
+ */
+export function filenameFrom(contentDisposition: string | null): string | undefined {
+  if (!contentDisposition) {
+    return undefined
+  }
+  const encoded = /filename\*\s*=\s*UTF-8''([^;]+)/i.exec(contentDisposition)
+  if (encoded) {
+    try {
+      return decodeURIComponent(encoded[1]!.trim())
+    } catch {
+      // A malformed %-sequence: fall back to the plain filename
+    }
+  }
+  const plain = /filename\s*=\s*(?:"([^"]*)"|([^;]+))/i.exec(contentDisposition)
+  const name = plain?.[1] ?? plain?.[2]?.trim()
+  return name || undefined
+}
+
 function isProblem(body: unknown): body is Problem {
   return typeof body === 'object' && body !== null && 'status' in body && 'title' in body
 }
@@ -192,4 +222,29 @@ export const api = {
   /** The comment is required to reject (decision 31) */
   rejectTimesheet: (id: number, body: TimesheetDecision) =>
     unwrap(client.POST('/team/timesheets/{id}/reject', { params: { path: { id } }, body })),
+  /** Ordered by name (BE-8.1); the export dialog puts the generic one first */
+  getExportTemplates: () => unwrap(client.GET('/export-templates')),
+  /** `month` is `YYYY-MM`: its hours and the status of every week that touches it (BE-8.2) */
+  getMyTimesheetMonth: (month: string) =>
+    unwrap(client.GET('/me/timesheet-months/{month}', { params: { path: { month } } })),
+  /**
+   * The month as an `.xlsx` (BE-8.2). `parseAs: 'blob'` keeps the body binary; an error body is
+   * still read as JSON (openapi-fetch parses errors on its own), so it becomes an ApiError as usual.
+   * The middleware (CSRF, 401 redirect) runs as for every other call.
+   */
+  exportMyTimesheetMonth: async (month: string, template: string): Promise<DownloadedFile> => {
+    const { data, error, response } = await client.GET('/me/timesheet-exports', {
+      params: { query: { month, template } },
+      parseAs: 'blob',
+    })
+    if (!response.ok || !data) {
+      throw new ApiError(toProblem(error, response))
+    }
+    return {
+      blob: data,
+      filename:
+        filenameFrom(response.headers.get('Content-Disposition')) ??
+        `timesheet-${month}-${template}.xlsx`,
+    }
+  },
 }
