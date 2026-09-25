@@ -78,6 +78,11 @@ const monthYear = new Intl.DateTimeFormat('en-GB', {
 /** "October 2026" */
 export const formatMonth = (iso: string) => monthYear.format(toUtc(iso))
 
+const monthOnly = new Intl.DateTimeFormat('en-GB', { month: 'long', timeZone: 'UTC' })
+
+/** "October" */
+export const formatMonthName = (iso: string) => monthOnly.format(toUtc(iso))
+
 const dayMonth = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',
   month: 'short',

@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { http, HttpResponse } from 'msw'
 
-import { api, ApiError } from '@/api/client'
+import { api, ApiError, filenameFrom } from '@/api/client'
 import router from '@/router'
 import { server } from '@/mocks/node'
-import { MOCK_PASSWORD, mockUser } from '@/mocks/handlers'
+import { MOCK_PASSWORD, mockUser, startMockSession } from '@/mocks/handlers'
 
 describe('api client', () => {
   beforeEach(async () => {
@@ -65,5 +65,41 @@ describe('api client', () => {
     expect(error).toMatchObject({ status: 401, problem: { type: 'about:blank', status: 401 } })
     expect(router.currentRoute.value.name).toBe('login')
     expect(router.currentRoute.value.query.redirect).toBe('/timesheets?week=43')
+  })
+
+  it('downloads a file as a Blob with the name from Content-Disposition (FE-8.1)', async () => {
+    startMockSession()
+
+    const file = await api.exportMyTimesheetMonth('2026-10', 'DKB')
+
+    expect(file.filename).toBe('timesheet-2026-10-ana.silva-DKB.xlsx')
+    expect(file.blob).toBeInstanceOf(Blob)
+    expect(file.blob.type).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    expect(await file.blob.text()).toBe('Mock export of 2026-10 (DKB)')
+  })
+
+  it('turns a failed download into an ApiError with the Problem body', async () => {
+    startMockSession()
+
+    const error = await api.exportMyTimesheetMonth('2026-10', 'NOPE').catch((e: unknown) => e)
+
+    expect(error).toBeInstanceOf(ApiError)
+    expect(error).toMatchObject({ status: 400, problem: { errors: [{ field: 'template' }] } })
+  })
+})
+
+describe('filenameFrom', () => {
+  it('reads a quoted, an unquoted and an RFC 6266 encoded name', () => {
+    expect(filenameFrom('attachment; filename="timesheet-2026-10-eva.santos-GENERIC.xlsx"')).toBe(
+      'timesheet-2026-10-eva.santos-GENERIC.xlsx',
+    )
+    expect(filenameFrom('attachment; filename=a.xlsx')).toBe('a.xlsx')
+    expect(
+      filenameFrom(
+        `attachment; filename="=?UTF-8?Q?J=C3=BCrgen.xlsx?="; filename*=UTF-8''J%C3%BCrgen.xlsx`,
+      ),
+    ).toBe('Jürgen.xlsx')
+    expect(filenameFrom('attachment')).toBeUndefined()
+    expect(filenameFrom(null)).toBeUndefined()
   })
 })

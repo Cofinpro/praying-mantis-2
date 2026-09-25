@@ -477,4 +477,16 @@ describe('TimesheetsView', () => {
       expect(wrapper.find('.badge').text()).toBe('Draft')
     })
   })
+
+  it('opens the export dialog from "Export month" (FE-8.1)', async () => {
+    const { wrapper } = await mountPage()
+
+    expect(wrapper.find('dialog').exists()).toBe(false)
+    await buttonByText(wrapper, 'Export month')!.trigger('click')
+    await vi.waitFor(() => expect(wrapper.findAll('dialog input[type="radio"]')).toHaveLength(6))
+
+    expect(wrapper.find('dialog h2').text()).toBe('Export timesheet')
+    await buttonByText(wrapper, 'Cancel')!.trigger('click')
+    expect(wrapper.find('dialog').exists()).toBe(false)
+  })
 })

@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="T extends string | number">
-import { useId } from 'vue'
+import { useId, type Component } from 'vue'
 import { ChevronDown } from 'lucide-vue-next'
 
 // Selects from the Figma frames, a native <select> underneath so keyboard and screen-reader
@@ -12,6 +12,8 @@ const { variant = 'pill' } = defineProps<{
   label: string
   variant?: 'pill' | 'field'
   error?: string
+  /** A Lucide icon instead of the chevron, e.g. a calendar for a month */
+  icon?: Component
 }>()
 
 const id = useId()
@@ -35,7 +37,7 @@ const errorId = `${id}-error`
           {{ option.label }}
         </option>
       </select>
-      <ChevronDown :size="16" class="select__icon" aria-hidden="true" />
+      <component :is="icon ?? ChevronDown" :size="16" class="select__icon" aria-hidden="true" />
     </span>
     <p v-if="error" :id="errorId" class="field__error">{{ error }}</p>
   </div>
