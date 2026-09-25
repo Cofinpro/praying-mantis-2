@@ -20,6 +20,9 @@ public interface TimesheetRepository extends JpaRepository<Timesheet, Long> {
             where a.id = :approverId and t.status = :status""")
     List<Timesheet> findForApprover(@Param("approverId") Long approverId, @Param("status") TimesheetStatus status, Sort sort);
 
+    /** A user's weeks starting in {@code from..to} (inclusive), by week. For the month summary (BE-8.2). */
+    List<Timesheet> findByUserIdAndWeekStartBetweenOrderByWeekStart(Long userId, LocalDate from, LocalDate to);
+
     /** Any week by id, with user and approver loaded, for deciding on it (BE-7.2). */
     @Query("select t from Timesheet t join fetch t.user left join fetch t.approver where t.id = :id")
     Optional<Timesheet> findWithPeople(@Param("id") Long id);

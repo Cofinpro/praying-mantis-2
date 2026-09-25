@@ -68,6 +68,10 @@ class ExportTemplatesIntegrationTest {
             public Client client() {
                 return Client.DKB;
             }
+
+            public void write(MonthExport month, java.io.OutputStream out) {
+                // not needed here
+            }
         };
 
         ExportTemplateRegistry withDkb = new ExportTemplateRegistry(List.of(registry.get("GENERIC"), dkb));

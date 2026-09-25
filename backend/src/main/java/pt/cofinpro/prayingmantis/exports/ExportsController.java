@@ -1,21 +1,34 @@
 package pt.cofinpro.prayingmantis.exports;
 
+import jakarta.servlet.http.HttpServletResponse;
+import java.time.YearMonth;
 import java.util.List;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 import pt.cofinpro.prayingmantis.api.ExportsApi;
 import pt.cofinpro.prayingmantis.api.model.TimesheetMonth;
+import pt.cofinpro.prayingmantis.api.model.TimesheetMonthWeek;
+import pt.cofinpro.prayingmantis.auth.AuthenticatedUsers;
 
-/** Export templates and the monthly export (T-8.1). The templates are the same for everyone. */
+/** Export templates and the monthly export (T-8.1). Only ever the caller's own month (decision #11). */
 @RestController
 public class ExportsController implements ExportsApi {
 
     private final ExportTemplateRegistry registry;
+    private final ExportService exportService;
+    private final HttpServletResponse response;
 
-    public ExportsController(ExportTemplateRegistry registry) {
+    /**
+     * {@code response} is a request-scoped proxy that Spring injects for servlet types: the generated interface
+     * returns only the body, so this is how the download gets its Content-Disposition header.
+     */
+    public ExportsController(ExportTemplateRegistry registry, ExportService exportService, HttpServletResponse response) {
         this.registry = registry;
+        this.exportService = exportService;
+        this.response = response;
     }
 
     @Override
@@ -26,15 +39,26 @@ public class ExportsController implements ExportsApi {
                 .toList();
     }
 
-    /** BE-8.2 (SCRUM-69). The generated interface has no default methods, so it needs a body until then. */
+    /** {@code month} already matched the contract's YYYY-MM pattern, so parsing can't fail. */
     @Override
     public TimesheetMonth getMyTimesheetMonth(String month) {
-        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Coming in BE-8.2");
+        ExportService.MonthSummary summary = exportService.summary(AuthenticatedUsers.current().getId(), YearMonth.parse(month));
+        return new TimesheetMonth(
+                summary.month().toString(),
+                summary.totalHours(),
+                summary.weeks().stream()
+                        .map(w -> new TimesheetMonthWeek(
+                                w.weekStart(),
+                                pt.cofinpro.prayingmantis.api.model.TimesheetStatus.valueOf(w.status().name()),
+                                w.hoursInMonth()))
+                        .toList());
     }
 
-    /** BE-8.2 (SCRUM-69). */
     @Override
     public Resource exportMyTimesheetMonth(String month, String template) {
-        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Coming in BE-8.2");
+        ExportService.ExportFile file = exportService.export(AuthenticatedUsers.current().getId(), YearMonth.parse(month), template);
+        response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
+                ContentDisposition.attachment().filename(file.filename()).build().toString());
+        return new ByteArrayResource(file.content());
     }
 }
