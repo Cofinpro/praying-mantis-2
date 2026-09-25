@@ -228,6 +228,98 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My notifications, newest first
+         * @description For the bell's dropdown (FE-4.1). Only the logged-in user's own notifications (BE-4.2),
+         *     newest first (by `createdAt`, then `id`; ids grow with time, so that's the same as `id`
+         *     descending).
+         *
+         *     Paginated with a cursor: pass the `id` of the last item you have as `before` to get the next
+         *     page. `hasMore` says whether there is one. A cursor doesn't skip or repeat items when new
+         *     notifications arrive between two pages, which page numbers would.
+         */
+        get: operations["getMyNotifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/notifications/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * How many of my notifications are unread
+         * @description The bell's badge. The FE polls it every 30 s and when the tab regains focus (decision 17),
+         *     so it has to stay cheap: one `count(*)` on an index over `(user_id) WHERE read_at IS NULL`.
+         */
+        get: operations["getMyUnreadNotificationCount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/notifications/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark one of my notifications as read
+         * @description Sets `readAt` to now. Idempotent: a notification that is already read keeps its first
+         *     `readAt`, and the answer is still 204.
+         *
+         *     **404** when the notification doesn't exist or belongs to someone else, so ids of other
+         *     people's notifications aren't confirmed.
+         */
+        post: operations["markMyNotificationRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark all my notifications as read
+         * @description Sets `readAt` to now on every unread notification of the logged-in user. 204 also when
+         *     there was nothing to mark.
+         */
+        post: operations["markAllMyNotificationsRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -422,6 +514,68 @@ export interface components {
             date: string;
             /** @example Republic Day */
             name: string;
+        };
+        /**
+         * @description What happened. The FE picks the icon colour from it; the text comes ready in `message`.
+         *
+         *     | Type | Sent to | When | `link` |
+         *     |---|---|---|---|
+         *     | ABSENCE_REQUESTED | the approver | a request needs a decision (BE-3.2) | `/approvals` |
+         *     | ABSENCE_APPROVED | the requester | the approver approved it (BE-5.2) | `/absences?request={id}` |
+         *     | ABSENCE_REJECTED | the requester | the approver rejected it (BE-5.2) | `/absences?request={id}` |
+         *     | ABSENCE_CANCELLED | the approver | the requester cancelled an approved request (BE-3.3) | `/approvals` |
+         *     | TIMESHEET_SUBMITTED | the approver | a week was submitted (BE-6.4) | `/approvals?tab=timesheets` |
+         *     | TIMESHEET_APPROVED | the owner | the approver approved it (BE-7.x) | `/timesheets?week={weekStart}` |
+         *     | TIMESHEET_REJECTED | the owner | the approver rejected it (BE-7.x) | `/timesheets?week={weekStart}` |
+         *
+         *     Automatically approved requests (SICK) notify nobody.
+         * @example ABSENCE_REQUESTED
+         * @enum {string}
+         */
+        NotificationType: "ABSENCE_REQUESTED" | "ABSENCE_APPROVED" | "ABSENCE_REJECTED" | "ABSENCE_CANCELLED" | "TIMESHEET_SUBMITTED" | "TIMESHEET_APPROVED" | "TIMESHEET_REJECTED";
+        Notification: {
+            /**
+             * Format: int64
+             * @example 118
+             */
+            id: number;
+            type: components["schemas"]["NotificationType"];
+            /**
+             * @description Ready-to-show English sentence, written by the backend when the notification is created
+             *     (so it doesn't change later). The FE shows it as it is.
+             * @example Carla Mendes requested 5 days of vacation (2–6 Nov)
+             */
+            message: string;
+            /**
+             * @description Where clicking it goes: a path inside the app, starting with a single `/` (never a full
+             *     URL). The FE only follows paths like that.
+             * @example /approvals
+             */
+            link: string;
+            /**
+             * Format: date-time
+             * @description When it was read. Absent or null while unread.
+             * @example 2026-09-25T15:10:00Z
+             */
+            readAt?: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-25T14:02:00Z
+             */
+            createdAt: string;
+        };
+        NotificationPage: {
+            /** @description Newest first */
+            items: components["schemas"]["Notification"][];
+            /**
+             * @description More (older) items exist; ask again with `before` = the last item's `id`
+             * @example false
+             */
+            hasMore: boolean;
+        };
+        UnreadCount: {
+            /** @example 3 */
+            count: number;
         };
         /** @description RFC 9457 Problem Details (decision 21) */
         Problem: {
@@ -814,6 +968,103 @@ export interface operations {
             };
             400: components["responses"]["ValidationProblem"];
             401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    getMyNotifications: {
+        parameters: {
+            query?: {
+                /** @description `true` returns only unread notifications. Left out or `false`: all of them. */
+                unread?: boolean;
+                /** @description Page size */
+                limit?: number;
+                /** @description Only notifications with an `id` lower than this one (the next page) */
+                before?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of notifications */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationPage"];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    getMyUnreadNotificationCount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The unread count */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnreadCount"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    markMyNotificationRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Read */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["CsrfForbidden"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    markAllMyNotificationsRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description All read */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["CsrfForbidden"];
             default: components["responses"]["Problem"];
         };
     };
