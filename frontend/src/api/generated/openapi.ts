@@ -655,6 +655,229 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * All users
+         * @description BE-9.1. Every user, ordered by name, with their team lead and whether they lead anyone.
+         */
+        get: operations["getAdminUsers"];
+        put?: never;
+        /**
+         * Create a user
+         * @description BE-9.1. The admin sets the initial password (8 to 72 characters, BCrypt's limit), and the user
+         *     can log in with it straight away. The email is stored in lower case (BE-1.1).
+         *
+         *     - **400**: a field is invalid, or `teamLeadId` isn't a user (field `teamLeadId`)
+         *     - **409** `/problems/email-taken`: another user has this email
+         */
+        post: operations["createAdminUser"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/users/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Edit a user
+         * @description BE-9.1. Replaces name, email, client, level, admin flag and team lead. The password isn't
+         *     changed here; see `/password`. A change of team lead only affects requests and timesheets
+         *     submitted afterwards: the ones already waiting keep their stored approver (decision 31).
+         *
+         *     - **400**: a field is invalid; `teamLeadId` isn't a user, or is the user themselves
+         *     - **404**: no such user
+         *     - **409** `/problems/email-taken`
+         *     - **409** `/problems/team-lead-cycle`: the new team lead is already, directly or through others,
+         *       led by this user (frame "12 Admin – Edit user" shows this state)
+         *     - **409** `/problems/last-admin`: this would remove the admin flag from the only admin
+         */
+        put: operations["updateAdminUser"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/users/{id}/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set a user's password
+         * @description BE-9.1. For a forgotten password. Existing sessions of that user stay valid until they expire.
+         */
+        post: operations["setAdminUserPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/entitlements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * All entitlements of a year
+         * @description BE-9.2. Ordered by user name, then type.
+         */
+        get: operations["getAdminEntitlements"];
+        /**
+         * Create or update one entitlement
+         * @description BE-9.2. There is at most one entitlement per user, type and year, so this is an upsert on
+         *     that key: it creates the entitlement or replaces its days (decision 35). Days are in steps
+         *     of 0.5.
+         *
+         *     **400**: a field is invalid, or `userId` isn't a user (field `userId`).
+         */
+        put: operations["saveAdminEntitlement"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/entitlements/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete an entitlement
+         * @description BE-9.2. The user then has 0 days of that type left in that year (decision 29).
+         */
+        delete: operations["deleteAdminEntitlement"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * All projects, active and inactive
+         * @description BE-9.3. Ordered by code.
+         */
+        get: operations["getAdminProjects"];
+        put?: never;
+        /**
+         * Create a project
+         * @description BE-9.3. **409** `/problems/project-code-taken`: another project has this code.
+         */
+        post: operations["createAdminProject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/projects/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Edit or deactivate a project
+         * @description BE-9.3. Projects are never deleted, since time entries point at them; `isActive: false` stops
+         *     new hours on it (decision 32).
+         *
+         *     **404**: no such project. **409** `/problems/project-code-taken`.
+         */
+        put: operations["updateAdminProject"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/public-holidays": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The public holidays of a year, with their ids
+         * @description BE-9.4. Ordered by date.
+         */
+        get: operations["getAdminPublicHolidays"];
+        put?: never;
+        /**
+         * Add a public holiday
+         * @description BE-9.4, e.g. next year's list. Existing absence requests keep their stored working days
+         *     (decision 15), so this only affects requests created afterwards.
+         *
+         *     **409** `/problems/holiday-date-taken`: that date is already a holiday.
+         */
+        post: operations["createAdminPublicHoliday"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/public-holidays/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Edit a public holiday
+         * @description BE-9.4. **404**: no such holiday. **409** `/problems/holiday-date-taken`.
+         */
+        put: operations["updateAdminPublicHoliday"];
+        post?: never;
+        /**
+         * Delete a public holiday
+         * @description BE-9.4. Existing requests keep their stored working days (decision 15).
+         */
+        delete: operations["deleteAdminPublicHoliday"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -978,6 +1201,122 @@ export interface components {
              */
             comment?: string;
         };
+        AdminUser: {
+            /**
+             * Format: int64
+             * @example 5
+             */
+            id: number;
+            /** @example Eva Santos */
+            name: string;
+            /**
+             * Format: email
+             * @example eva.santos@cofinpro.pt
+             */
+            email: string;
+            client: components["schemas"]["Client"];
+            level: components["schemas"]["Level"];
+            /** @example false */
+            isAdmin: boolean;
+            /**
+             * @description Derived, someone has this user as team lead (decision 9)
+             * @example false
+             */
+            isTeamLead: boolean;
+            /** @description Absent when the user has none (then an admin approves, decision 16) */
+            teamLead?: components["schemas"]["UserRef"];
+        };
+        AdminUserUpdate: {
+            /** @example Eva Santos */
+            name: string;
+            /**
+             * Format: email
+             * @example eva.santos@cofinpro.pt
+             */
+            email: string;
+            client: components["schemas"]["Client"];
+            level: components["schemas"]["Level"];
+            /** @example false */
+            isAdmin: boolean;
+            /**
+             * Format: int64
+             * @description Leave it out for no team lead
+             * @example 3
+             */
+            teamLeadId?: number;
+        };
+        NewAdminUser: components["schemas"]["AdminUserUpdate"] & {
+            /** @example change-me-please */
+            password: string;
+        };
+        PasswordReset: {
+            /** @example change-me-please */
+            password: string;
+        };
+        AdminEntitlement: {
+            /**
+             * Format: int64
+             * @example 31
+             */
+            id: number;
+            user: components["schemas"]["UserRef"];
+            type: components["schemas"]["AbsenceTypeCode"];
+            /** @example 2027 */
+            year: number;
+            /** @example 22 */
+            entitledDays: number;
+            /** @example 2.5 */
+            carriedOverDays: number;
+        };
+        EntitlementInput: {
+            /**
+             * Format: int64
+             * @example 5
+             */
+            userId: number;
+            type: components["schemas"]["AbsenceTypeCode"];
+            /** @example 2027 */
+            year: number;
+            /**
+             * @description 0 to 366, in steps of 0.5
+             * @example 22
+             */
+            entitledDays: number;
+            /**
+             * @description 0 to 366, in steps of 0.5
+             * @example 2.5
+             */
+            carriedOverDays: number;
+        };
+        ProjectInput: {
+            /**
+             * @description Letters, digits and dashes, stored in upper case
+             * @example DKB-CORE
+             */
+            code: string;
+            /** @example DKB core banking */
+            name: string;
+            /** @description Leave it out for an internal project */
+            client?: components["schemas"]["Client"];
+            /** @example true */
+            isBillable: boolean;
+            /** @example true */
+            isActive: boolean;
+        };
+        AdminPublicHoliday: {
+            /**
+             * Format: int64
+             * @example 14
+             */
+            id: number;
+            /**
+             * Format: date
+             * @example 2028-04-25
+             */
+            date: string;
+            /** @example Freedom Day */
+            name: string;
+        };
         UserRef: {
             /**
              * Format: int64
@@ -1240,6 +1579,8 @@ export interface components {
         };
     };
     parameters: {
+        UserId: number;
+        HolidayId: number;
         /** @description `YYYY-MM` */
         Month: string;
         TimesheetId: number;
@@ -2000,6 +2341,504 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    getAdminUsers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The users */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUser"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Not an admin (checked against the DB on every call, decision 11) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createAdminUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewAdminUser"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUser"];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
+            /** @description Not an admin (checked against the DB on every call, decision 11), or a missing CSRF token */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateAdminUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["UserId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminUserUpdate"];
+            };
+        };
+        responses: {
+            /** @description The updated user */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUser"];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
+            /** @description Not an admin (checked against the DB on every call, decision 11), or a missing CSRF token */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    setAdminUserPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["UserId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordReset"];
+            };
+        };
+        responses: {
+            /** @description Password set */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
+            /** @description Not an admin (checked against the DB on every call, decision 11), or a missing CSRF token */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    getAdminEntitlements: {
+        parameters: {
+            query: {
+                year: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The entitlements */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminEntitlement"][];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
+            /** @description Not an admin (checked against the DB on every call, decision 11) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    saveAdminEntitlement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntitlementInput"];
+            };
+        };
+        responses: {
+            /** @description The saved entitlement */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminEntitlement"];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
+            /** @description Not an admin (checked against the DB on every call, decision 11), or a missing CSRF token */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteAdminEntitlement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Not an admin (checked against the DB on every call, decision 11), or a missing CSRF token */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    getAdminProjects: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The projects */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Project"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Not an admin (checked against the DB on every call, decision 11) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createAdminProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Project"];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
+            /** @description Not an admin (checked against the DB on every call, decision 11), or a missing CSRF token */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateAdminProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectInput"];
+            };
+        };
+        responses: {
+            /** @description The updated project */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Project"];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
+            /** @description Not an admin (checked against the DB on every call, decision 11), or a missing CSRF token */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    getAdminPublicHolidays: {
+        parameters: {
+            query: {
+                year: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The holidays */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPublicHoliday"][];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
+            /** @description Not an admin (checked against the DB on every call, decision 11) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createAdminPublicHoliday: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublicHoliday"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPublicHoliday"];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
+            /** @description Not an admin (checked against the DB on every call, decision 11), or a missing CSRF token */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateAdminPublicHoliday: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["HolidayId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublicHoliday"];
+            };
+        };
+        responses: {
+            /** @description The updated holiday */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPublicHoliday"];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            401: components["responses"]["Unauthorized"];
+            /** @description Not an admin (checked against the DB on every call, decision 11), or a missing CSRF token */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteAdminPublicHoliday: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["HolidayId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Not an admin (checked against the DB on every call, decision 11), or a missing CSRF token */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            404: components["responses"]["NotFound"];
             default: components["responses"]["Problem"];
         };
     };
