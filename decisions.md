@@ -274,7 +274,7 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 - ESLint 10 with a flat config (`eslint.config.ts`): `eslint-plugin-vue` essential rules, `@vue/eslint-config-typescript` recommended, and `@vitest/eslint-plugin` for test files.
 - Prettier formats; `@vue/eslint-config-prettier/skip-formatting` turns off the ESLint rules that would conflict with it. Style: no semicolons, single quotes, 100 columns.
 - Vitest with jsdom, reusing `vite.config.ts` through `vitest.config.ts`. Tests type-check against their own `tsconfig.vitest.json`.
-- Scripts: `pnpm lint`, `pnpm format`, `pnpm test`, `pnpm type-check`, `pnpm build`. CI runs `pnpm lint && pnpm test && pnpm build` (FE-0.3).
+- Scripts: `pnpm lint`, `pnpm format`, `pnpm test`, `pnpm type-check`, `pnpm build`. CI runs `pnpm format:check && pnpm lint && pnpm test && pnpm build` (`format:check` added in FE-0.3, since nothing else enforces formatting once `skip-formatting` turns the ESLint style rules off).
 
 **Why:** It's the setup `create-vue` generates, so docs and examples online match ours. Vitest shares Vite's transform pipeline, so tests compile `.vue` files exactly like the app does.
 
@@ -291,4 +291,4 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 
 **Why:** Paths, parameters and bodies are checked against the contract at compile time, with no runtime code generated. Committing the types means `pnpm install && pnpm dev` works without a generate step, and a contract change shows up in the PR diff.
 
-**Consequences:** After changing `api/openapi.yaml`, run `pnpm gen:api` and commit the result. CI (FE-0.3) should run `pnpm gen:api` and fail if `git diff` isn't empty.
+**Consequences:** After changing `api/openapi.yaml`, run `pnpm gen:api` and commit the result. CI (`.github/workflows/frontend.yml`, FE-0.3) runs `pnpm gen:api` and fails if `src/api/generated/` changed.

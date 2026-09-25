@@ -55,7 +55,7 @@ Every change to `main` goes through a pull request (PR). This policy implements 
 
 ## 5. Merge requirements (branch protection enforces approvals, conversations and, once CI exists, the build; the AI review is by convention)
 
-- [ ] CI green: `./mvnw verify` (including Testcontainers) and `pnpm lint && pnpm test && pnpm build`, per BE-0.3 and FE-0.3, with generated code up to date with `openapi.yaml`
+- [ ] CI green: `./mvnw verify` (including Testcontainers) and `pnpm format:check && pnpm lint && pnpm test && pnpm build`, per BE-0.3 and FE-0.3, with generated code up to date with `openapi.yaml`
 - [ ] Tests included for new logic (D10)
 - [ ] FE changes match their Figma frame, with the frame linked and a screenshot in the PR (D24)
 - [ ] AI review posted on the PR (`/review-pr --post`), and 🔴/🟠 findings addressed

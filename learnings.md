@@ -57,6 +57,18 @@ openapi-generator puts `@Validated` on the interfaces unless `useSpringBuiltInVa
 
 ## Tooling (Vite, pnpm, Maven, Docker, OpenAPI)
 
+### A required status check must run on every PR
+The CI workflows have no `paths:` filter. If `frontend.yml` only ran on `frontend/**` changes, a
+BE-only PR would never report the required `frontend` check, and GitHub would keep the merge
+blocked waiting for it. So both workflows run on every PR, and each finishes in a few minutes
+(FE-0.3, BE-0.3).
+
+### Checking committed generated code in CI: regenerate, then `git diff --exit-code`
+`git diff --exit-code` exits with 1 when the working tree differs from the commit. Running it after
+`pnpm gen:api` fails the build when someone changed `api/openapi.yaml` without regenerating the
+types. Running it again at the end of the job catches any step that silently rewrites tracked files,
+e.g. MSW's install script updating `public/mockServiceWorker.js` after an MSW upgrade (FE-0.3).
+
 ### ` #` starts a comment in YAML, even inside an unquoted string
 `description: Problem Details (decision #21)` parses as `Problem Details (decision`, and the
 generated TypeScript comment shows the cut. Quote values that contain ` #`:
