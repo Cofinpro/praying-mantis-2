@@ -14,12 +14,13 @@ import org.springframework.transaction.annotation.Transactional;
 import pt.cofinpro.prayingmantis.auth.Permissions;
 import pt.cofinpro.prayingmantis.common.ConflictException;
 import pt.cofinpro.prayingmantis.common.InvalidFieldException;
+import pt.cofinpro.prayingmantis.common.NotFoundException;
 import pt.cofinpro.prayingmantis.holidays.PublicHoliday;
 import pt.cofinpro.prayingmantis.holidays.PublicHolidayRepository;
 import pt.cofinpro.prayingmantis.users.User;
 import pt.cofinpro.prayingmantis.users.UserRepository;
 
-/** A user's own absence requests: reading them (BE-2.3) and creating them (BE-3.2). */
+/** A user's own absence requests: reading (BE-2.3), creating (BE-3.2) and cancelling them (BE-3.3). */
 @Service
 public class AbsenceRequestService {
 
@@ -30,6 +31,7 @@ public class AbsenceRequestService {
     static final String OVERLAP = "absence-overlap";
     static final String INSUFFICIENT_BALANCE = "insufficient-balance";
     static final String NO_APPROVER = "no-approver";
+    static final String NOT_CANCELLABLE = "absence-not-cancellable";
 
     private static final List<AbsenceStatus> BLOCKING = List.of(AbsenceStatus.PENDING, AbsenceStatus.APPROVED);
     private static final String NO_OVERLAP_CONSTRAINT = "ex_absence_requests_no_overlap";
@@ -129,6 +131,33 @@ public class AbsenceRequestService {
 
         if (status == AbsenceStatus.PENDING) {
             notifications.requested(request);
+        }
+        return request;
+    }
+
+    /**
+     * Cancels one of the user's own requests (BE-3.3, decision #13). Pending: always. Approved: only while
+     * it hasn't started, in Lisbon time, and then its approver is told. Someone else's request is a 404.
+     */
+    @Transactional
+    public AbsenceRequest cancel(Long userId, Long requestId) {
+        AbsenceRequest request = requests.findOwn(requestId, userId)
+                .orElseThrow(() -> new NotFoundException("Absence request not found"));
+        AbsenceStatus before = request.getStatus();
+        switch (before) {
+            case PENDING -> { }
+            case APPROVED -> {
+                if (!request.getStartDate().isAfter(LocalDate.now(clock))) {
+                    throw new ConflictException(NOT_CANCELLABLE, "An approved absence can only be cancelled before it starts");
+                }
+            }
+            case REJECTED, CANCELLED -> throw new ConflictException(NOT_CANCELLABLE,
+                    "Only pending or approved requests can be cancelled; this one is " + before.name().toLowerCase());
+        }
+        request.setStatus(AbsenceStatus.CANCELLED);
+        requests.flush();
+        if (before == AbsenceStatus.APPROVED && request.getApprover() != null) {
+            notifications.cancelled(request);
         }
         return request;
     }

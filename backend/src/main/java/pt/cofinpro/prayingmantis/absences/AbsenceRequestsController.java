@@ -1,8 +1,6 @@
 package pt.cofinpro.prayingmantis.absences;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 import pt.cofinpro.prayingmantis.api.AbsenceRequestsApi;
 import pt.cofinpro.prayingmantis.api.model.AbsenceRequest;
 import pt.cofinpro.prayingmantis.api.model.NewAbsenceRequest;
@@ -30,9 +28,8 @@ public class AbsenceRequestsController implements AbsenceRequestsApi {
                 body.getReason()));
     }
 
-    /** BE-3.3 (SCRUM-39). The generated interface has no default methods, so it needs a body until then. */
     @Override
     public AbsenceRequest cancelMyAbsenceRequest(Long id) {
-        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Coming in BE-3.3");
+        return AbsenceMapper.toApi(requestService.cancel(AuthenticatedUsers.current().getId(), id));
     }
 }
