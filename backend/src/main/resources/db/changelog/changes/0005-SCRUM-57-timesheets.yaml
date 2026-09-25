@@ -1,0 +1,147 @@
+# BE-6.2: weekly timesheets and their entries (plan.md §4, decision #32). One timesheet per user and week;
+# one entry per project and day. Rows are only created on the first save or submit, not by opening a week.
+databaseChangeLog:
+  - changeSet:
+      id: 0005-timesheets-table
+      author: praying-mantis
+      changes:
+        - createTable:
+            tableName: timesheets
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  generationType: ALWAYS
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_timesheets
+              - column:
+                  name: user_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_timesheets_user
+                    references: users(id)
+              - column:
+                  name: week_start
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: approver_id
+                  type: bigint
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_timesheets_approver
+                    references: users(id)
+              - column:
+                  name: submitted_at
+                  type: timestamptz
+              - column:
+                  name: decided_at
+                  type: timestamptz
+              - column:
+                  name: decision_comment
+                  type: varchar(500)
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        # Its index starts with user_id, so it also serves "my timesheets"
+        - addUniqueConstraint:
+            tableName: timesheets
+            columnNames: user_id, week_start
+            constraintName: uq_timesheets_user_week
+        # "Timesheets I have to decide on" (BE-7.1)
+        - createIndex:
+            tableName: timesheets
+            indexName: idx_timesheets_approver_status
+            columns:
+              - column:
+                  name: approver_id
+              - column:
+                  name: status
+        # isodow: Monday = 1 ... Sunday = 7, whatever the session's locale
+        - sql:
+            sql: >-
+              alter table timesheets
+                add constraint ck_timesheets_status check (status in ('DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED')),
+                add constraint ck_timesheets_week_start_monday check (extract(isodow from week_start) = 1),
+                add constraint ck_timesheets_not_own_approver check (approver_id <> user_id)
+      rollback:
+        - dropTable:
+            tableName: timesheets
+
+  - changeSet:
+      id: 0005-time-entries-table
+      author: praying-mantis
+      changes:
+        - createTable:
+            tableName: time_entries
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  generationType: ALWAYS
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_time_entries
+              # Entries belong to their week: deleting a timesheet deletes them
+              - column:
+                  name: timesheet_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_time_entries_timesheet
+                    references: timesheets(id)
+                    deleteCascade: true
+              - column:
+                  name: project_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_time_entries_project
+                    references: projects(id)
+              - column:
+                  name: work_date
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: hours
+                  type: numeric(4,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: varchar(500)
+        # One grid cell per project and day. Its index starts with timesheet_id, so it serves "the week's entries".
+        - addUniqueConstraint:
+            tableName: time_entries
+            columnNames: timesheet_id, project_id, work_date
+            constraintName: uq_time_entries_cell
+        # "The entries of a month" for the export (BE-8.2), and "entries on a project"
+        - createIndex:
+            tableName: time_entries
+            indexName: idx_time_entries_project
+            columns:
+              - column:
+                  name: project_id
+        # Quarter hours, more than 0, at most 24. The day total and "inside the week" need other rows, so
+        # the service checks those (BE-6.3).
+        - sql:
+            sql: >-
+              alter table time_entries
+                add constraint ck_time_entries_hours check (hours > 0 and hours <= 24 and hours * 4 = trunc(hours * 4))
+      rollback:
+        - dropTable:
+            tableName: time_entries

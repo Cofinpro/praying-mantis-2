@@ -5,7 +5,7 @@ import pt.cofinpro.prayingmantis.api.model.UserRef;
 import pt.cofinpro.prayingmantis.users.User;
 
 /** Domain to contract types. The enums share their names with the API enums, as in CurrentUserMapper. */
-final class AbsenceMapper {
+public final class AbsenceMapper {
 
     private AbsenceMapper() {
     }
@@ -31,7 +31,7 @@ final class AbsenceMapper {
     }
 
     /** The type and the approver must be loaded (findForCalendar fetches both). */
-    static pt.cofinpro.prayingmantis.api.model.AbsenceRequest toApi(AbsenceRequest request) {
+    public static pt.cofinpro.prayingmantis.api.model.AbsenceRequest toApi(AbsenceRequest request) {
         return new pt.cofinpro.prayingmantis.api.model.AbsenceRequest(
                         request.getId(),
                         toApi(request.getType().getCode()),
