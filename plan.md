@@ -20,6 +20,8 @@ This file is the source for the Jira backlog (project **SCRUM**). Each story bel
 
 **Per feature:** `T` story first (contract merged into `api/openapi.yaml`) → `BE` and `FE` stories in parallel (FE against MSW mocks) → integration story → demo and `learnings.md` entries.
 
+**Design (D24):** every `FE` story builds its frame in the [Figma file](https://www.figma.com/design/7gmKCqksPty2qzbRnrWpJZ); `design.md` maps stories to frames and lists the design tokens. A story with no frame is designed in Figma first, during its `T` story.
+
 **Size:** S (≤ ½ day), M (1–2 days), L (3+ days, consider splitting).
 
 ---
@@ -212,11 +214,13 @@ As a BE dev, I want reusable permission checks so that services enforce rules co
 
 **FE-1.1 Login page** · `frontend` · S · depends on FE-0.2, T-1.1
 As a user, I want a login page so that I can sign in.
+- Design: [01 Login](https://www.figma.com/design/7gmKCqksPty2qzbRnrWpJZ?node-id=2-89)
 - Email + password form, inline error on 401, disabled button while submitting
 - On success, redirect to the page originally requested (or home)
 
 **FE-1.2 App shell and route guard** · `frontend` · M · depends on FE-1.1
 As a user, I want a consistent layout with navigation so that I can reach all features.
+- Design: [02 Absences, header](https://www.figma.com/design/7gmKCqksPty2qzbRnrWpJZ?node-id=2-132)
 - Header with user name, notification bell placeholder, logout
 - Nav: Absences, Timesheets, Approvals (only if team lead), Admin (only if admin), external links to Trainings and Seats
 - Router guard redirects to login when `/me` returns 401
@@ -247,11 +251,13 @@ As a user, I want to see how many vacation days I have left so that I can plan t
 
 **FE-2.1 Balance cards** · `frontend` · S · depends on T-2.1
 As a user, I want my balance at the top of the Absences page so that I see it at a glance.
+- Design: [02 Absences](https://www.figma.com/design/7gmKCqksPty2qzbRnrWpJZ?node-id=2-132)
 - One card per type with a balance; shows remaining, and pending as a secondary number
 - Year selector
 
 **FE-2.2 Absence calendar** · `frontend` · L · depends on T-2.1
 As a user, I want a calendar of my absences so that I see what's booked.
+- Design: [02 Absences](https://www.figma.com/design/7gmKCqksPty2qzbRnrWpJZ?node-id=2-132)
 - Month view; absences coloured by type, pending visually distinct (e.g. striped), rejected/cancelled hidden by default
 - Weekends and public holidays marked
 - Half days shown as half cells
@@ -287,11 +293,13 @@ As a user, I want to cancel a request so that I can change my plans.
 
 **FE-3.1 Request absence form** · `frontend` · M · depends on T-3.1
 As a user, I want a form to request time off so that it's quick to book.
+- Design: [03 Absences – Request dialog](https://www.figma.com/design/7gmKCqksPty2qzbRnrWpJZ?node-id=2-382)
 - Type, start/end date, start/end part, reason
 - Live preview of working days (computed client-side from holidays; backend value is authoritative)
 - Shows backend validation and 409 errors inline; on success, balance and calendar refresh (query invalidation)
 
 **FE-3.2 Cancel from calendar/list** · `frontend` · S · depends on T-3.1
+- Design: [08 Absences – Details](https://www.figma.com/design/7gmKCqksPty2qzbRnrWpJZ?node-id=17-2), [09 Cancel confirmation](https://www.figma.com/design/7gmKCqksPty2qzbRnrWpJZ?node-id=17-299)
 - Clicking an absence opens details with a Cancel button when allowed; confirmation dialog
 
 **FE-3.3 Integrate request and cancel** · `frontend` · S · depends on BE-3.2, BE-3.3, FE-3.1, FE-3.2
@@ -314,6 +322,7 @@ As a user, I want to see and dismiss my notifications.
 
 **FE-4.1 Notification bell** · `frontend` · M · depends on T-4.1
 As a user, I want a bell with an unread badge so that I notice decisions and requests.
+- Design: [07 Notifications dropdown](https://www.figma.com/design/7gmKCqksPty2qzbRnrWpJZ?node-id=3-746)
 - Badge polls unread count (D6); dropdown lists recent notifications; clicking navigates to `link` and marks read; "mark all read"
 
 **FE-4.2 Integrate notifications** · `frontend` · S · depends on BE-4.2, FE-4.1
@@ -338,6 +347,7 @@ As a team lead, I want to approve or reject a request so that my team member kno
 
 **FE-5.1 Approvals page (absences)** · `frontend` · M · depends on T-5.1
 As a team lead, I want an Approvals page so that I can decide quickly.
+- Design: [04 Approvals](https://www.figma.com/design/7gmKCqksPty2qzbRnrWpJZ?node-id=3-2)
 - List of pending requests with Approve / Reject (reject opens comment dialog)
 - Optimistic update or refetch after decision
 - Page only in nav for team leads; direct access by others shows "nothing to approve" (backend enforces anyway)
@@ -346,6 +356,7 @@ As a team lead, I want an Approvals page so that I can decide quickly.
 
 **BE-5.3 / FE-5.3 Team calendar** *(stretch)* · `backend` / `frontend` · M each
 As a team lead, I want to see my team's absences in one calendar so that I can spot conflicts before approving.
+- Design: [10 Approvals – Team calendar](https://www.figma.com/design/7gmKCqksPty2qzbRnrWpJZ?node-id=17-563)
 
 ---
 
@@ -375,12 +386,14 @@ As a user, I want to submit my week so that my team lead can approve it.
 
 **FE-6.1 Weekly timesheet grid** · `frontend` · L · depends on T-6.1
 As a user, I want a week grid so that entering hours is fast.
+- Design: [05 Timesheets](https://www.figma.com/design/7gmKCqksPty2qzbRnrWpJZ?node-id=3-188)
 - Week navigation (prev/next/today), status badge
 - Add project row, hour inputs per day, row and day totals, description per entry
 - Approved absence days shown in the grid header
 - Save button with unsaved-changes warning; read-only when submitted/approved; rejection comment shown when rejected
 
 **FE-6.2 Submit timesheet** · `frontend` · S · depends on FE-6.1
+- Design: [05 Timesheets](https://www.figma.com/design/7gmKCqksPty2qzbRnrWpJZ?node-id=3-188)
 - Submit button with confirmation; disabled with unsaved changes
 
 **FE-6.3 Integrate timesheets** · `frontend` · S · depends on BE-6.2–6.4, FE-6.1, FE-6.2
@@ -396,6 +409,7 @@ As a user, I want a week grid so that entering hours is fast.
 - Same rules as BE-5.2; notifies the user (TIMESHEET_DECIDED)
 
 **FE-7.1 Timesheets tab on Approvals page** · `frontend` · M · depends on FE-5.1
+- Design: [04 Approvals, Timesheets tab](https://www.figma.com/design/7gmKCqksPty2qzbRnrWpJZ?node-id=3-2)
 - Second tab on Approvals; expandable row shows the week grid read-only; approve/reject with comment
 
 **FE-7.2 Integrate timesheet approval** · `frontend` · S · depends on BE-7.2, FE-7.1
@@ -420,6 +434,7 @@ As a user, I want to download my month as an Excel file in my client's format so
 
 **FE-8.1 Export dialog and download** · `frontend` · M · depends on T-8.1
 As a user, I want an Export button per month so that I can pick a template and download the file.
+- Design: [06 Timesheets – Export dialog](https://www.figma.com/design/7gmKCqksPty2qzbRnrWpJZ?node-id=3-430)
 - Month picker, template select (preselect template matching the user's client), download via blob from `client.ts`
 - Warning if the month has non-approved weeks
 
@@ -434,16 +449,20 @@ As a user, I want an Export button per month so that I can pick a template and d
 **BE-9.1 / FE-9.1 Manage users** · M each
 As an admin, I want to create and edit users, set their team lead and admin flag.
 - Can't create cycles in `team_lead_id`; email unique (409); initial password set by admin
+- FE design: [11 Admin – Users](https://www.figma.com/design/7gmKCqksPty2qzbRnrWpJZ?node-id=18-12), [12 Edit user](https://www.figma.com/design/7gmKCqksPty2qzbRnrWpJZ?node-id=18-237)
 
 **BE-9.2 / FE-9.2 Manage entitlements** · M each
 As an admin, I want to set yearly entitlements and carry-over so that balances are right.
 - Stretch: "start new year" action that computes carry-over from remaining days
+- FE design: [13 Admin – Entitlements](https://www.figma.com/design/7gmKCqksPty2qzbRnrWpJZ?node-id=18-547)
 
 **BE-9.3 / FE-9.3 Manage projects** · S each
 As an admin, I want to create, edit and deactivate projects.
+- FE design: [14 Admin – Projects](https://www.figma.com/design/7gmKCqksPty2qzbRnrWpJZ?node-id=18-759)
 
 **BE-9.4 / FE-9.4 Manage public holidays** · S each
 As an admin, I want to maintain the holiday list for next year.
+- FE design: [15 Admin – Public holidays](https://www.figma.com/design/7gmKCqksPty2qzbRnrWpJZ?node-id=18-970)
 
 ---
 

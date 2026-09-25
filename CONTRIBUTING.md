@@ -27,6 +27,7 @@ Every change to `main` goes through a pull request (PR). This policy implements 
 - **One concern per PR.** Don't mix refactors with features.
 - **Before marking it "Ready for review", run the AI review locally**: `/review-pr --post` in Claude Code (see section 4). Open the PR as a **Draft** until then.
 - **Contract first (D2):** a feature's `api/openapi.yaml` change is merged in its own `T` story PR before the BE and FE implementation PRs.
+- **Design first (D24):** an FE PR implements the story's Figma frame (see `design.md`). Link the frame and add a screenshot of the result. If the UI isn't designed yet, or has to differ from the frame, update Figma and `design.md` first.
 
 ## 4. Review process
 
@@ -56,6 +57,7 @@ Every change to `main` goes through a pull request (PR). This policy implements 
 
 - [ ] CI green: `./mvnw verify` (including Testcontainers) and `pnpm lint && pnpm test && pnpm build`, per BE-0.3 and FE-0.3, with generated code up to date with `openapi.yaml`
 - [ ] Tests included for new logic (D10)
+- [ ] FE changes match their Figma frame, with the frame linked and a screenshot in the PR (D24)
 - [ ] AI review posted on the PR (`/review-pr --post`), and 🔴/🟠 findings addressed
 - [ ] ≥ 1 approval from a code owner (both BE and FE for `api/**`)
 - [ ] All conversations resolved

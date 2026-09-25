@@ -31,8 +31,9 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 | 21 | Errors as RFC 7807 Problem Details | Proposed |
 | 22 | Date and time format | Proposed |
 | 23 | Schema migrations with Liquibase | Accepted |
-| 24 | Frontend lint, format and test tooling | Accepted |
-| 25 | Frontend API client with openapi-fetch, committed generated types | Accepted |
+| 24 | The Figma file is the UI source of truth | Accepted |
+| 25 | Frontend lint, format and test tooling | Accepted |
+| 26 | Frontend API client with openapi-fetch, committed generated types | Accepted |
 
 `plan.md` decisions D1–D12 map to #12–#23.
 
@@ -248,9 +249,25 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 
 **Why:** It's the team's choice. Liquibase tracks each changeset by id, author and checksum, and supports rollbacks and contexts. YAML changesets teach the Liquibase model, while the `sql` change type keeps full Postgres power where we need it.
 
+**Consequences:** A changeset that has already run is never edited, because its checksum would fail; fixes go in a new changeset. The convention in CLAUDE.md needs to be updated from Flyway to Liquibase.
+
+## 24. The Figma file is the UI source of truth
+**Status:** Accepted
+
+**Decision:**
+- Every FE story is built from its frame in the Figma file [Praying Mantis – Timesheets & Vacations](https://www.figma.com/design/7gmKCqksPty2qzbRnrWpJZ). `design.md` maps each story to its frame and lists the design tokens.
+- A story with no frame, or a state the frame doesn't show, is designed in Figma first and agreed by the team. If the implementation has to differ, Figma is updated first.
+- Components use the design tokens in `frontend/src/assets/tokens.css` (CSS custom properties), never raw colours, fonts or radii.
+- Every FE PR links its frame and includes a screenshot.
+
+**Alternatives considered:** Designing each screen in the `together` session on a whiteboard; a component library such as Vuetify or PrimeVue with its own look.
+
+**Why:** One agreed picture per screen makes the `together` session faster and gives the FE dev and the reviewers something concrete to check against. The Cofinpro look (Inter, orange `#FD6202`, pill buttons) makes the platform feel like a company tool. Hand-writing our own components from tokens teaches more Vue and scoped CSS than theming a library.
+
+**Consequences:** `design.md` must be kept in sync with Figma, in the same PR as the Figma change. The file has to be shared with the whole team with edit access. The `fe-specialist` reviewer checks FE PRs against `design.md`.
 **Consequences:** A changeset that has already run is never edited, because its checksum would fail; fixes go in a new changeset. The Flyway convention in CLAUDE.md was replaced with Liquibase in BE-0.1.
 
-## 24. Frontend lint, format and test tooling
+## 25. Frontend lint, format and test tooling
 **Status:** Accepted · set up in FE-0.1
 
 **Decision:**
@@ -261,7 +278,7 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 
 **Why:** It's the setup `create-vue` generates, so docs and examples online match ours. Vitest shares Vite's transform pipeline, so tests compile `.vue` files exactly like the app does.
 
-## 25. Frontend API client with openapi-fetch, committed generated types
+## 26. Frontend API client with openapi-fetch, committed generated types
 **Status:** Accepted · set up in FE-0.2
 
 **Decision:**

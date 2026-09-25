@@ -20,6 +20,10 @@ Story:
 ## How to test
 <!-- Which automated tests cover this, and any manual steps for the reviewer. -->
 
+## Design (FE changes)
+<!-- Link the story's Figma frame from design.md and add a screenshot of the implementation next to it. -->
+Figma frame:
+
 ## Screenshots / recordings (FE changes)
 
 ## Checklist
@@ -32,5 +36,6 @@ Story:
 - [ ] Permissions enforced in the backend (D11)
 - [ ] Frontend uses pnpm only (D5)
 - [ ] No secrets, credentials, or PII committed
+- [ ] Matches the Figma frame and uses the design tokens; Figma and `design.md` updated if the UI differs (FE, D24)
 - [ ] Accessibility checked: keyboard, labels, contrast (FE)
 - [ ] Ran `/review-pr --post` in Claude Code and addressed its findings (🔴/🟠 fixed or justified)
