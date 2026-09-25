@@ -69,13 +69,18 @@ public class AbsenceRequestService {
      */
     @Transactional(readOnly = true)
     public List<AbsenceRequest> overlapping(Long userId, LocalDate from, LocalDate to) {
+        requireRange(from, to);
+        return requests.findForCalendar(userId, from, to);
+    }
+
+    /** A calendar range (T-2.1, T-5.3): {@code to} not before {@code from}, at most a year. 400 on {@code to}. */
+    static void requireRange(LocalDate from, LocalDate to) {
         if (to.isBefore(from)) {
             throw new InvalidFieldException("to", "must not be before from");
         }
         if (ChronoUnit.DAYS.between(from, to) + 1 > MAX_RANGE_DAYS) {
             throw new InvalidFieldException("to", "the range must be at most " + MAX_RANGE_DAYS + " days");
         }
-        return requests.findForCalendar(userId, from, to);
     }
 
     /**
