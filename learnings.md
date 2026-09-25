@@ -14,7 +14,20 @@ What surprised us or cost us time, what we now do instead. Link the PR, story or
 
 ## Vue
 
+### `staleTime` decides whether TanStack Query refetches on mount and focus
+We set a global `staleTime: 30_000` in `main.ts`. Refetch-on-mount, refetch-on-window-focus and
+refetch-on-reconnect only fire for *stale* queries, so inside those 30 s they're skipped.
+`refetchInterval` ignores `staleTime`, so polling queries like the notification bell (#17) set
+their own `refetchInterval` and `staleTime: 0`. `gcTime` is different: it's how long unused cache
+entries stay in memory (FE-0.1 review).
+
 ## TypeScript
+
+### One tsconfig per environment, tied together with project references
+`tsconfig.json` only lists references: `tsconfig.app.json` (browser code, DOM types),
+`tsconfig.node.json` (vite, vitest and eslint config files, Node types) and `tsconfig.vitest.json`
+(tests, jsdom + Node types). `vue-tsc --build` checks each with its own globals, so app code can't
+use Node APIs. `pnpm build` runs it first, so a type error in a test fails the build (FE-0.1).
 
 ## Java
 
