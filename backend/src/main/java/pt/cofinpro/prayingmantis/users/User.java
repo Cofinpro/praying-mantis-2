@@ -82,20 +82,42 @@ public class User {
         return name;
     }
 
+    public void setName(String name) {
+        this.name = name;
+    }
+
     public String getEmail() {
         return email;
+    }
+
+    /** Normalized like the constructor does, so the unique constraint ignores case. */
+    public void setEmail(String email) {
+        this.email = normalizeEmail(email);
     }
 
     public String getPasswordHash() {
         return passwordHash;
     }
 
+    /** A BCrypt hash, never the password itself. */
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
     public Client getClient() {
         return client;
     }
 
+    public void setClient(Client client) {
+        this.client = client;
+    }
+
     public Level getLevel() {
         return level;
+    }
+
+    public void setLevel(Level level) {
+        this.level = level;
     }
 
     public boolean isAdmin() {
