@@ -85,4 +85,55 @@ describe('AbsencesView', () => {
     await flushPromises()
     expect(wrapper.find('dialog').exists()).toBe(false)
   })
+
+  it('opens the details from "Coming up"', async () => {
+    const wrapper = mount(AbsencesView, {
+      attachTo: document.body,
+      global: { plugins: [queryPlugin()] },
+    })
+    await flushPromises()
+
+    const item = wrapper.findAll('.upcoming__item').find((b) => b.text().startsWith('12–16 Oct'))!
+    // A real button, so it's in the tab order and Enter/Space activate it
+    expect(item.element.tagName).toBe('BUTTON')
+    ;(item.element as HTMLButtonElement).focus()
+    expect(document.activeElement).toBe(item.element)
+    await item.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('dialog').attributes('open')).toBeDefined()
+    expect(wrapper.find('.details__range').text()).toBe('12–16 Oct 2026')
+  })
+
+  it('cancels a pending absence from its calendar chip', async () => {
+    const wrapper = mount(AbsencesView, {
+      attachTo: document.body,
+      global: { plugins: [queryPlugin()] },
+    })
+    await flushPromises()
+    const chip = () => wrapper.find('td[data-date="2026-10-26"] .chip')
+
+    await chip().trigger('click')
+    await flushPromises()
+    expect(wrapper.find('.details__range').text()).toBe('26–27 Oct 2026')
+
+    const cancel = () =>
+      wrapper
+        .findAll('dialog button')
+        .filter((b) => b.text() === 'Cancel request')
+        .pop()!
+    await cancel().trigger('click')
+    await flushPromises()
+    expect(wrapper.findAll('dialog')).toHaveLength(2)
+
+    await cancel().trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('dialog').exists()).toBe(false)
+    // Refetched: cancelled absences are hidden, and it's no longer coming up
+    expect(chip().exists()).toBe(false)
+    expect(wrapper.find('#upcoming-title').element.parentElement!.textContent).not.toContain(
+      '26–27 Oct',
+    )
+  })
 })

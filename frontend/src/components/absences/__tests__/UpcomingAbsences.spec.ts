@@ -35,4 +35,15 @@ describe('UpcomingAbsences', () => {
 
     expect(wrapper.text()).toContain('Nothing booked yet.')
   })
+
+  it('selects a request when its item is clicked', async () => {
+    const wrapper = mount(UpcomingAbsences, {
+      props: { requests: fromOctober, types: absenceTypes },
+    })
+
+    const item = wrapper.findAll('li')[1]!.find('button')
+    await item.trigger('click')
+
+    expect(wrapper.emitted('select')![0]).toEqual([fromOctober[1]])
+  })
 })
