@@ -237,6 +237,15 @@ blocked waiting for it. So both workflows run on every PR, and each finishes in 
 types. Running it again at the end of the job catches any step that silently rewrites tracked files,
 e.g. MSW's install script updating `public/mockServiceWorker.js` after an MSW upgrade (FE-0.3).
 
+### Testing "someone else decided first" against the real API: a second session with curl
+The 409 paths (a request approved in another tab, cancelled by the requester) only happen with two
+actors. With the page open in the browser, a second session from curl makes the change in between:
+`GET /api/me` into a cookie jar (`curl -c jar -b jar`) to get the `XSRF-TOKEN` cookie, then
+`POST /api/auth/login` and every write with that value in `X-XSRF-TOKEN`. Then click in the page:
+Approve showed "This request was already decided or cancelled." and the optimistic row stayed gone
+after the refetch, as designed. The seed is shared, so the SQL that puts it back goes in the PR's
+"How to test" (FE-5.2).
+
 ### ` #` starts a comment in YAML, even inside an unquoted string
 `description: Problem Details (decision #21)` parses as `Problem Details (decision`, and the
 generated TypeScript comment shows the cut. Quote values that contain ` #`:
