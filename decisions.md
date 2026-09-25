@@ -31,6 +31,7 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 | 21 | Errors as RFC 7807 Problem Details | Proposed |
 | 22 | Date and time format | Proposed |
 | 23 | Schema migrations with Liquibase | Accepted |
+| 24 | Frontend lint, format and test tooling | Accepted |
 
 `plan.md` decisions D1–D12 map to #12–#23.
 
@@ -247,3 +248,14 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 **Why:** It's the team's choice. Liquibase tracks each changeset by id, author and checksum, and supports rollbacks and contexts. YAML changesets teach the Liquibase model, while the `sql` change type keeps full Postgres power where we need it.
 
 **Consequences:** A changeset that has already run is never edited, because its checksum would fail; fixes go in a new changeset. The Flyway convention in CLAUDE.md was replaced with Liquibase in BE-0.1.
+
+## 24. Frontend lint, format and test tooling
+**Status:** Accepted · set up in FE-0.1
+
+**Decision:**
+- ESLint 10 with a flat config (`eslint.config.ts`): `eslint-plugin-vue` essential rules, `@vue/eslint-config-typescript` recommended, and `@vitest/eslint-plugin` for test files.
+- Prettier formats; `@vue/eslint-config-prettier/skip-formatting` turns off the ESLint rules that would conflict with it. Style: no semicolons, single quotes, 100 columns.
+- Vitest with jsdom, reusing `vite.config.ts` through `vitest.config.ts`. Tests type-check against their own `tsconfig.vitest.json`.
+- Scripts: `pnpm lint`, `pnpm format`, `pnpm test`, `pnpm type-check`, `pnpm build`. CI runs `pnpm lint && pnpm test && pnpm build` (FE-0.3).
+
+**Why:** It's the setup `create-vue` generates, so docs and examples online match ours. Vitest shares Vite's transform pipeline, so tests compile `.vue` files exactly like the app does.

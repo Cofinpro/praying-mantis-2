@@ -14,7 +14,20 @@ What surprised us or cost us time, what we now do instead. Link the PR, story or
 
 ## Vue
 
+### `staleTime` decides whether TanStack Query refetches on mount and focus
+We set a global `staleTime: 30_000` in `main.ts`. Refetch-on-mount, refetch-on-window-focus and
+refetch-on-reconnect only fire for *stale* queries, so inside those 30 s they're skipped.
+`refetchInterval` ignores `staleTime`, so polling queries like the notification bell (#17) set
+their own `refetchInterval` and `staleTime: 0`. `gcTime` is different: it's how long unused cache
+entries stay in memory (FE-0.1 review).
+
 ## TypeScript
+
+### One tsconfig per environment, tied together with project references
+`tsconfig.json` only lists references: `tsconfig.app.json` (browser code, DOM types),
+`tsconfig.node.json` (vite, vitest and eslint config files, Node types) and `tsconfig.vitest.json`
+(tests, jsdom + Node types). `vue-tsc --build` checks each with its own globals, so app code can't
+use Node APIs. `pnpm build` runs it first, so a type error in a test fails the build (FE-0.1).
 
 ## Java
 
@@ -43,3 +56,17 @@ openapi-generator puts `@Validated` on the interfaces unless `useSpringBuiltInVa
 (from Node 25 install it once with `brew install corepack`). After `corepack enable`, typing `pnpm` downloads and runs exactly that version, so everyone (and CI)
 uses the same pnpm without a global install. The lockfile is `pnpm-lock.yaml`; a
 `package-lock.json` means someone ran `npm install` by mistake (decision #5).
+
+### pnpm blocks dependency install scripts until you approve them
+Since pnpm 10, `postinstall` scripts of dependencies don't run by default, and pnpm 12 fails the
+install until each one is approved or denied. The choice lives in `frontend/pnpm-workspace.yaml`
+under `allowBuilds` (`pnpm approve-builds` writes it). We deny `vue-demi` (pulled in by
+TanStack Query): its script only switches builds for Vue 2, and the shipped build already
+targets Vue 3. Check what a script does before approving it: install scripts are a common
+supply-chain attack vector (FE-0.1).
+
+### `vitest.config.ts` reuses the Vite config
+`mergeConfig(viteConfig, defineConfig({ test: { environment: 'jsdom' } }))` gives tests the same
+Vue plugin and `@` alias as the app, so there's no separate Jest-style transform to maintain.
+Import it as `./vite.config.ts` (with the extension), or Vite 8 warns that its native config
+loader won't support it (FE-0.1).

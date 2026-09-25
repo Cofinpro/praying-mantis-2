@@ -69,7 +69,11 @@ The API contract is `api/openapi.yaml` (decision #2). On every build, `openapi-g
 cd frontend
 pnpm install
 pnpm dev                # http://localhost:5173
-pnpm build
+pnpm lint               # ESLint (pnpm lint:fix to auto-fix)
+pnpm format             # Prettier (pnpm format:check only reports)
+pnpm test               # Vitest, single run (pnpm test:watch to watch)
+pnpm type-check         # vue-tsc
+pnpm build              # type-check + production build
 ```
 
 In development, Vite proxies `/api/*` to `http://localhost:8080`, so no CORS setup is needed.
