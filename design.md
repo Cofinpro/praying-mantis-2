@@ -61,7 +61,7 @@ They live in `frontend/src/assets/tokens.css` (created in FE-1.1). Use them ever
 | `--color-danger` / `--color-danger-soft` | `#D93A3A` / `#FDECEC` | Errors, Rejected |
 | `--color-overlay` | `rgb(19 19 19 / 50%)` | Behind dialogs |
 
-Absence type colours: Vacation = primary, Training = training, Sick = info. **Pending** = the type's soft colour with a dashed primary border. Rejected and cancelled are hidden by default (FE-2.2).
+Absence type colours: Vacation = primary, Training = training, Sick = info, Parental leave = success, Unpaid leave = muted (on grey). The last two aren't in the Figma legend yet; add them there when a frame shows them. **Pending** = the type's soft colour with a dashed primary border. Rejected and cancelled are hidden by default (FE-2.2).
 
 Status badges: Draft = grey/muted · Submitted = info-soft/info · Pending = primary-soft/primary · Approved = success-soft/success-ink · Rejected = danger-soft/danger.
 

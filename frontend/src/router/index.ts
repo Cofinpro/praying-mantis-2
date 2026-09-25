@@ -22,8 +22,7 @@ export const routes: RouteRecordRaw[] = [
   {
     path: '/absences',
     name: 'absences',
-    component: placeholder,
-    props: { title: 'Absences', story: 'FE-2.1' },
+    component: () => import('../views/AbsencesView.vue'),
   },
   {
     path: '/timesheets',

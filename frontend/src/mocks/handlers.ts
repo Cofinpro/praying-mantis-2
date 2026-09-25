@@ -1,6 +1,16 @@
 import { http, HttpResponse } from 'msw'
 
-import type { CurrentUser, Hello, LoginRequest, Problem } from '@/api/client'
+import type {
+  AbsenceBalance,
+  AbsenceRequest,
+  AbsenceType,
+  CurrentUser,
+  Hello,
+  LoginRequest,
+  Problem,
+  PublicHoliday,
+} from '@/api/client'
+import { absenceRequests, absenceTypes, balances, publicHolidays } from './data/absences'
 
 // Mock backend that follows api/openapi.yaml (decision #4). Used by `pnpm dev:mock` and by Vitest.
 // Paths are wildcards so they match both the dev origin and the jsdom origin in tests.
@@ -85,4 +95,38 @@ export const handlers = [
   http.get<never, never, CurrentUser | Problem>('*/api/me', () =>
     loggedInAs ? HttpResponse.json(loggedInAs) : unauthorized('/api/me'),
   ),
+
+  http.get<never, never, AbsenceType[] | Problem>('*/api/absence-types', () =>
+    loggedInAs ? HttpResponse.json(absenceTypes) : unauthorized('/api/absence-types'),
+  ),
+
+  http.get<never, never, AbsenceBalance[] | Problem>('*/api/me/absence-balance', ({ request }) => {
+    if (!loggedInAs) {
+      return unauthorized('/api/me/absence-balance')
+    }
+    return HttpResponse.json(balances[yearParam(request)] ?? [])
+  }),
+
+  http.get<never, never, AbsenceRequest[] | Problem>('*/api/me/absence-requests', ({ request }) => {
+    if (!loggedInAs) {
+      return unauthorized('/api/me/absence-requests')
+    }
+    const params = new URL(request.url).searchParams
+    const from = params.get('from') ?? ''
+    const to = params.get('to') ?? ''
+    // Overlaps [from, to]; ISO dates compare correctly as strings
+    return HttpResponse.json(absenceRequests.filter((r) => r.startDate <= to && r.endDate >= from))
+  }),
+
+  http.get<never, never, PublicHoliday[] | Problem>('*/api/public-holidays', ({ request }) => {
+    if (!loggedInAs) {
+      return unauthorized('/api/public-holidays')
+    }
+    return HttpResponse.json(publicHolidays[yearParam(request)] ?? [])
+  }),
 ]
+
+/** `?year=` or the current year, as the contract says */
+function yearParam(request: Request): number {
+  return Number(new URL(request.url).searchParams.get('year') ?? new Date().getFullYear())
+}

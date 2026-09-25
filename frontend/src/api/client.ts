@@ -14,6 +14,13 @@ export type LoginRequest = components['schemas']['LoginRequest']
 export type CurrentUser = components['schemas']['CurrentUser']
 export type Client = components['schemas']['Client']
 export type Level = components['schemas']['Level']
+export type AbsenceTypeCode = components['schemas']['AbsenceTypeCode']
+export type AbsenceType = components['schemas']['AbsenceType']
+export type AbsenceBalance = components['schemas']['AbsenceBalance']
+export type AbsenceRequest = components['schemas']['AbsenceRequest']
+export type AbsenceStatus = components['schemas']['AbsenceStatus']
+export type DayPart = components['schemas']['DayPart']
+export type PublicHoliday = components['schemas']['PublicHoliday']
 
 /** Thrown for every non-2xx response. `problem` is the RFC 9457 body (decision #21). */
 export class ApiError extends Error {
@@ -114,4 +121,12 @@ export const api = {
   login: (body: LoginRequest) => unwrap(client.POST('/auth/login', { body })),
   logout: () => unwrap(client.POST('/auth/logout')),
   getMe: () => unwrap(client.GET('/me')),
+  getAbsenceTypes: () => unwrap(client.GET('/absence-types')),
+  getMyAbsenceBalance: (year: number) =>
+    unwrap(client.GET('/me/absence-balance', { params: { query: { year } } })),
+  /** `from` and `to` are inclusive `YYYY-MM-DD` dates */
+  getMyAbsenceRequests: (from: string, to: string) =>
+    unwrap(client.GET('/me/absence-requests', { params: { query: { from, to } } })),
+  getPublicHolidays: (year: number) =>
+    unwrap(client.GET('/public-holidays', { params: { query: { year } } })),
 }

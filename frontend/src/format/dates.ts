@@ -1,0 +1,57 @@
+// Calendar days as `YYYY-MM-DD` strings, the format of the API (decision #22). The maths goes
+// through UTC on purpose: `new Date('2026-10-25')` is UTC midnight, and mixing it with local-time
+// getters shifts dates by a day around DST changes or west of Greenwich.
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+function toUtc(iso: string): number {
+  const [year, month, day] = iso.split('-').map(Number) as [number, number, number]
+  return Date.UTC(year, month - 1, day)
+}
+
+function fromUtc(ms: number): string {
+  return new Date(ms).toISOString().slice(0, 10)
+}
+
+/** Today in the user's own time zone (the one date that has to be local) */
+export function today(): string {
+  const now = new Date()
+  return fromUtc(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))
+}
+
+export function addDays(iso: string, days: number): string {
+  return fromUtc(toUtc(iso) + days * DAY_MS)
+}
+
+/** Monday = 0 … Sunday = 6 */
+export function weekday(iso: string): number {
+  return (new Date(toUtc(iso)).getUTCDay() + 6) % 7
+}
+
+export const yearOf = (iso: string) => Number(iso.slice(0, 4))
+
+const dayMonth = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'short',
+  timeZone: 'UTC',
+})
+const dayOnly = new Intl.DateTimeFormat('en-GB', { day: 'numeric', timeZone: 'UTC' })
+
+/** "21 Oct", "12–16 Oct", "30 Oct – 3 Nov" */
+export function formatRange(from: string, to: string): string {
+  if (from === to) {
+    return dayMonth.format(toUtc(from))
+  }
+  const sameMonth = from.slice(0, 7) === to.slice(0, 7)
+  return sameMonth
+    ? `${dayOnly.format(toUtc(from))}–${dayMonth.format(toUtc(to))}`
+    : `${dayMonth.format(toUtc(from))} – ${dayMonth.format(toUtc(to))}`
+}
+
+const number = new Intl.NumberFormat('en', { maximumFractionDigits: 1 })
+
+/** 18.5 → "18.5", 3 → "3" */
+export const formatNumber = (value: number) => number.format(value)
+
+/** 1 → "1 day", 0.5 → "0.5 day", 5 → "5 days" */
+export const formatDays = (days: number) => `${number.format(days)} ${days > 1 ? 'days' : 'day'}`
