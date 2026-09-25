@@ -1,35 +1,85 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { Check, TriangleAlert, X } from 'lucide-vue-next'
 
 import type { TeamAbsenceRequest } from '@/api/client'
 import { problemMessage } from '@/api/problems'
 import BaseButton from '@/components/BaseButton.vue'
-import RejectRequestDialog from '@/components/approvals/RejectRequestDialog.vue'
+import RejectDialog from '@/components/approvals/RejectDialog.vue'
+import TimesheetApprovals from '@/components/approvals/TimesheetApprovals.vue'
+import { avatarColor } from '@/approvals/avatar'
 import { APPROVAL_MESSAGES } from '@/approvals/messages'
-import { useDecideAbsenceRequest, usePendingTeamRequests } from '@/approvals/queries'
+import {
+  useDecideAbsenceRequest,
+  usePendingTeamRequests,
+  useSubmittedTeamTimesheets,
+} from '@/approvals/queries'
 import { useAbsenceTypes } from '@/absences/queries'
 import { typeColor, typeName } from '@/absences/types'
 import { formatNumber, formatRange, formatRangeWithYear } from '@/format/dates'
 import { initials } from '@/format/labels'
 
-// FE-5.1, Figma frame "04 Approvals". Lists the pending requests the backend says I decide on
-// (T-5.1). Someone who isn't a team lead gets an empty list from the backend (decision #11), so
-// opening the URL directly just shows "Nothing to approve right now."
+// FE-5.1 and FE-7.1, Figma frame "04 Approvals": what the backend says I decide on (T-5.1,
+// T-7.1), in two tabs. Someone who isn't a team lead gets empty lists from the backend (decision
+// #11), so opening the URL directly just shows "Nothing to approve right now."
+
+// --- Tabs -----------------------------------------------------------------------------------------
+// The tab lives in the URL (`?tab=timesheets`), so the TIMESHEET_SUBMITTED notification can link
+// straight to it, and a reload keeps it. Arrow keys, Home and End move between the tabs (the ARIA
+// tabs pattern); only the selected tab is in the Tab order.
+type Tab = 'absences' | 'timesheets'
+const TABS: Tab[] = ['absences', 'timesheets']
+
+const route = useRoute()
+const router = useRouter()
+const tab = computed<Tab>(() => (route.query.tab === 'timesheets' ? 'timesheets' : 'absences'))
+
+function select(next: Tab) {
+  if (next !== tab.value) {
+    // replace, not push: switching tabs shouldn't fill the Back button's history
+    void router.replace({ query: { ...route.query, tab: next === 'absences' ? undefined : next } })
+  }
+}
+
+function onTabKeydown(event: KeyboardEvent) {
+  const i = TABS.indexOf(tab.value)
+  const next = {
+    ArrowRight: TABS[(i + 1) % TABS.length],
+    ArrowLeft: TABS[(i - 1 + TABS.length) % TABS.length],
+    Home: TABS[0],
+    End: TABS[TABS.length - 1],
+  }[event.key]
+  if (!next) {
+    return
+  }
+  event.preventDefault()
+  select(next)
+  document.getElementById(`tab-${next}`)?.focus()
+}
+
+const timesheets = useSubmittedTeamTimesheets()
+const timesheetCount = computed(() => timesheets.data.value?.length ?? 0)
+
+// --- Absences tab ---------------------------------------------------------------------------------
+
 const { data: types } = useAbsenceTypes()
 const pending = usePendingTeamRequests()
 const approve = useDecideAbsenceRequest()
+// Its own instance, so a failed rejection shows in the dialog and not in the approve banner
+const reject = useDecideAbsenceRequest()
 
 /** The request whose reject dialog is open */
 const rejecting = ref<TeamAbsenceRequest | null>(null)
-
-// Avatars get one of the frame's colours, fixed per person
-const AVATAR_COLORS = [
-  'var(--color-primary)',
-  'var(--color-training)',
-  'var(--color-info)',
-  'var(--color-success-ink)',
-]
+const rejectTitle = computed(() => {
+  if (!rejecting.value) {
+    return ''
+  }
+  const firstName = rejecting.value.requester.name.trim().split(/\s+/)[0]
+  return `Reject ${firstName}’s ${typeName(rejecting.value.request.type, types.value).toLowerCase()} request?`
+})
+const rejectRequest = (item: TeamAbsenceRequest) => (comment: string) =>
+  reject.mutateAsync({ item, decision: 'reject', comment })
 
 const rows = computed(() =>
   (pending.data.value ?? []).map((item) => {
@@ -46,7 +96,7 @@ const rows = computed(() =>
       id: request.id,
       name: requester.name,
       initials: initials(requester.name),
-      avatarColor: AVATAR_COLORS[requester.id % AVATAR_COLORS.length],
+      avatarColor: avatarColor(requester.id),
       type,
       dotColor: typeColor(request.type).solid,
       dates: formatRangeWithYear(request.startDate, request.endDate),
@@ -82,33 +132,44 @@ function onApprove(item: TeamAbsenceRequest) {
       <p class="page-header__subtitle">Requests from your team waiting for your decision</p>
     </header>
 
-    <!-- Timesheets come with FE-7.1: shown as in the frame, but disabled until then -->
-    <div class="tabs" role="tablist" aria-label="Approvals">
+    <div class="tabs" role="tablist" aria-label="Approvals" @keydown="onTabKeydown">
       <button
         id="tab-absences"
         type="button"
         role="tab"
-        aria-selected="true"
+        :aria-selected="tab === 'absences'"
         aria-controls="panel-absences"
-        class="tab tab--active"
+        :tabindex="tab === 'absences' ? 0 : -1"
+        class="tab"
+        :class="{ 'tab--active': tab === 'absences' }"
+        @click="select('absences')"
       >
         Absences
         <span v-if="pending.isSuccess.value" class="tab__count">{{ count }}</span>
       </button>
       <button
+        id="tab-timesheets"
         type="button"
         role="tab"
-        aria-selected="false"
-        aria-disabled="true"
-        tabindex="-1"
+        :aria-selected="tab === 'timesheets'"
+        aria-controls="panel-timesheets"
+        :tabindex="tab === 'timesheets' ? 0 : -1"
         class="tab"
-        title="Coming soon"
+        :class="{ 'tab--active': tab === 'timesheets' }"
+        @click="select('timesheets')"
       >
         Timesheets
+        <span v-if="timesheets.isSuccess.value" class="tab__count">{{ timesheetCount }}</span>
       </button>
     </div>
 
-    <section id="panel-absences" role="tabpanel" aria-labelledby="tab-absences" class="panel">
+    <section
+      id="panel-absences"
+      role="tabpanel"
+      aria-labelledby="tab-absences"
+      class="panel"
+      :hidden="tab !== 'absences'"
+    >
       <div v-if="approveError" class="banner" role="alert">
         <TriangleAlert :size="18" aria-hidden="true" />
         {{ approveError }}
@@ -203,16 +264,29 @@ function onApprove(item: TeamAbsenceRequest) {
       </p>
     </section>
 
+    <section
+      id="panel-timesheets"
+      role="tabpanel"
+      aria-labelledby="tab-timesheets"
+      class="panel"
+      :hidden="tab !== 'timesheets'"
+    >
+      <TimesheetApprovals />
+    </section>
+
     <!-- Mounted only while open, so each rejection starts with an empty comment -->
-    <RejectRequestDialog
+    <RejectDialog
       v-if="rejecting"
       :key="rejecting.request.id"
-      :item="rejecting"
-      :types="types"
+      :title="rejectTitle"
+      confirm-label="Reject request"
+      :reject="rejectRequest(rejecting)"
       @close="rejecting = null"
     />
   </div>
 </template>
+
+<style scoped src="../approvals/table.css"></style>
 
 <style scoped>
 .approvals {
@@ -235,6 +309,11 @@ function onApprove(item: TeamAbsenceRequest) {
   color: var(--color-muted);
 }
 
+.panel[hidden] {
+  /* .panel's display: flex would otherwise beat the hidden attribute */
+  display: none;
+}
+
 .tabs {
   display: flex;
   gap: var(--space-8);
@@ -253,15 +332,17 @@ function onApprove(item: TeamAbsenceRequest) {
   font: inherit;
   font-size: 15px;
   font-weight: 500;
-}
-
-.tab[aria-disabled='true'] {
-  cursor: not-allowed;
+  cursor: pointer;
 }
 
 .tab--active {
   color: var(--color-ink);
   font-weight: 600;
+}
+
+.tab--active .tab__count {
+  background: var(--color-primary);
+  color: var(--color-surface);
 }
 
 .tab--active::after {
@@ -282,51 +363,11 @@ function onApprove(item: TeamAbsenceRequest) {
 .tab__count {
   padding: var(--space-1) 10px;
   border-radius: var(--radius-pill);
-  background: var(--color-primary);
-  color: var(--color-surface);
+  background: var(--color-grey);
+  color: var(--color-muted);
   font-size: 12px;
   font-weight: 600;
   line-height: 1.2;
-}
-
-.panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-}
-
-.card {
-  overflow-x: auto;
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-card);
-  background: var(--color-surface);
-}
-
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-
-.table th,
-.table td {
-  padding: 14px var(--space-4);
-  text-align: left;
-  white-space: nowrap;
-}
-
-.table thead th {
-  padding-block: var(--space-3);
-  background: var(--color-surface-alt);
-  color: var(--color-muted);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.table tbody tr {
-  border-top: 1px solid var(--color-line);
 }
 
 .col-person {
@@ -353,30 +394,6 @@ function onApprove(item: TeamAbsenceRequest) {
   width: 230px;
 }
 
-.person {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  font-weight: 600;
-}
-
-.table tbody .person-cell {
-  padding-block: var(--space-4);
-}
-
-.person__avatar {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-pill);
-  color: var(--color-surface);
-  font-size: 13px;
-  font-weight: 600;
-}
-
 .type {
   display: inline-flex;
   align-items: center;
@@ -394,10 +411,6 @@ function onApprove(item: TeamAbsenceRequest) {
   font-weight: 600;
 }
 
-.muted {
-  color: var(--color-muted);
-}
-
 .overdrawn {
   color: var(--color-danger);
   font-weight: 500;
@@ -407,58 +420,5 @@ function onApprove(item: TeamAbsenceRequest) {
   max-width: 320px;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-2);
-}
-
-.state {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-3);
-  margin: 0;
-  padding: var(--space-6);
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-card);
-  background: var(--color-surface);
-  color: var(--color-muted);
-}
-
-.state p {
-  margin: 0;
-}
-
-.state--error {
-  color: var(--color-ink);
-}
-
-.banner {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3) 14px;
-  border-radius: var(--radius-input);
-  background: var(--color-danger-soft);
-  color: var(--color-danger);
-  font-weight: 500;
-}
-
-.footnote {
-  margin: 0;
-  font-size: 13px;
-  color: var(--color-muted);
-}
-
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
 }
 </style>

@@ -1,0 +1,126 @@
+/*
+ * The table, states and banner both tabs of the Approvals page share (Figma frame "04 Approvals").
+ * Pulled in with <style scoped src="...">: each component gets its own scoped copy, so these class
+ * names still only apply inside the components that import this file.
+ */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.card {
+  overflow-x: auto;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.table th,
+.table td {
+  padding: 14px var(--space-4);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.table thead th {
+  padding-block: var(--space-3);
+  background: var(--color-surface-alt);
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.table tbody tr {
+  border-top: 1px solid var(--color-line);
+}
+
+.person {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-weight: 600;
+}
+
+.table tbody .person-cell {
+  padding-block: var(--space-4);
+}
+
+.person__avatar {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-pill);
+  color: var(--color-surface);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.muted {
+  color: var(--color-muted);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-6);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  color: var(--color-muted);
+}
+
+.state p {
+  margin: 0;
+}
+
+.state--error {
+  color: var(--color-ink);
+}
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) 14px;
+  border-radius: var(--radius-input);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  font-weight: 500;
+}
+
+.footnote {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

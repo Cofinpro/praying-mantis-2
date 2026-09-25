@@ -5,6 +5,7 @@ import { MessageSquareText, Plus, Trash2 } from 'lucide-vue-next'
 import type { Project } from '@/api/client'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseSelect from '@/components/BaseSelect.vue'
+import type { DayMark } from '@/timesheets/marks'
 import { dayOfMonth, formatWeekdayDate, weekday, weekdayName } from '@/format/dates'
 import {
   cellKey,
@@ -19,14 +20,6 @@ import {
 // FE-6.1, the week grid of Figma frame "05 Timesheets": a real <table> (rows = projects, columns =
 // days) so screen readers announce the project and day of every cell. The view owns the rows;
 // this component only renders them and reports what the user typed.
-
-export interface DayMark {
-  label: string
-  /** Accessible and hover text, e.g. "Training (approved absence)" */
-  title: string
-  color: string
-  background: string
-}
 
 const {
   rows,

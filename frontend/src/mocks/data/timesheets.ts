@@ -99,3 +99,40 @@ export const timesheets: Record<string, StoredTimesheet> = {
     entry(8, '2026-10-21', 8, 'AWS course'),
   ]),
 }
+
+const ana = { id: 2, name: 'Ana Silva' }
+const days = (from: number, to: number) =>
+  Array.from({ length: to - from + 1 }, (_, i) => String(from + i).padStart(2, '0'))
+
+/**
+ * Weeks Ana's team submitted for her to approve (T-7.1), with the user they belong to: the
+ * Timesheets tab of the Approvals page. Carla's week 37 and Diogo's week 38.
+ */
+export const teamTimesheets: { userId: number; sheet: StoredTimesheet }[] = [
+  {
+    userId: 4,
+    sheet: stored(
+      11,
+      '2026-09-07',
+      'SUBMITTED',
+      [
+        ...days(7, 11).map((d) => entry(3, `2026-09-${d}`, 7.5)),
+        entry(7, '2026-09-11', 1, 'Team retro'),
+      ],
+      { approver: ana, submittedAt: '2026-09-11T17:10:00Z' },
+    ),
+  },
+  {
+    userId: 5,
+    sheet: stored(
+      12,
+      '2026-09-14',
+      'SUBMITTED',
+      [
+        ...days(14, 17).map((d) => entry(1, `2026-09-${d}`, 8)),
+        entry(8, '2026-09-18', 8, 'AWS course'),
+      ],
+      { approver: ana, submittedAt: '2026-09-18T16:45:00Z' },
+    ),
+  },
+]

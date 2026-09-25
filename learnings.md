@@ -170,6 +170,26 @@ field out, decision 32). The timesheet FE never reads `id`: every call is keyed 
 and a stored week take the same code path, and switching from MSW to the backend changed nothing
 (FE-6.3).
 
+### Share CSS between components with `<style scoped src="...">`
+Scoped styles only reach the component's own elements (plus a child's root element), so the second
+Approvals tab couldn't reuse the first tab's table styles. Moving them to `src/approvals/table.css`
+and adding `<style scoped src="../approvals/table.css"></style>` next to each component's own
+`<style scoped>` gives each component its own scoped copy: shared rules, still no leaking class
+names. A component can have several `<style>` blocks (FE-7.1).
+
+### `display: flex` beats the `hidden` attribute
+`hidden` is only the browser stylesheet's `[hidden] { display: none }`, so any author rule that
+sets `display` wins over it. A tab panel with `class="panel"` (`display: flex`) stayed visible
+while `hidden`; it needs `.panel[hidden] { display: none }` (FE-7.1).
+
+### Tabs in the URL: a computed from `route.query`, changed with `router.replace`
+The Approvals tab is `computed(() => route.query.tab === 'timesheets' ? ... )`, and a click only
+calls `router.replace({ query: { ...route.query, tab } })`. So a notification link to
+`/approvals?tab=timesheets` opens the right tab, also when you're already on the page (the router
+reuses the component and only the query changes), and a reload keeps it. `replace` rather than
+`push`, so switching tabs doesn't fill Back's history. The ARIA tabs pattern adds a roving
+`tabindex` (only the selected tab is 0) and arrow keys, Home and End (FE-7.1).
+
 ## TypeScript
 
 ### One tsconfig per environment, tied together with project references
@@ -332,6 +352,12 @@ under `allowBuilds` (`pnpm approve-builds` writes it). We deny `vue-demi` (pulle
 TanStack Query): its script only switches builds for Vue 2, and the shipped build already
 targets Vue 3. Check what a script does before approving it: install scripts are a common
 supply-chain attack vector (FE-0.1).
+
+### `:scope >` when a test looks inside a nested table
+`wrapper.find('#x table.grid').findAll('tbody th')` also matched the grid's header row: the
+selector is checked against the whole document, and the outer table's `<tbody>` is an ancestor of
+every cell of the grid inside it. `findAll(':scope > tbody th')` anchors the selector at the grid
+itself (FE-7.1).
 
 ### `vitest.config.ts` reuses the Vite config
 `mergeConfig(viteConfig, defineConfig({ test: { environment: 'jsdom' } }))` gives tests the same

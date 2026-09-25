@@ -40,6 +40,9 @@ export type TimesheetStatus = components['schemas']['TimesheetStatus']
 export type TimeEntry = components['schemas']['TimeEntry']
 export type TimesheetEntries = components['schemas']['TimesheetEntries']
 export type TimeEntryInput = components['schemas']['TimeEntryInput']
+export type TeamTimesheet = components['schemas']['TeamTimesheet']
+export type TimesheetDecision = components['schemas']['TimesheetDecision']
+export type ProjectHours = components['schemas']['ProjectHours']
 
 /** Thrown for every non-2xx response. `problem` is the RFC 9457 body (decision #21). */
 export class ApiError extends Error {
@@ -181,4 +184,12 @@ export const api = {
   /** DRAFT or REJECTED → SUBMITTED; notifies the approver */
   submitMyTimesheet: (weekStart: string) =>
     unwrap(client.POST('/me/timesheets/{weekStart}/submit', { params: { path: { weekStart } } })),
+  /** Weeks I'm the approver of (BE-7.1). The backend defaults `status` to SUBMITTED. */
+  getTeamTimesheets: (status?: TimesheetStatus) =>
+    unwrap(client.GET('/team/timesheets', { params: { query: { status } } })),
+  approveTimesheet: (id: number, body: TimesheetDecision = {}) =>
+    unwrap(client.POST('/team/timesheets/{id}/approve', { params: { path: { id } }, body })),
+  /** The comment is required to reject (decision 31) */
+  rejectTimesheet: (id: number, body: TimesheetDecision) =>
+    unwrap(client.POST('/team/timesheets/{id}/reject', { params: { path: { id } }, body })),
 }

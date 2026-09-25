@@ -1,22 +1,42 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { http, HttpResponse } from 'msw'
+import { h } from 'vue'
+import { RouterView, createMemoryHistory, createRouter } from 'vue-router'
 
-import ApprovalsView from '../ApprovalsView.vue'
 import { server } from '@/mocks/node'
 import { startMockSession } from '@/mocks/handlers'
 import { findMockUser } from '@/mocks/data/users'
 import { teamAbsenceRequests } from '@/mocks/data/team'
+import { routes } from '@/router'
 import { queryPlugin } from '@/test/query'
 
-function mountView() {
-  // Attached, so the native <dialog> and focus behave as in the browser
-  return mount(ApprovalsView, { attachTo: document.body, global: { plugins: [queryPlugin()] } })
+// Through a <RouterView>, since the tab comes from the route's `?tab=`. Attached, so the native
+// <dialog> and focus behave as in the browser. The route is lazy, so wait for the page.
+async function mountPage(path = '/approvals') {
+  const router = createRouter({ history: createMemoryHistory(), routes })
+  await router.push(path)
+  const wrapper = mount(
+    { render: () => h(RouterView) },
+    { attachTo: document.body, global: { plugins: [router, queryPlugin()] } },
+  )
+  await vi.waitFor(() => expect(wrapper.find('[role="tablist"]').exists()).toBe(true))
+  await flushPromises()
+  return { wrapper, router }
 }
 
-type Wrapper = ReturnType<typeof mountView>
+async function mountView() {
+  return (await mountPage()).wrapper
+}
 
-const names = (wrapper: Wrapper) => wrapper.findAll('tbody th').map((th) => th.text())
+type Wrapper = Awaited<ReturnType<typeof mountView>>
+
+/** The Absences tab's panel: the Timesheets panel is in the DOM too, just hidden */
+const absences = (wrapper: Wrapper) => wrapper.get('#panel-absences')
+const names = (wrapper: Wrapper) =>
+  absences(wrapper)
+    .findAll('tbody th')
+    .map((th) => th.text())
 const button = (wrapper: Wrapper, label: string) => wrapper.find(`button[aria-label="${label}"]`)
 
 /** Collects the decisions the page POSTs, without replacing the mock's handler */
@@ -40,7 +60,7 @@ describe('ApprovalsView', () => {
   afterEach(() => vi.useRealTimers())
 
   it('lists the pending requests, soonest first, with the balance after approval', async () => {
-    const wrapper = mountView()
+    const wrapper = await mountView()
     await flushPromises()
 
     expect(names(wrapper)).toEqual(['DP Diogo Pereira', 'CM Carla Mendes', 'BC Bruno Costa'])
@@ -59,10 +79,10 @@ describe('ApprovalsView', () => {
       'Reject Approve',
     ])
     // Training has no balance in the contract
-    const diogo = wrapper.findAll('tbody tr')[0]!.findAll('td')[3]!
+    const diogo = absences(wrapper).findAll('tbody tr')[0]!.findAll('td')[3]!
     expect(diogo.find('.visually-hidden').text()).toBe('No balance for this type')
     // Bruno's doesn't fit any more
-    const bruno = wrapper.findAll('tbody tr')[2]!.findAll('td')[3]!
+    const bruno = absences(wrapper).findAll('tbody tr')[2]!.findAll('td')[3]!
     expect(bruno.classes()).toContain('overdrawn')
     expect(bruno.text()).toBe('5 → -1 (not enough days)')
   })
@@ -73,16 +93,16 @@ describe('ApprovalsView', () => {
         HttpResponse.json([{ ...teamAbsenceRequests[0]!, remainingDays: null }]),
       ),
     )
-    const wrapper = mountView()
+    const wrapper = await mountView()
     await flushPromises()
 
-    const balance = wrapper.find('tbody td:nth-of-type(4)')
+    const balance = absences(wrapper).find('tbody td:nth-of-type(4)')
     expect(balance.find('.visually-hidden').text()).toBe('No balance for this type')
     expect(balance.classes()).not.toContain('overdrawn')
   })
 
   it('names each row button after the request', async () => {
-    const wrapper = mountView()
+    const wrapper = await mountView()
     await flushPromises()
 
     expect(button(wrapper, 'Approve Carla Mendes’s vacation, 16–18 Nov').exists()).toBe(true)
@@ -91,7 +111,7 @@ describe('ApprovalsView', () => {
 
   it('approves a request and drops its row', async () => {
     const calls = recordDecisions()
-    const wrapper = mountView()
+    const wrapper = await mountView()
     await flushPromises()
 
     await button(wrapper, 'Approve Carla Mendes’s vacation, 16–18 Nov').trigger('click')
@@ -100,7 +120,7 @@ describe('ApprovalsView', () => {
     expect(calls).toEqual([{ url: '/api/team/absence-requests/502/approve', body: {} }])
     expect(names(wrapper)).toEqual(['DP Diogo Pereira', 'BC Bruno Costa'])
     expect(wrapper.find('[role="tab"][aria-selected="true"]').text()).toBe('Absences 2')
-    expect(wrapper.find('.banner').exists()).toBe(false)
+    expect(absences(wrapper).find('.banner').exists()).toBe(false)
   })
 
   it('removes the row at once and puts it back when approving fails', async () => {
@@ -115,7 +135,7 @@ describe('ApprovalsView', () => {
         { once: true },
       ),
     )
-    const wrapper = mountView()
+    const wrapper = await mountView()
     await flushPromises()
 
     await button(wrapper, 'Approve Carla Mendes’s vacation, 16–18 Nov').trigger('click')
@@ -128,19 +148,19 @@ describe('ApprovalsView', () => {
 
     // Back at its old place, with the reason
     expect(names(wrapper)).toEqual(['DP Diogo Pereira', 'CM Carla Mendes', 'BC Bruno Costa'])
-    expect(wrapper.find('.banner').text()).toBe(
+    expect(absences(wrapper).find('.banner').text()).toBe(
       'Couldn’t approve Carla Mendes’s request. Something went wrong. Please try again.',
     )
   })
 
   it('explains a request that no longer fits the balance', async () => {
-    const wrapper = mountView()
+    const wrapper = await mountView()
     await flushPromises()
 
     await button(wrapper, 'Approve Bruno Costa’s vacation, 23 Dec – 1 Jan').trigger('click')
     await flushPromises()
 
-    expect(wrapper.find('.banner').text()).toBe(
+    expect(absences(wrapper).find('.banner').text()).toBe(
       'Couldn’t approve Bruno Costa’s request. This request doesn’t fit the balance any more, so it can’t be approved. You can still reject it. Only 5 vacation days left in 2026, but the request needs 6.',
     )
     expect(names(wrapper)).toContain('BC Bruno Costa')
@@ -148,7 +168,7 @@ describe('ApprovalsView', () => {
 
   it('asks for a comment before rejecting', async () => {
     const calls = recordDecisions()
-    const wrapper = mountView()
+    const wrapper = await mountView()
     await flushPromises()
 
     await button(wrapper, 'Reject Diogo Pereira’s training, 10 Nov').trigger('click')
@@ -168,7 +188,7 @@ describe('ApprovalsView', () => {
 
   it('rejects with the comment and closes the dialog', async () => {
     const calls = recordDecisions()
-    const wrapper = mountView()
+    const wrapper = await mountView()
     await flushPromises()
 
     await button(wrapper, 'Reject Diogo Pereira’s training, 10 Nov').trigger('click')
@@ -204,7 +224,7 @@ describe('ApprovalsView', () => {
         { once: true },
       ),
     )
-    const wrapper = mountView()
+    const wrapper = await mountView()
     await flushPromises()
 
     await button(wrapper, 'Reject Diogo Pereira’s training, 10 Nov').trigger('click')
@@ -240,7 +260,7 @@ describe('ApprovalsView', () => {
         { once: true },
       ),
     )
-    const wrapper = mountView()
+    const wrapper = await mountView()
     await flushPromises()
     expect(listCalls).toBe(1)
 
@@ -258,11 +278,11 @@ describe('ApprovalsView', () => {
 
   it('has nothing to approve for someone who approves nobody', async () => {
     startMockSession(findMockUser('carla.mendes@cofinpro.pt')!)
-    const wrapper = mountView()
+    const wrapper = await mountView()
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Nothing to approve right now.')
-    expect(wrapper.find('table').exists()).toBe(false)
+    expect(absences(wrapper).text()).toContain('Nothing to approve right now.')
+    expect(absences(wrapper).find('table').exists()).toBe(false)
     expect(wrapper.find('[role="tab"][aria-selected="true"]').text()).toBe('Absences 0')
   })
 
@@ -272,12 +292,14 @@ describe('ApprovalsView', () => {
         once: true,
       }),
     )
-    const wrapper = mountView()
+    const wrapper = await mountView()
     await flushPromises()
 
-    expect(wrapper.find('[role="alert"]').text()).toContain("The requests couldn't be loaded.")
+    expect(absences(wrapper).find('[role="alert"]').text()).toContain(
+      "The requests couldn't be loaded.",
+    )
 
-    await wrapper.find('[role="alert"] button').trigger('click')
+    await absences(wrapper).find('[role="alert"] button').trigger('click')
     await flushPromises()
 
     expect(names(wrapper)).toHaveLength(3)
