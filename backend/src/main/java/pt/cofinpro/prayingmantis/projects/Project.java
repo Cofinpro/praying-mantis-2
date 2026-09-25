@@ -73,4 +73,13 @@ public class Project {
     public void setActive(boolean active) {
         this.active = active;
     }
+
+    /** Everything the admin can change (BE-9.3). The code is stored in upper case. */
+    public void update(String code, String name, Client client, boolean billable, boolean active) {
+        this.code = code;
+        this.name = name;
+        this.client = client;
+        this.billable = billable;
+        this.active = active;
+    }
 }
