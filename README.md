@@ -43,6 +43,21 @@ docker compose down                                                # stop, keep 
 docker compose down -v                                             # stop and wipe all data
 ```
 
+### Dev users
+
+`./mvnw spring-boot:run` starts the backend with the `dev` profile, which makes Liquibase load these seed users. Every password is `password`. If you start the app from your IDE instead, activate the `dev` profile there. Tests load the same seed through `src/test/resources/config/application.yml`.
+
+| Email | Role | Team lead |
+|---|---|---|
+| `alex.admin@cofinpro.pt` | admin | – |
+| `ana.silva@cofinpro.pt` | team lead of Bruno, Carla, Diogo | – |
+| `bruno.costa@cofinpro.pt` | team lead of Eva, Filipe, Hugo | Ana |
+| `carla.mendes@cofinpro.pt`, `diogo.pereira@cofinpro.pt` | employee | Ana |
+| `eva.santos@cofinpro.pt`, `filipe.rocha@cofinpro.pt`, `hugo.marques@cofinpro.pt` | employee | Bruno |
+| `gabriela.lopes@cofinpro.pt` | employee without team lead (her approvals go to the admins, decision #16) | – |
+
+Without the `dev` profile (e.g. the packaged jar), no seed users are created.
+
 If port 5432 is taken (e.g. by a locally installed Postgres), stop that one first.
 
 The backend connects to it by default. Override with the `DB_URL`, `DB_USER` and `DB_PASSWORD` env vars. Liquibase applies the schema on start (decision #23).

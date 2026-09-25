@@ -39,6 +39,9 @@ use Node APIs. `pnpm build` runs it first, so a type error in a test fails the b
 
 ## Spring Boot
 
+### DB defaults are invisible to Hibernate unless marked `@Generated`
+A column filled by `default now()` stays `null` on the entity after `save`, and also after a find in the same transaction, because the persistence context returns the same instance. `@org.hibernate.annotations.Generated` makes Hibernate read it back (`insert ... returning` on Postgres). (BE-1.1 review)
+
 ### Boot 4 splits features into their own starters
 Spring Boot 4 has a starter per technology, and a test starter for each: `spring-boot-starter-liquibase`, `spring-boot-starter-webmvc-test`, `spring-boot-starter-security-test`. Snippets written for Boot 3 (plain `liquibase-core`, `spring-boot-starter-test`) still compile but miss the auto-configuration. Check the Boot 4 starter name first. (BE-0.1)
 
@@ -54,6 +57,9 @@ openapi-generator puts `@Validated` on the interfaces unless `useSpringBuiltInVa
 ## Postgres
 
 ## Liquibase
+
+### An empty context list runs the dev seed too
+Changesets without a `context` always run. A `context: dev` changeset runs when `dev` is active, but also when *no* context is set at all. So `spring.liquibase.contexts` defaults to the non-empty `default`, and only the `dev` profile (`./mvnw spring-boot:run`) and the test config switch on `dev`. (BE-1.1 review)
 
 ## Tooling (Vite, pnpm, Maven, Docker, OpenAPI)
 

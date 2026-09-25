@@ -1,0 +1,5 @@
+# Local development: `./mvnw spring-boot:run` activates this profile (see pom.xml).
+spring:
+  liquibase:
+    # Loads the dev seed users (README, "Dev users")
+    contexts: dev

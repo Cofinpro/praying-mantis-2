@@ -13,6 +13,10 @@ spring:
     open-in-view: false
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
+    # No dev seed unless asked for. Careful: an *empty* contexts value would run every changeset,
+    # dev ones included, so the default must be a non-empty value that isn't "dev".
+    # The dev profile (application-dev.yml, used by ./mvnw spring-boot:run) switches the seed on.
+    contexts: ${LIQUIBASE_CONTEXTS:default}
 
 server:
   port: 8080
