@@ -8,5 +8,5 @@ export async function fetchHello(name?: string): Promise<HelloResponse> {
   if (!response.ok) {
     throw new Error(`Request failed with status ${response.status}`)
   }
-  return response.json()
+  return (await response.json()) as HelloResponse
 }

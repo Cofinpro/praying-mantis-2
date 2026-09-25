@@ -11,15 +11,15 @@ Monorepo with a Spring Boot backend and a Vue.js frontend.
 ## Prerequisites
 
 - JDK 21+
-- Maven 3.9+ (or run `mvn wrapper:wrapper` once in `backend/` to add `./mvnw`)
+- Maven is optional: use the bundled `./mvnw` wrapper
 - Node.js 22+ and npm
 
 ## Backend
 
 ```bash
 cd backend
-mvn spring-boot:run     # http://localhost:8080
-mvn test
+./mvnw spring-boot:run    # http://localhost:8080
+./mvnw test
 ```
 
 Endpoints:
