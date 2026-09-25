@@ -21,6 +21,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Log in with email and password
+         * @description Checks the password against the stored BCrypt hash. On success, starts a new session (a new
+         *     session id, so an old one can't be reused) and returns the logged-in user, so the FE doesn't
+         *     need a second call to `GET /me`.
+         */
+        post: operations["login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Log out
+         * @description Invalidates the session and clears the cookie. Always 204, also without a session, so the FE
+         *     can call it without checking first.
+         */
+        post: operations["logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The logged-in user
+         * @description Used by the app shell for the user name and the role-dependent nav (Approvals only for team
+         *     leads, Admin only for admins), and by the router guard: a 401 means "go to the login page".
+         */
+        get: operations["getMe"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -29,6 +93,52 @@ export interface components {
             /** @example Hello from praying-mantis */
             message: string;
         };
+        LoginRequest: {
+            /**
+             * Format: email
+             * @example ana.silva@cofinpro.pt
+             */
+            email: string;
+            /** @example secret */
+            password: string;
+        };
+        CurrentUser: {
+            /**
+             * Format: int64
+             * @example 7
+             */
+            id: number;
+            /** @example Ana Silva */
+            name: string;
+            /**
+             * Format: email
+             * @example ana.silva@cofinpro.pt
+             */
+            email: string;
+            client: components["schemas"]["Client"];
+            level: components["schemas"]["Level"];
+            /**
+             * @description The "privileged account"; shows the Admin nav item
+             * @example false
+             */
+            isAdmin: boolean;
+            /**
+             * @description Derived, true when someone has this user as team lead (decision
+             * @example true
+             */
+            isTeamLead: boolean;
+        };
+        /**
+         * @description The client a user works for. The FE maps codes to display names.
+         * @example DKB
+         * @enum {string}
+         */
+        Client: "DKB" | "DEKA" | "VV" | "DBIS" | "UNION";
+        /**
+         * @example SENIOR
+         * @enum {string}
+         */
+        Level: "JUNIOR" | "EXPERT" | "SENIOR" | "ARCHITECT" | "SENIOR_ARCHITECT";
         /** @description RFC 9457 Problem Details (decision */
         Problem: {
             /** Format: uri-reference */
@@ -58,6 +168,47 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
+        /** @description Invalid request; `errors` lists the fields */
+        ValidationProblem: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "type": "about:blank",
+                 *       "title": "Bad Request",
+                 *       "status": 400,
+                 *       "detail": "Request has invalid fields",
+                 *       "instance": "/api/auth/login",
+                 *       "errors": [
+                 *         {
+                 *           "field": "email",
+                 *           "message": "must be a well-formed email address"
+                 *         }
+                 *       ]
+                 *     }
+                 */
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description Not logged in, or the session expired */
+        Unauthorized: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "type": "about:blank",
+                 *       "title": "Unauthorized",
+                 *       "status": 401,
+                 *       "instance": "/api/me"
+                 *     }
+                 */
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
     };
     parameters: never;
     requestBodies: never;
@@ -84,6 +235,94 @@ export interface operations {
                     "application/json": components["schemas"]["Hello"];
                 };
             };
+            default: components["responses"]["Problem"];
+        };
+    };
+    login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Logged in. The response sets the session cookie. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurrentUser"];
+                };
+            };
+            400: components["responses"]["ValidationProblem"];
+            /**
+             * @description Wrong email or password. The detail is the same in both cases, so it doesn't reveal
+             *     whether an account exists.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "type": "about:blank",
+                     *       "title": "Unauthorized",
+                     *       "status": 401,
+                     *       "detail": "Invalid email or password",
+                     *       "instance": "/api/auth/login"
+                     *     }
+                     */
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Logged out */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The logged-in user */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurrentUser"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
             default: components["responses"]["Problem"];
         };
     };

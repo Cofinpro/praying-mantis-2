@@ -1,15 +1,25 @@
 openapi: 3.0.3
 info:
   title: praying-mantis API
-  version: 0.1.0
+  version: 0.2.0
   description: |
     Contract between backend and frontend (decision #2). Agree changes together in a `T` story
     before implementing them. All routes are under /api. Errors are Problem Details (decision #21).
+
+    Authentication (decision #12): `POST /auth/login` starts a server session, kept in an HttpOnly
+    `SameSite=Lax` session cookie that the browser sends automatically. Every operation needs that
+    session unless it says `security: []`. Without a valid session the answer is 401.
 servers:
   - url: /api
 tags:
   - name: hello
     description: Sample endpoint from BE-0.2, used to check that FE and BE are wired up (M0)
+  - name: auth
+    description: Log in and out (T-1.1)
+  - name: me
+    description: The logged-in user (T-1.1)
+security:
+  - sessionCookie: []
 paths:
   /hello:
     get:
@@ -26,7 +36,92 @@ paths:
                 $ref: '#/components/schemas/Hello'
         default:
           $ref: '#/components/responses/Problem'
+
+  /auth/login:
+    post:
+      tags: [auth]
+      operationId: login
+      summary: Log in with email and password
+      description: |
+        Checks the password against the stored BCrypt hash. On success, starts a new session (a new
+        session id, so an old one can't be reused) and returns the logged-in user, so the FE doesn't
+        need a second call to `GET /me`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Logged in. The response sets the session cookie.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUser'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '401':
+          description: |
+            Wrong email or password. The detail is the same in both cases, so it doesn't reveal
+            whether an account exists.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: about:blank
+                title: Unauthorized
+                status: 401
+                detail: Invalid email or password
+                instance: /api/auth/login
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      summary: Log out
+      description: |
+        Invalidates the session and clears the cookie. Always 204, also without a session, so the FE
+        can call it without checking first.
+      security: []
+      responses:
+        '204':
+          description: Logged out
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /me:
+    get:
+      tags: [me]
+      operationId: getMe
+      summary: The logged-in user
+      description: |
+        Used by the app shell for the user name and the role-dependent nav (Approvals only for team
+        leads, Admin only for admins), and by the router guard: a 401 means "go to the login page".
+      responses:
+        '200':
+          description: The logged-in user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUser'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        default:
+          $ref: '#/components/responses/Problem'
+
 components:
+  securitySchemes:
+    sessionCookie:
+      description: Server session from `POST /auth/login` (decision #12)
+      type: apiKey
+      in: cookie
+      name: JSESSIONID
+
   schemas:
     Hello:
       type: object
@@ -35,6 +130,61 @@ components:
         message:
           type: string
           example: Hello from praying-mantis
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          example: ana.silva@cofinpro.pt
+        password:
+          type: string
+          minLength: 1
+          maxLength: 128
+          example: secret
+
+    CurrentUser:
+      type: object
+      required: [id, name, email, client, level, isAdmin, isTeamLead]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 7
+        name:
+          type: string
+          example: Ana Silva
+        email:
+          type: string
+          format: email
+          example: ana.silva@cofinpro.pt
+        client:
+          $ref: '#/components/schemas/Client'
+        level:
+          $ref: '#/components/schemas/Level'
+        isAdmin:
+          description: The "privileged account"; shows the Admin nav item
+          type: boolean
+          example: false
+        isTeamLead:
+          description: Derived, true when someone has this user as team lead (decision #9); shows Approvals
+          type: boolean
+          example: true
+
+    Client:
+      description: The client a user works for. The FE maps codes to display names.
+      type: string
+      enum: [DKB, DEKA, VV, DBIS, UNION]
+      example: DKB
+
+    Level:
+      type: string
+      enum: [JUNIOR, EXPERT, SENIOR, ARCHITECT, SENIOR_ARCHITECT]
+      example: SENIOR
+
     Problem:
       description: RFC 9457 Problem Details (decision #21)
       type: object
@@ -57,6 +207,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/FieldError'
+
     FieldError:
       type: object
       required: [field, message]
@@ -67,6 +218,7 @@ components:
         message:
           type: string
           example: must not be blank
+
   responses:
     Problem:
       description: Error
@@ -74,3 +226,29 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
+    ValidationProblem:
+      description: Invalid request; `errors` lists the fields
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: about:blank
+            title: Bad Request
+            status: 400
+            detail: Request has invalid fields
+            instance: /api/auth/login
+            errors:
+              - field: email
+                message: must be a well-formed email address
+    Unauthorized:
+      description: Not logged in, or the session expired
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: about:blank
+            title: Unauthorized
+            status: 401
+            instance: /api/me
