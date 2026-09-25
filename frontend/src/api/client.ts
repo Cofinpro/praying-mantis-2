@@ -178,4 +178,7 @@ export const api = {
     unwrap(
       client.PUT('/me/timesheets/{weekStart}/entries', { params: { path: { weekStart } }, body }),
     ),
+  /** DRAFT or REJECTED → SUBMITTED; notifies the approver */
+  submitMyTimesheet: (weekStart: string) =>
+    unwrap(client.POST('/me/timesheets/{weekStart}/submit', { params: { path: { weekStart } } })),
 }

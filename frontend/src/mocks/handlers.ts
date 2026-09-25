@@ -27,7 +27,7 @@ import { absenceRequests, absenceTypes, balances, publicHolidays } from './data/
 import { mockNotifications } from './data/notifications'
 import { teamAbsenceRequests } from './data/team'
 import { projects, timesheets, type StoredTimesheet } from './data/timesheets'
-import { findMockUser } from './data/users'
+import { findMockUser, mockUsers } from './data/users'
 
 // Mock backend that follows api/openapi.yaml (decision #4). Used by `pnpm dev:mock` and by Vitest.
 // Paths are wildcards so they match both the dev origin and the jsdom origin in tests.
@@ -493,6 +493,54 @@ export const handlers = [
     },
   ),
 
+  // BE-6.4: DRAFT or REJECTED → SUBMITTED, with the approver of decision 16
+  http.post<{ weekStart: string }, never, Timesheet | Problem>(
+    '*/api/me/timesheets/:weekStart/submit',
+    ({ params }) => {
+      const { weekStart } = params
+      const instance = `/api/me/timesheets/${weekStart}/submit`
+      if (!loggedInAs) {
+        return unauthorized(instance)
+      }
+      if (!isMonday(weekStart)) {
+        return invalid('weekStart', 'must be a Monday')
+      }
+      const key = `${loggedInAs.id}|${weekStart}`
+      const existing = myTimesheets.get(key)
+      if (existing && (existing.status === 'SUBMITTED' || existing.status === 'APPROVED')) {
+        return problem(409, {
+          type: '/problems/timesheet-not-editable',
+          title: 'Conflict',
+          detail: `This week is ${existing.status.toLowerCase()} and can't be changed`,
+          instance,
+        })
+      }
+      const approver = approverFor(loggedInAs.id)
+      if (!approver) {
+        return problem(409, {
+          type: '/problems/no-approver',
+          title: 'Conflict',
+          detail:
+            'Nobody can approve this timesheet: you have no team lead and there is no other admin',
+          instance,
+        })
+      }
+      // Submitting a lazy draft stores it; a new submit clears the last rejection
+      const base: StoredTimesheet = existing
+        ? { ...existing }
+        : { id: nextTimesheetId++, weekStart, status: 'DRAFT', entries: [] }
+      delete base.decisionComment
+      delete base.decidedAt
+      myTimesheets.set(key, {
+        ...base,
+        status: 'SUBMITTED',
+        approver,
+        submittedAt: new Date().toISOString(),
+      })
+      return HttpResponse.json(timesheetView(loggedInAs.id, weekStart))
+    },
+  ),
+
   http.get<never, never, PublicHoliday[] | Problem>('*/api/public-holidays', ({ request }) => {
     if (!loggedInAs) {
       return unauthorized('/api/public-holidays')
@@ -504,6 +552,16 @@ export const handlers = [
 /** `?year=` or the current year, as the contract says */
 function yearParam(request: Request): number {
   return Number(new URL(request.url).searchParams.get('year') ?? new Date().getFullYear())
+}
+
+// The team leads of the dev seed (test-users.md). Without one, the admin approves (decision 16);
+// the admin has nobody.
+const TEAM_LEADS: Record<number, number> = { 3: 2, 4: 2, 5: 2, 6: 3, 7: 3, 8: 3 }
+function approverFor(userId: number) {
+  const ADMIN_ID = 1
+  const leadId = TEAM_LEADS[userId] ?? (userId === ADMIN_ID ? undefined : ADMIN_ID)
+  const lead = mockUsers.find((u) => u.id === leadId)
+  return lead ? { id: lead.id, name: lead.name } : undefined
 }
 
 const isMonday = (iso: string) => /^\d{4}-\d{2}-\d{2}$/.test(iso) && weekday(iso) === 0
