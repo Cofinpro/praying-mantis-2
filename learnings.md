@@ -90,6 +90,14 @@ generates `remainingDays?: number`: absent means `undefined`. Jackson serializes
 `"remainingDays": null`, so a check like `=== undefined` misses them. The FE compares with `== null`
 where it matters, and the contract and backend should agree on one of the two (FE-2.3).
 
+### A failed mutation can mean the cache is wrong, so refetch on 404/409 too
+`useMutation` only invalidated queries in `onSuccess`. With the real backend, cancelling a request
+that another tab had already cancelled answered 409, and the calendar and "Coming up" kept showing
+it as pending until a reload. A 404 or 409 usually means the data on screen is out of date, so both
+absence dialogs now also invalidate in `onError` for those (`showsStaleData` in `api/problems.ts`).
+Also: Spring answers an unreadable body with a 400 that has no `errors`, so a form that only shows
+field errors for 400s would show nothing (FE-3.3).
+
 ## TypeScript
 
 ### One tsconfig per environment, tied together with project references

@@ -152,7 +152,9 @@ describe('AbsenceDetailsDialog', () => {
         { once: true },
       ),
     )
-    const wrapper = await mountDetails(approved)
+    const queryClient = testQueryClient()
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+    const wrapper = await mountDetails(approved, queryClient)
 
     await button(wrapper, 'Cancel request')!.trigger('click')
     await flushPromises()
@@ -163,6 +165,8 @@ describe('AbsenceDetailsDialog', () => {
     expect(confirm.find('[role="alert"]').text()).toBe('This absence can’t be cancelled any more.')
     expect(confirm.attributes('open')).toBeDefined()
     expect(wrapper.emitted('close')).toBeUndefined()
+    // E.g. cancelled in another tab: the calendar behind refetches instead of showing it as pending
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.absences.all })
   })
 
   it('shows a generic message when the request no longer exists', async () => {
