@@ -166,6 +166,14 @@ Since Spring Security 6 the `XSRF-TOKEN` cookie is only written when something r
 ### A JSON login has to do what `formLogin` did
 With a custom `POST /api/auth/login`, Spring Security 6+ doesn't save the `SecurityContext` for you. `SessionLogin` authenticates, changes the session id (session fixation), rotates the CSRF token and calls `SecurityContextRepository.saveContext`. Without the last step, the next request is anonymous again. Filter-chain 401/403 never reach `@RestControllerAdvice`; the entry point and access-denied handler pass them to the MVC `HandlerExceptionResolver`, so `ApiExceptionHandler` writes the Problem Details. (BE-1.2)
 
+### Hibernate flushes inserts before deletes
+Within one flush, Hibernate runs all INSERTs before all DELETEs, whatever order you called `remove` and
+`persist` in. Replacing a week's entries through a mapped collection (`clear()`, then `add()`) would
+insert the new row for a cell before deleting the old one, and hit the unique constraint
+`uq_time_entries_cell`. So `TimeEntry` isn't a collection on `Timesheet`. A JPQL bulk delete with
+`@Modifying(flushAutomatically = true, clearAutomatically = true)` runs straight away, and the new rows
+are inserted after it. (BE-6.3)
+
 ### DB defaults are invisible to Hibernate unless marked `@Generated`
 A column filled by `default now()` stays `null` on the entity after `save`, and also after a find in the same transaction, because the persistence context returns the same instance. `@org.hibernate.annotations.Generated` makes Hibernate read it back (`insert ... returning` on Postgres). (BE-1.1 review)
 
