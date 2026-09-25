@@ -19,6 +19,7 @@
 
     <properties>
         <java.version>21</java.version>
+        <openapi-generator.version>7.25.0</openapi-generator.version>
     </properties>
 
     <dependencies>
@@ -87,6 +88,64 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <!-- Controller interfaces and DTOs from the shared contract (decision #3).
+                 Output goes to target/generated-sources/openapi: never edit it, change api/openapi.yaml -->
+            <plugin>
+                <groupId>org.openapitools</groupId>
+                <artifactId>openapi-generator-maven-plugin</artifactId>
+                <version>${openapi-generator.version}</version>
+                <executions>
+                    <execution>
+                        <id>generate-api</id>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <inputSpec>${project.basedir}/../api/openapi.yaml</inputSpec>
+                            <generatorName>spring</generatorName>
+                            <apiPackage>pt.cofinpro.prayingmantis.api</apiPackage>
+                            <modelPackage>pt.cofinpro.prayingmantis.api.model</modelPackage>
+                            <generateSupportingFiles>false</generateSupportingFiles>
+                            <generateApiTests>false</generateApiTests>
+                            <generateModelTests>false</generateModelTests>
+                            <generateApiDocumentation>false</generateApiDocumentation>
+                            <generateModelDocumentation>false</generateModelDocumentation>
+                            <configOptions>
+                                <interfaceOnly>true</interfaceOnly>
+                                <!-- Boot 4 instead of useSpringBoot3 from the story: the repo is on Boot 4 -->
+                                <useSpringBoot4>true</useSpringBoot4>
+                                <useJackson3>true</useJackson3>
+                                <useTags>true</useTags>
+                                <!-- Puts @RequestMapping("${openapi.prayingMantis.base-path:/api}") from `servers` on the interface -->
+                                <requestMappingMode>api_interface</requestMappingMode>
+                                <!-- No default method bodies: a missing endpoint is a compile error -->
+                                <skipDefaultInterface>true</skipDefaultInterface>
+                                <!-- Return the body; the status comes from the contract via @ResponseStatus -->
+                                <useResponseEntity>false</useResponseEntity>
+                                <useBeanValidation>true</useBeanValidation>
+                                <!-- No @Validated on the interfaces: keeps Spring MVC's built-in method validation,
+                                     so a bad query/path param is a 400 (HandlerMethodValidationException), not a 500 -->
+                                <useSpringBuiltInValidation>true</useSpringBuiltInValidation>
+                                <performBeanValidation>false</performBeanValidation>
+                                <openApiNullable>false</openApiNullable>
+                                <annotationLibrary>none</annotationLibrary>
+                                <documentationProvider>none</documentationProvider>
+                                <dateLibrary>java8</dateLibrary>
+                                <hideGenerationTimestamp>true</hideGenerationTimestamp>
+                                <generateJsonIncludeAnnotations>false</generateJsonIncludeAnnotations>
+                                <generateJsonSetterNullsAnnotations>false</generateJsonSetterNullsAnnotations>
+                            </configOptions>
+                            <!-- Timestamps are Instant, not OffsetDateTime (decision #22) -->
+                            <typeMappings>
+                                <typeMapping>DateTime=Instant</typeMapping>
+                            </typeMappings>
+                            <importMappings>
+                                <importMapping>Instant=java.time.Instant</importMapping>
+                            </importMappings>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
