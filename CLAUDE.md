@@ -101,13 +101,16 @@ What exists today:
   - Vue Router for pages, TanStack Query (@tanstack/vue-query) for server data, <style scoped> for styles
   - src/api/client.ts is the only code that talks to the API
   - TypeScript API types are generated from openapi.yaml (openapi-typescript)
+  - **UI follows the Figma file** (D24): https://www.figma.com/design/7gmKCqksPty2qzbRnrWpJZ. Before starting any `FE-x.y` story, find its frame in `design.md` and build what it shows (layout, states, copy). No frame yet → design it in Figma first. Implementation must differ → update Figma first.
+  - Styles use the design tokens (CSS variables in `src/assets/tokens.css`, listed in `design.md`), never raw hex colours, font names or radii
 - **Permissions:** the backend enforces all of them. Hiding buttons in the UI is only a convenience.
 - **Docs:**
   - Record architectural or tooling choices in `decisions.md`
+  - `design.md` summarises the Figma file (frames per story, tokens, components). Keep it in sync with Figma in the same PR
   - Record useful things to learn in `learnings.md`, grouped by topic (Vue, Java, Springboot, Postgres,..) since we're here to learn new tech
 ## Pull requests and AI reviewers
 
 - PR policy: see `CONTRIBUTING.md`. One story per branch and PR (`SCRUM-12-be-login`), 1 code-owner approval, green build, squash merge.
 - Every PR is reviewed by an AI mentor in `.claude/agents/`: `be-specialist` for `backend/**`, `fe-specialist` for `frontend/**`, and both for `api/**` (contract changes). The reviews run locally via `/review-pr` (`--post` puts them on the PR). There is no GitHub Action for this.
-- The reviewers follow `decisions.md` first, then this file and `api/openapi.yaml`, then `.claude/skills/`. Where a skill disagrees with a decision (e.g. Flyway vs Liquibase, Pinia vs TanStack Query for server data), the decision wins.
+- The reviewers follow `decisions.md` first, then this file, `api/openapi.yaml` and (for `fe-specialist`) `design.md`, then `.claude/skills/`. Where a skill disagrees with a decision (e.g. Flyway vs Liquibase, Pinia vs TanStack Query for server data), the decision wins.
 - They teach as they review and suggest entries for `learnings.md`.

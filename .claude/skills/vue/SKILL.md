@@ -34,6 +34,16 @@ src/
 - Shared or cross-view state goes in a Pinia setup store (`defineStore('name', () => { ... })`); local UI state stays in the component.
 - Lazy-load non-home routes: `component: () => import('../views/XxxView.vue')`.
 
+## Design (D24)
+
+The Figma file is the UI source of truth; `design.md` summarises it. For any view or component:
+
+- **Start from the frame.** Look up the story in `design.md` → "Frames per story" and build its layout, states (loading, empty, error, disabled, read-only) and copy. If the Figma MCP is connected, read the frame with it (the `figma-design-to-code` skill) instead of guessing from the summary.
+- **No frame for what you need?** Stop and design it in Figma first (or ask the team). Don't invent UI in code.
+- **Tokens only.** Use the CSS variables from `src/assets/tokens.css` (`var(--color-primary)`, `var(--radius-card)`, ...) inside `<style scoped>`. No hex values, font names or ad-hoc radii in components. A missing token gets added to `tokens.css` and `design.md` together.
+- **Reuse the shared components** listed in `design.md` (`BaseButton`, `StatusBadge`, `BaseDialog`, ...) rather than restyling a new one. Icons are Lucide.
+- If the implementation must differ from the frame, update Figma and `design.md` in the same PR.
+
 ## Tests
 
 - Colocate as `components/__tests__/Name.spec.ts` (or `views/__tests__/`).
