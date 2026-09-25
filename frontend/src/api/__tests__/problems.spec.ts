@@ -24,6 +24,17 @@ describe('problems', () => {
     )
   })
 
+  it('lets a caller reword a type for its point of view', () => {
+    const overrides = { '/problems/insufficient-balance': 'It no longer fits.' }
+    expect(problemMessage(conflict('/problems/insufficient-balance'), overrides)).toBe(
+      'It no longer fits.',
+    )
+    // Types without an override keep the shared wording
+    expect(problemMessage(conflict('/problems/absence-not-pending'), overrides)).toBe(
+      'This request was already decided or cancelled.',
+    )
+  })
+
   it('leaves 400s to the fields and falls back for anything else', () => {
     const invalid = new ApiError({
       type: 'about:blank',

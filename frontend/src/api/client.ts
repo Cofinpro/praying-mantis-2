@@ -30,6 +30,9 @@ export type UnreadCount = components['schemas']['UnreadCount']
 export type NotificationsQuery = NonNullable<
   paths['/me/notifications']['get']['parameters']['query']
 >
+export type TeamAbsenceRequest = components['schemas']['TeamAbsenceRequest']
+export type AbsenceDecision = components['schemas']['AbsenceDecision']
+export type UserRef = components['schemas']['UserRef']
 
 /** Thrown for every non-2xx response. `problem` is the RFC 9457 body (decision #21). */
 export class ApiError extends Error {
@@ -140,6 +143,14 @@ export const api = {
     unwrap(client.POST('/me/absence-requests', { body })),
   cancelMyAbsenceRequest: (id: number) =>
     unwrap(client.POST('/me/absence-requests/{id}/cancel', { params: { path: { id } } })),
+  /** Requests I'm the approver of (T-5.1). The backend defaults `status` to PENDING. */
+  getTeamAbsenceRequests: (status?: AbsenceStatus) =>
+    unwrap(client.GET('/team/absence-requests', { params: { query: { status } } })),
+  approveAbsenceRequest: (id: number, body: AbsenceDecision = {}) =>
+    unwrap(client.POST('/team/absence-requests/{id}/approve', { params: { path: { id } }, body })),
+  /** The comment is required to reject (decision 31) */
+  rejectAbsenceRequest: (id: number, body: AbsenceDecision) =>
+    unwrap(client.POST('/team/absence-requests/{id}/reject', { params: { path: { id } }, body })),
   getPublicHolidays: (year: number) =>
     unwrap(client.GET('/public-holidays', { params: { query: { year } } })),
   /** Newest first. `before` is the `id` of the last item you have, for the next page. */
