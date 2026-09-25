@@ -31,6 +31,12 @@ public interface AbsenceRequestRepository extends JpaRepository<AbsenceRequest, 
     List<AbsenceRequest> findForApprover(
             @Param("approverId") Long approverId, @Param("status") AbsenceStatus status, Sort sort);
 
+    /** Any request by id, with type, requester and approver loaded, for deciding on it (BE-5.2). */
+    @Query("""
+            select r from AbsenceRequest r join fetch r.type join fetch r.user left join fetch r.approver
+            where r.id = :id""")
+    Optional<AbsenceRequest> findWithPeople(@Param("id") Long id);
+
     /** One of the user's own requests, with the type and approver loaded; empty if it's someone else's. */
     @Query("""
             select r from AbsenceRequest r join fetch r.type left join fetch r.approver
