@@ -30,6 +30,20 @@ final class TimesheetMapper {
         return api;
     }
 
+    static pt.cofinpro.prayingmantis.api.model.TeamTimesheet toApi(TeamWeek team) {
+        var user = team.week().timesheet().getUser();
+        return new pt.cofinpro.prayingmantis.api.model.TeamTimesheet(
+                toApi(team.week()),
+                new UserRef(user.getId(), user.getName()),
+                team.projectHours().stream()
+                        .map(p -> new pt.cofinpro.prayingmantis.api.model.ProjectHours(toRef(p.project()), p.hours()))
+                        .toList());
+    }
+
+    private static ProjectRef toRef(pt.cofinpro.prayingmantis.projects.Project project) {
+        return new ProjectRef(project.getId(), project.getCode(), project.getName());
+    }
+
     private static pt.cofinpro.prayingmantis.api.model.TimeEntry toApi(TimeEntry entry) {
         return new pt.cofinpro.prayingmantis.api.model.TimeEntry(
                         entry.getId(),
