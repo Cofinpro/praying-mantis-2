@@ -1,6 +1,6 @@
 # Replace these placeholder teams with real Cofinpro teams or GitHub usernames.
-# Contract changes need both a BE and an FE approval (decisions.md D2); branch
-# protection only requires one code owner, so reviewers enforce that by convention.
+# Code owners are asked for a review automatically, but merging doesn't wait for their approval
+# (decisions.md D25). Contract changes are agreed by both devs in their `together` story (D2).
 *               @Cofinpro/tech-leads
 /backend/       @Cofinpro/backend
 /frontend/      @Cofinpro/frontend

@@ -15,7 +15,7 @@ Story:
 ## Area
 - [ ] Backend (`backend/`)
 - [ ] Frontend (`frontend/`)
-- [ ] API contract (`api/openapi.yaml`): needs both BE and FE review
+- [ ] API contract (`api/openapi.yaml`): agreed by BE and FE in its `T` story (D2)
 
 ## How to test
 <!-- Which automated tests cover this, and any manual steps for the reviewer. -->
