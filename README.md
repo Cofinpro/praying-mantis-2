@@ -9,7 +9,8 @@ Monorepo with a Spring Boot backend and a Vue.js frontend.
 ├── docker-compose.yml   Local Postgres
 ├── plan.md              Plan: scope, data model, user stories
 ├── decisions.md         Architectural and tooling decisions (#1, #2, …)
-└── learnings.md         What we learned, by technology
+├── learnings.md         What we learned, by technology
+└── test-users.md        Logins for dev, tests and the demos (mock data)
 ```
 
 ## Prerequisites
@@ -56,16 +57,7 @@ docker compose down -v                                             # stop and wi
 
 ### Dev users
 
-`./mvnw spring-boot:run` starts the backend with the `dev` profile, which makes Liquibase load these seed users. Every password is `password`. If you start the app from your IDE instead, activate the `dev` profile there. Tests load the same seed through `src/test/resources/config/application.yml`.
-
-| Email | Role | Team lead |
-|---|---|---|
-| `alex.admin@cofinpro.pt` | admin | – |
-| `ana.silva@cofinpro.pt` | team lead of Bruno, Carla, Diogo | – |
-| `bruno.costa@cofinpro.pt` | team lead of Eva, Filipe, Hugo | Ana |
-| `carla.mendes@cofinpro.pt`, `diogo.pereira@cofinpro.pt` | employee | Ana |
-| `eva.santos@cofinpro.pt`, `filipe.rocha@cofinpro.pt`, `hugo.marques@cofinpro.pt` | employee | Bruno |
-| `gabriela.lopes@cofinpro.pt` | employee without team lead (her approvals go to the admins, decision #16) | – |
+`./mvnw spring-boot:run` starts the backend with the `dev` profile, which makes Liquibase load the seed users: an admin, two team leads and six employees. Every password is `password`. **All emails, passwords and roles are in [test-users.md](test-users.md).** If you start the app from your IDE instead, activate the `dev` profile there. Tests load the same seed through `src/test/resources/config/application.yml`.
 
 Every seed user has 22 vacation days for the year the database was created, and Ana and Carla carry days over. Carla has one absence request per status in that year: 5.5 approved vacation days, 3 pending, 2 rejected and 1 sick day, so her balance shows 19 days left.
 
@@ -131,7 +123,7 @@ pnpm install --frozen-lockfile && pnpm gen:api && git diff --exit-code -- src/ap
 | Frontend demo, with mock data (MSW) | https://cofinpro.github.io/praying-mantis-2/ | `.github/workflows/pages.yml` on every push to `main` |
 | Backend API + Postgres | Render (`render.yaml` Blueprint) | Render redeploys after a push to `main` that touches `backend/` or `api/` and passes CI |
 
-The Pages demo never calls the Render backend: the login cookies wouldn't work across the two sites. Log in to the demo with any email and the password `secret`. On Render, the dev seed users are loaded (see "Dev users"). The free service sleeps when idle, so the first request after 15 minutes takes about a minute.
+The Pages demo never calls the Render backend: the login cookies wouldn't work across the two sites. Log in to the demo with any email and the password `secret`. On Render, the dev seed users are loaded. Both sets of logins are in [test-users.md](test-users.md). The free service sleeps when idle, so the first request after 15 minutes takes about a minute.
 
 One-time setup (needs admin rights): in the GitHub repo, go to Settings → Pages → Source and pick "GitHub Actions". In Render, go to New → Blueprint and pick this repo.
 
