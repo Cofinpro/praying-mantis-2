@@ -8,10 +8,12 @@ import { routes } from '@/router'
 import { queryKeys } from '@/api/queryKeys'
 import type { CurrentUser } from '@/api/client'
 import { server } from '@/mocks/node'
-import { mockUser } from '@/mocks/handlers'
+import { mockUser, startMockSession } from '@/mocks/handlers'
 import { queryPlugin, testQueryClient } from '@/test/query'
 
 async function mountHeader(user: Partial<CurrentUser> = {}) {
+  // The bell asks for the unread count, which needs a session
+  startMockSession({ ...mockUser, ...user })
   const router = createRouter({ history: createMemoryHistory(), routes })
   await router.push('/absences')
   const queryClient = testQueryClient()
@@ -67,6 +69,13 @@ describe('AppHeader', () => {
 
     expect(navLabels(wrapper)).not.toContain('Seats')
     expect(navLabels(wrapper)).toContain('Trainings')
+  })
+
+  it('has the notification bell with the unread count', async () => {
+    const { wrapper } = await mountHeader()
+    await flushPromises()
+
+    expect(wrapper.find('button[aria-label="Notifications, 3 unread"]').exists()).toBe(true)
   })
 
   it('says so when logging out fails, and stays', async () => {

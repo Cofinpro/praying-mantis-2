@@ -5,12 +5,14 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import App from '../App.vue'
 import { routes } from '@/router'
 import { queryKeys } from '@/api/queryKeys'
-import { mockUser } from '@/mocks/handlers'
+import { mockUser, startMockSession } from '@/mocks/handlers'
 import { queryPlugin, testQueryClient } from '@/test/query'
 
 async function mountAppAt(path: string) {
   const router = createRouter({ history: createMemoryHistory(), routes })
   await router.push(path)
+  // The header's bell asks for the unread count, which needs a session
+  startMockSession()
   const queryClient = testQueryClient()
   queryClient.setQueryData(queryKeys.me, mockUser)
   const wrapper = mount(App, { global: { plugins: [router, queryPlugin(queryClient)] } })
