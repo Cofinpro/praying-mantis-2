@@ -80,6 +80,10 @@ In development, Vite proxies `/api/*` to `http://localhost:8080`, so no CORS set
 
 > pnpm only (decision #5). Never commit a `package-lock.json` or `yarn.lock`.
 
+## CI
+
+GitHub Actions runs `.github/workflows/backend.yml` on every PR and on `main`. The workflow runs `./mvnw verify`, which includes the Testcontainers tests. Because the API interfaces are regenerated from `api/openapi.yaml` in every build, a controller that doesn't match the contract fails the build. The `backend` check is required before merging (`scripts/setup-branch-protection.sh`).
+
 ## Contributing & code review
 
 All changes go through a pull request. See [CONTRIBUTING.md](CONTRIBUTING.md) for the policy.
