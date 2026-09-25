@@ -2,14 +2,17 @@ spring:
   application:
     name: praying-mantis-backend
   datasource:
-    # File-based H2 database, stored in backend/data (git-ignored)
-    url: jdbc:h2:file:./data/praying-mantis;AUTO_SERVER=TRUE
-    username: sa
-    password: ""
+    # Local Postgres from docker-compose.yml; override via env vars elsewhere
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/prayingmantis}
+    username: ${DB_USER:prayingmantis}
+    password: ${DB_PASSWORD:prayingmantis}
   jpa:
     hibernate:
-      ddl-auto: update
+      # Liquibase owns the schema (decision #23); Hibernate only checks the entities match it
+      ddl-auto: validate
     open-in-view: false
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
   mvc:
     problemdetails:
       enabled: true

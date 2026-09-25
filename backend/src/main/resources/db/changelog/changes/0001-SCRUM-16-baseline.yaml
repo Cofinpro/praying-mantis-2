@@ -1,0 +1,7 @@
+# BE-0.1: empty baseline, so Liquibase creates its tracking tables on first start.
+databaseChangeLog:
+  - changeSet:
+      id: 0001-baseline
+      author: praying-mantis
+      changes:
+        - empty

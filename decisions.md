@@ -30,7 +30,7 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 | 20 | No seats table | Proposed |
 | 21 | Errors as RFC 7807 Problem Details | Proposed |
 | 22 | Date and time format | Proposed |
-| 23 | Schema migrations with Liquibase | Proposed |
+| 23 | Schema migrations with Liquibase | Accepted |
 
 `plan.md` decisions D1–D12 map to #12–#23.
 
@@ -234,7 +234,7 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 **Why:** Absences and time entries are calendar days, not moments, so storing them as dates avoids timezone off-by-one bugs.
 
 ## 23. Schema migrations with Liquibase
-**Status:** Proposed · plan D12
+**Status:** Accepted · plan D12 · set up in BE-0.1
 
 **Decision:**
 - Every schema change is a Liquibase changeset. We never use `ddl-auto=update`; Hibernate runs with `ddl-auto=validate`.
@@ -246,4 +246,4 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 
 **Why:** It's the team's choice. Liquibase tracks each changeset by id, author and checksum, and supports rollbacks and contexts. YAML changesets teach the Liquibase model, while the `sql` change type keeps full Postgres power where we need it.
 
-**Consequences:** A changeset that has already run is never edited, because its checksum would fail; fixes go in a new changeset. The convention in CLAUDE.md needs to be updated from Flyway to Liquibase.
+**Consequences:** A changeset that has already run is never edited, because its checksum would fail; fixes go in a new changeset. The Flyway convention in CLAUDE.md was replaced with Liquibase in BE-0.1.

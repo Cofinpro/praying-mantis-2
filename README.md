@@ -45,14 +45,17 @@ docker compose down -v                                             # stop and wi
 
 If port 5432 is taken (e.g. by a locally installed Postgres), stop that one first.
 
-> The backend still uses a file-based H2 database. BE-0.1 switches it to this Postgres with Liquibase (decision #23).
+The backend connects to it by default. Override with the `DB_URL`, `DB_USER` and `DB_PASSWORD` env vars. Liquibase applies the schema on start (decision #23).
 
 ## Backend
 
 ```bash
 cd backend
-./mvnw spring-boot:run    # http://localhost:8080
+./mvnw spring-boot:run    # http://localhost:8080, needs the database running
+./mvnw test               # needs Docker: tests start their own Postgres (Testcontainers)
 ```
+
+Schema changes are Liquibase changesets in `src/main/resources/db/changelog/changes/`, one file per story, included from `db.changelog-master.yaml`.
 
 Endpoints:
 - `GET /actuator/health` – health check
