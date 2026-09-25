@@ -39,6 +39,7 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 | 29 | Absence request rules: balance limit, past dates | Accepted |
 | 30 | Hosting: mock demo on GitHub Pages, backend on Render | Accepted |
 | 31 | Team approval rules | Accepted |
+| 32 | Timesheet rules: lazy drafts, one cell per project and day | Accepted |
 | 34 | Contract PRs merge without waiting for the other dev | Accepted |
 
 `plan.md` decisions D1–D12 map to #12–#23.
@@ -381,6 +382,22 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 **Why:** A rejection without a reason leaves the requester guessing. Showing each approver only their own requests keeps the Approvals page focused.
 
 **Consequences:** A request's `approver_id` isn't changed when an admin decides it. Who actually decided isn't stored yet; add a `decided_by` column if the admin pages need it.
+
+## 32. Timesheet rules: lazy drafts, one cell per project and day
+**Status:** Accepted · T-6.1
+
+**Decision:**
+- **Opening a week stores nothing.** `GET /me/timesheets/{weekStart}` returns an empty `DRAFT` without an `id` for a week that has never been saved. The row is created by the first save or submit. This differs from `plan.md` BE-6.2 ("creates a draft if none exists").
+- **One entry per project and day**, as the grid has one cell each (DB unique constraint). Hours are more than 0, at most 24, in **quarter hours**; a day has at most 24 hours in total.
+- **Saving replaces the whole week** (`PUT .../entries`), in one transaction. Only `DRAFT` and `REJECTED` weeks can be edited; `SUBMITTED` and `APPROVED` ones are 409 `/problems/timesheet-not-editable`.
+- **New hours need an active project.** An inactive project that is already on the timesheet may stay, so deactivating a project doesn't block re-saving an old week.
+- **A week with no hours can be submitted**, e.g. a week of vacation. The approver follows decision 16.
+
+**Alternatives considered:** Creating the draft on `GET`, as planned. Then just browsing the calendar would create rows, and a `GET` would change data. Several entries per cell, which the grid can't show.
+
+**Why:** Safe, repeatable reads, and a data model that matches the screen.
+
+**Consequences:** The FE treats a timesheet without `id` as unsaved. Epic 8's export reads only stored entries.
 
 ## 34. Contract PRs merge without waiting for the other dev
 **Status:** Accepted · changes the contract bullet of #27

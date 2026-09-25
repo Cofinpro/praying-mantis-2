@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: praying-mantis API
-  version: 0.6.0
+  version: 0.7.0
   description: |
     Contract between backend and frontend (decision 2). Agree changes together in a `T` story
     before implementing them. All routes are under /api. Errors are Problem Details (decision 21).
@@ -28,6 +28,10 @@ tags:
     description: Public holidays, excluded from working days (T-2.1, decision 15)
   - name: absence-requests
     description: Request and cancel my absences (T-3.1)
+  - name: projects
+    description: Projects to book hours on (T-6.1)
+  - name: timesheets
+    description: My weekly timesheets (T-6.1)
   - name: team-absences
     description: Absence requests I decide on as approver (T-5.1)
   - name: notifications
@@ -359,6 +363,148 @@ paths:
         default:
           $ref: '#/components/responses/Problem'
 
+  /projects:
+    get:
+      tags: [projects]
+      operationId: getProjects
+      summary: Projects to book hours on
+      description: |
+        BE-6.1. Ordered by code. `active` defaults to `true`, the projects that can take new hours.
+        `active=false` returns the inactive ones only, e.g. to label old entries.
+      parameters:
+        - name: active
+          in: query
+          required: false
+          description: Defaults to `true`
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: The projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /me/timesheets/{weekStart}:
+    get:
+      tags: [timesheets]
+      operationId: getMyTimesheet
+      summary: My timesheet for one week
+      description: |
+        BE-6.2. Any week can be opened, past or future. A week that has never been saved comes back as
+        an empty `DRAFT` without an `id`: nothing is stored until the first save or submit
+        (decision 32). So opening a week has no side effects, and browsing doesn't create rows.
+
+        Also returns the week's approved absences and public holidays, read-only, so the grid can
+        mark those days.
+
+        **400** on `weekStart` when it isn't a Monday.
+      parameters:
+        - $ref: '#/components/parameters/WeekStart'
+      responses:
+        '200':
+          description: The week
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Timesheet'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /me/timesheets/{weekStart}/entries:
+    put:
+      tags: [timesheets]
+      operationId: saveMyTimesheetEntries
+      summary: Replace all entries of my week
+      description: |
+        BE-6.3. The body is the whole grid: every entry of the week. Entries missing from it are
+        deleted, so an empty list clears the week. All of it happens in one transaction. Creates the
+        timesheet on the first save.
+
+        **400** (`errors[].field` is e.g. `entries[2].hours`):
+        - `weekStart` isn't a Monday
+        - a `workDate` outside the week
+        - an unknown project, or an inactive one that isn't already on this timesheet
+        - `hours` not in (0, 24], or not in quarter hours
+        - two entries for the same project and day (the grid has one cell each)
+        - a day with more than 24 hours in total (field `entries`)
+        - a `description` over 500 characters
+
+        **409** `/problems/timesheet-not-editable`: the week is `SUBMITTED` or `APPROVED`. A
+        `REJECTED` week can be edited again.
+      parameters:
+        - $ref: '#/components/parameters/WeekStart'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimesheetEntries'
+      responses:
+        '200':
+          description: The saved week
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Timesheet'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/CsrfForbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Problem'
+
+  /me/timesheets/{weekStart}/submit:
+    post:
+      tags: [timesheets]
+      operationId: submitMyTimesheet
+      summary: Submit my week for approval
+      description: |
+        BE-6.4. `DRAFT` or `REJECTED` → `SUBMITTED`. Sets `submittedAt` and the approver, with the same
+        rule as for absences (decision 16), and notifies them (`TIMESHEET_SUBMITTED`, T-4.1). A
+        week with no hours can be submitted too, e.g. a week spent on vacation. The previous
+        rejection's `decisionComment` is cleared.
+
+        **409**:
+        - `/problems/timesheet-not-editable`: it's already `SUBMITTED` or `APPROVED`
+        - `/problems/no-approver`: the sole admin without a team lead (decision 16)
+      parameters:
+        - $ref: '#/components/parameters/WeekStart'
+      responses:
+        '200':
+          description: The submitted week
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Timesheet'
+        '400':
+          $ref: '#/components/responses/ValidationProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/CsrfForbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Problem'
+
   /me/notifications:
     get:
       tags: [notifications]
@@ -608,6 +754,16 @@ components:
       name: JSESSIONID
 
   parameters:
+    WeekStart:
+      name: weekStart
+      in: path
+      required: true
+      description: The Monday of the week
+      schema:
+        type: string
+        format: date
+        example: '2026-09-28'
+
     AbsenceRequestId:
       name: id
       in: path
@@ -780,6 +936,160 @@ components:
           type: string
           maxLength: 500
           example: Long weekend in Lisbon
+
+    Project:
+      type: object
+      required: [id, code, name, isBillable, isActive]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 3
+        code:
+          type: string
+          example: DKB-CORE
+        name:
+          type: string
+          example: DKB core banking
+        client:
+          description: Absent for internal projects
+          allOf:
+            - $ref: '#/components/schemas/Client'
+        isBillable:
+          type: boolean
+          example: true
+        isActive:
+          description: Only active projects take new hours
+          type: boolean
+          example: true
+
+    TimesheetStatus:
+      description: DRAFT → SUBMITTED → APPROVED or REJECTED; REJECTED → SUBMITTED again after edits
+      type: string
+      enum: [DRAFT, SUBMITTED, APPROVED, REJECTED]
+      example: DRAFT
+
+    Timesheet:
+      type: object
+      required: [weekStart, status, entries, totalHours, absences, holidays]
+      properties:
+        id:
+          description: Absent for a week that has never been saved (decision 32)
+          type: integer
+          format: int64
+          example: 12
+        weekStart:
+          type: string
+          format: date
+          example: '2026-09-28'
+        status:
+          $ref: '#/components/schemas/TimesheetStatus'
+        approver:
+          description: Set on submit
+          allOf:
+            - $ref: '#/components/schemas/UserRef'
+        submittedAt:
+          type: string
+          format: date-time
+          example: '2026-10-02T16:30:00Z'
+        decidedAt:
+          type: string
+          format: date-time
+          example: '2026-10-05T09:00:00Z'
+        decisionComment:
+          description: The approver's comment, e.g. why the week was rejected
+          type: string
+          example: Please book Thursday on DKB-CORE
+        entries:
+          description: Ordered by project code, then day
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeEntry'
+        totalHours:
+          type: number
+          example: 38.5
+        absences:
+          description: The user's approved absences that overlap the week, read-only
+          type: array
+          items:
+            $ref: '#/components/schemas/AbsenceRequest'
+        holidays:
+          description: Public holidays in the week
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicHoliday'
+
+    TimeEntry:
+      type: object
+      required: [id, project, workDate, hours]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 101
+        project:
+          $ref: '#/components/schemas/ProjectRef'
+        workDate:
+          type: string
+          format: date
+          example: '2026-09-29'
+        hours:
+          type: number
+          example: 7.5
+        description:
+          type: string
+          example: Sprint planning
+
+    ProjectRef:
+      description: Enough of a project to label an entry, even an inactive one
+      type: object
+      required: [id, code, name]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 3
+        code:
+          type: string
+          example: DKB-CORE
+        name:
+          type: string
+          example: DKB core banking
+
+    TimesheetEntries:
+      type: object
+      required: [entries]
+      properties:
+        entries:
+          type: array
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/TimeEntryInput'
+
+    TimeEntryInput:
+      type: object
+      required: [projectId, workDate, hours]
+      properties:
+        projectId:
+          type: integer
+          format: int64
+          example: 3
+        workDate:
+          type: string
+          format: date
+          example: '2026-09-29'
+        hours:
+          description: More than 0, at most 24, in quarter hours
+          type: number
+          minimum: 0
+          exclusiveMinimum: true
+          maximum: 24
+          multipleOf: 0.25
+          example: 7.5
+        description:
+          type: string
+          maxLength: 500
+          example: Sprint planning
 
     TeamAbsenceRequest:
       description: A request as its approver sees it
@@ -1012,6 +1322,7 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
+
     ValidationProblem:
       description: Invalid request; `errors` lists the fields
       content:
@@ -1027,12 +1338,14 @@ components:
             errors:
               - field: email
                 message: must be a well-formed email address
+
     CsrfForbidden:
       description: Missing or wrong `X-XSRF-TOKEN` header
       content:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
+
     Unauthorized:
       description: Not logged in, or the session expired
       content:
@@ -1044,6 +1357,7 @@ components:
             title: Unauthorized
             status: 401
             instance: /api/me
+
     Forbidden:
       description: Logged in, but not allowed to do this; also a missing or wrong CSRF token
       content:
@@ -1056,6 +1370,7 @@ components:
             status: 403
             detail: You are not allowed to do this
             instance: /api/team/absence-requests/42/approve
+
     NotFound:
       description: No such resource, or it isn't yours
       content:
@@ -1068,6 +1383,7 @@ components:
             status: 404
             detail: Absence request not found
             instance: /api/me/absence-requests/42/cancel
+
     Conflict:
       description: |
         The request is valid but breaks a business rule. `type` says which one, so the FE can pick
