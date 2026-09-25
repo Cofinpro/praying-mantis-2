@@ -1,0 +1,396 @@
+# BE-2.1: absence types, entitlements, public holidays and requests (plan.md §4).
+# Day counts are numeric(4,1) in steps of 0.5, because a half day counts as 0.5 (decision #15).
+databaseChangeLog:
+  - changeSet:
+      id: 0003-absence-types-table
+      author: praying-mantis
+      changes:
+        - createTable:
+            tableName: absence_types
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  generationType: ALWAYS
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_absence_types
+              - column:
+                  name: code
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uq_absence_types_code
+              - column:
+                  name: name
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_paid
+                  type: boolean
+                  constraints:
+                    nullable: false
+              - column:
+                  name: deducts_from_balance
+                  type: boolean
+                  constraints:
+                    nullable: false
+              - column:
+                  name: requires_approval
+                  type: boolean
+                  constraints:
+                    nullable: false
+        - sql:
+            sql: >-
+              alter table absence_types
+                add constraint ck_absence_types_code check (code in ('VACATION', 'SICK', 'PARENTAL', 'UNPAID', 'TRAINING'))
+      rollback:
+        - dropTable:
+            tableName: absence_types
+
+  # Reference data, not dev-only: every environment needs the five types
+  - changeSet:
+      id: 0003-absence-types-data
+      author: praying-mantis
+      changes:
+        - sql:
+            sql: >-
+              insert into absence_types (code, name, is_paid, deducts_from_balance, requires_approval) values
+                ('VACATION', 'Vacation', true, true, true),
+                ('SICK', 'Sick leave', true, false, false),
+                ('PARENTAL', 'Parental leave', true, false, true),
+                ('UNPAID', 'Unpaid leave', false, false, true),
+                ('TRAINING', 'Training', true, false, true)
+      rollback:
+        - sql:
+            sql: delete from absence_types
+
+  - changeSet:
+      id: 0003-absence-entitlements-table
+      author: praying-mantis
+      changes:
+        - createTable:
+            tableName: absence_entitlements
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  generationType: ALWAYS
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_absence_entitlements
+              - column:
+                  name: user_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_absence_entitlements_user
+                    references: users(id)
+              - column:
+                  name: absence_type_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_absence_entitlements_type
+                    references: absence_types(id)
+              - column:
+                  name: year
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entitled_days
+                  type: numeric(4,1)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: carried_over_days
+                  type: numeric(4,1)
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+        # The unique constraint's index starts with user_id, so it also serves "my entitlements"
+        - addUniqueConstraint:
+            tableName: absence_entitlements
+            columnNames: user_id, absence_type_id, year
+            constraintName: uq_absence_entitlements_user_type_year
+        # "x * 2 = trunc(x * 2)": whole or half days only; numeric(4,1) alone would allow 2.3
+        - sql:
+            sql: >-
+              alter table absence_entitlements
+                add constraint ck_absence_entitlements_year check (year between 2000 and 2100),
+                add constraint ck_absence_entitlements_entitled check (entitled_days >= 0 and entitled_days * 2 = trunc(entitled_days * 2)),
+                add constraint ck_absence_entitlements_carried_over check (carried_over_days >= 0 and carried_over_days * 2 = trunc(carried_over_days * 2))
+      rollback:
+        - dropTable:
+            tableName: absence_entitlements
+
+  - changeSet:
+      id: 0003-public-holidays-table
+      author: praying-mantis
+      changes:
+        - createTable:
+            tableName: public_holidays
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  generationType: ALWAYS
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_public_holidays
+              - column:
+                  name: date
+                  type: date
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uq_public_holidays_date
+              - column:
+                  name: name
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: public_holidays
+
+  # Portugal's national holidays for 2026 and 2027 (decision #15). Later years come from the admin
+  # page (BE-9.4). Easter-based ones: Good Friday, Easter Sunday, Corpus Christi (Easter + 60 days).
+  - changeSet:
+      id: 0003-public-holidays-2026-2027
+      author: praying-mantis
+      changes:
+        - sql:
+            sql: >-
+              insert into public_holidays (date, name) values
+                ('2026-01-01', 'New Year''s Day'),
+                ('2026-04-03', 'Good Friday'),
+                ('2026-04-05', 'Easter Sunday'),
+                ('2026-04-25', 'Freedom Day'),
+                ('2026-05-01', 'Labour Day'),
+                ('2026-06-04', 'Corpus Christi'),
+                ('2026-06-10', 'Portugal Day'),
+                ('2026-08-15', 'Assumption Day'),
+                ('2026-10-05', 'Republic Day'),
+                ('2026-11-01', 'All Saints'' Day'),
+                ('2026-12-01', 'Restoration of Independence'),
+                ('2026-12-08', 'Immaculate Conception'),
+                ('2026-12-25', 'Christmas Day'),
+                ('2027-01-01', 'New Year''s Day'),
+                ('2027-03-26', 'Good Friday'),
+                ('2027-03-28', 'Easter Sunday'),
+                ('2027-04-25', 'Freedom Day'),
+                ('2027-05-01', 'Labour Day'),
+                ('2027-05-27', 'Corpus Christi'),
+                ('2027-06-10', 'Portugal Day'),
+                ('2027-08-15', 'Assumption Day'),
+                ('2027-10-05', 'Republic Day'),
+                ('2027-11-01', 'All Saints'' Day'),
+                ('2027-12-01', 'Restoration of Independence'),
+                ('2027-12-08', 'Immaculate Conception'),
+                ('2027-12-25', 'Christmas Day')
+      rollback:
+        - sql:
+            sql: delete from public_holidays where extract(year from date) in (2026, 2027)
+
+  - changeSet:
+      id: 0003-absence-requests-table
+      author: praying-mantis
+      changes:
+        - createTable:
+            tableName: absence_requests
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  generationType: ALWAYS
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_absence_requests
+              - column:
+                  name: user_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_absence_requests_user
+                    references: users(id)
+              - column:
+                  name: absence_type_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_absence_requests_type
+                    references: absence_types(id)
+              - column:
+                  name: start_date
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: end_date
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: start_part
+                  type: varchar(10)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: end_part
+                  type: varchar(10)
+                  constraints:
+                    nullable: false
+              # Stored, not recomputed: editing the holidays later mustn't change old requests (decision #15)
+              - column:
+                  name: working_days
+                  type: numeric(4,1)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reason
+                  type: varchar(500)
+              - column:
+                  name: approver_id
+                  type: bigint
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_absence_requests_approver
+                    references: users(id)
+              - column:
+                  name: decided_at
+                  type: timestamptz
+              - column:
+                  name: decision_comment
+                  type: varchar(500)
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        # "My requests in a range" (BE-2.3): the user, then the dates
+        - createIndex:
+            tableName: absence_requests
+            indexName: idx_absence_requests_user_dates
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: start_date
+        # "Requests I have to decide on" (BE-5.1)
+        - createIndex:
+            tableName: absence_requests
+            indexName: idx_absence_requests_approver_status
+            columns:
+              - column:
+                  name: approver_id
+              - column:
+                  name: status
+        # Day parts (T-2.1, DayPart): a single day has one part; a longer request may start in the
+        # afternoon and end in the morning, but nothing else, or there'd be a gap in the middle.
+        - sql:
+            sql: >-
+              alter table absence_requests
+                add constraint ck_absence_requests_status check (status in ('PENDING', 'APPROVED', 'REJECTED', 'CANCELLED')),
+                add constraint ck_absence_requests_start_part check (start_part in ('FULL', 'MORNING', 'AFTERNOON')),
+                add constraint ck_absence_requests_end_part check (end_part in ('FULL', 'MORNING', 'AFTERNOON')),
+                add constraint ck_absence_requests_dates check (end_date >= start_date),
+                add constraint ck_absence_requests_day_parts check (
+                  (start_date = end_date and start_part = end_part)
+                  or (start_date < end_date and start_part in ('FULL', 'AFTERNOON') and end_part in ('FULL', 'MORNING'))),
+                add constraint ck_absence_requests_working_days check (working_days > 0 and working_days * 2 = trunc(working_days * 2)),
+                add constraint ck_absence_requests_not_own_approver check (approver_id <> user_id)
+      rollback:
+        - dropTable:
+            tableName: absence_requests
+
+  # Decision #14: a user's pending and approved requests never overlap. The service checks it first
+  # for a friendly 409 (BE-3.2); this constraint also holds under concurrent requests, which a
+  # check-then-insert in the service can't. btree_gist lets a GiST index compare user_id with "=",
+  # next to the range overlap "&&". The daterange is '[]': both ends inclusive.
+  - changeSet:
+      id: 0003-absence-requests-no-overlap
+      author: praying-mantis
+      changes:
+        - sql:
+            sql: >-
+              create extension if not exists btree_gist;
+              alter table absence_requests
+                add constraint ex_absence_requests_no_overlap
+                exclude using gist (user_id with =, daterange(start_date, end_date, '[]') with &&)
+                where (status in ('PENDING', 'APPROVED'))
+      rollback:
+        - sql:
+            sql: alter table absence_requests drop constraint ex_absence_requests_no_overlap
+
+  # Dev-only: a vacation entitlement for every seed user in the year the DB was created. Ana and
+  # Carla carry days over from last year.
+  - changeSet:
+      id: 0003-absence-entitlements-dev-seed
+      author: praying-mantis
+      context: dev
+      changes:
+        - sql:
+            sql: >-
+              insert into absence_entitlements (user_id, absence_type_id, year, entitled_days, carried_over_days)
+                select u.id, t.id, extract(year from current_date)::int, 22,
+                  case u.email when 'ana.silva@cofinpro.pt' then 3 when 'carla.mendes@cofinpro.pt' then 2.5 else 0 end
+                from users u cross join absence_types t
+                where t.code = 'VACATION'
+      rollback:
+        - sql:
+            sql: delete from absence_entitlements
+
+  # Dev-only: Carla's year, one request per status, so the balance cards and the calendar show
+  # something (FE-2.3). Dates are relative to the current year and avoid the seeded holidays:
+  # date_trunc('week', d) is the Monday of d's week.
+  #   approved vacation  Mon–Fri of the week of 15 Feb   5 days
+  #   approved vacation  Tuesday afternoon, week of 18 Mar  0.5
+  #   approved sick      Monday of the week of 21 Jan     1 day, no approval needed
+  #   rejected vacation  Thu–Fri of the week of 16 Jul    2 days
+  #   pending vacation   Mon–Wed of the week of 18 Nov    3 days
+  # So her vacation balance is 22 + 2.5 carried over − 5.5 used = 19 left, with 3 pending.
+  - changeSet:
+      id: 0003-absence-requests-dev-seed
+      author: praying-mantis
+      context: dev
+      changes:
+        - sql:
+            sql: >-
+              insert into absence_requests (user_id, absence_type_id, start_date, end_date, start_part, end_part,
+                  working_days, status, reason, approver_id, decided_at, decision_comment)
+                select carla.id, t.id, v.start_date, v.end_date, v.start_part, v.end_part,
+                  v.working_days, v.status, v.reason, case when v.needs_approver then ana.id end,
+                  case when v.status in ('APPROVED', 'REJECTED') then now() end, v.decision_comment
+                from (values
+                  ('VACATION', 0, 4, 2, 15, 'FULL', 'FULL', 5.0, 'APPROVED', 'Skiing', true, null),
+                  ('VACATION', 1, 1, 3, 18, 'AFTERNOON', 'AFTERNOON', 0.5, 'APPROVED', 'Dentist', true, null),
+                  ('SICK', 0, 0, 1, 21, 'FULL', 'FULL', 1.0, 'APPROVED', null, false, null),
+                  ('VACATION', 3, 4, 7, 16, 'FULL', 'FULL', 2.0, 'REJECTED', 'Long weekend', true, 'Release week'),
+                  ('VACATION', 0, 2, 11, 18, 'FULL', 'FULL', 3.0, 'PENDING', 'Family visit', true, null)
+                ) as v0(code, start_offset, end_offset, month, day, start_part, end_part, working_days, status, reason, needs_approver, decision_comment)
+                cross join lateral (
+                  select date_trunc('week', make_date(extract(year from current_date)::int, v0.month, v0.day))::date as monday
+                ) w
+                cross join lateral (
+                  select v0.*, w.monday + v0.start_offset as start_date, w.monday + v0.end_offset as end_date
+                ) v
+                join absence_types t on t.code = v.code
+                join users carla on carla.email = 'carla.mendes@cofinpro.pt'
+                join users ana on ana.email = 'ana.silva@cofinpro.pt'
+      rollback:
+        - sql:
+            sql: delete from absence_requests

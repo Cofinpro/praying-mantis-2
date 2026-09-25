@@ -105,6 +105,18 @@ openapi-generator puts `@Validated` on the interfaces unless `useSpringBuiltInVa
 
 ## Postgres
 
+### An exclusion constraint is a unique constraint for ranges
+`exclude using gist (user_id with =, daterange(start_date, end_date, '[]') with &&) where (status in ('PENDING', 'APPROVED'))`
+rejects a second pending or approved request of the same user whose days overlap an existing one,
+even when two requests arrive at the same moment. A check in the service followed by an insert
+can't guarantee that. GiST indexes know `&&` on ranges but not `=` on a plain `bigint`, so the
+`btree_gist` extension has to be installed first. `'[]'` makes both ends inclusive; the default
+`'[)'` would let a request start on the day another one ends. (BE-2.1, decision #14)
+
+### `numeric(4,1)` doesn't stop 2.3 days
+The type allows any single decimal. `check (x * 2 = trunc(x * 2))` only lets whole and half days
+through. (BE-2.1)
+
 ## Liquibase
 
 ### An empty context list runs the dev seed too
