@@ -200,6 +200,14 @@ use Node APIs. `pnpm build` runs it first, so a type error in a test fails the b
 
 ## Java
 
+### An Apache POI formula has no value until a spreadsheet app opens the file
+The client templates' "Summe" cell is written as `<f>SUM(D8:D38)</f>` with no cached `<v>`, and the
+workbook has `fullCalcOnLoad="true"`, so Excel and LibreOffice show the total, but anything that
+reads the file without a calculation engine (openpyxl with `data_only=True`, a quick look at the
+XML, a test that reads the cell's value) sees an empty cell. To get the number into the file itself,
+POI's `FormulaEvaluator.evaluateAll()` computes and caches every formula before writing; to check a
+file by hand, compare against the data rows instead (FE-8.2).
+
 ## Spring Boot
 
 ### `@WithUserDetails` logs a test in as a real seed user
