@@ -4,7 +4,7 @@ Logins for local development, tests and the demos. These are **mock credentials 
 
 ## Backend (local, tests, Render)
 
-Liquibase loads these users with the `dev` context: `./mvnw spring-boot:run` locally, the test config, and the Render deployment (decision #30). Log in at http://localhost:5173 with `pnpm dev`, or against the Render backend.
+Liquibase loads these users with the `dev` context: `./mvnw spring-boot:run` locally, the test config, and the Render deployment (decision #30). Log in at http://localhost:5173 with `pnpm dev`, or online at https://praying-mantis-web.onrender.com (the real app on Render, with its own database).
 
 | Email | Password | Role | Team lead |
 |---|---|---|---|

@@ -122,7 +122,7 @@ pnpm install --frozen-lockfile && pnpm gen:api && git diff --exit-code -- src/ap
 
 | What | Where | How it deploys |
 |---|---|---|
-| **The app**: the real frontend, with the real backend and database | Render static site `praying-mantis-web` (`render.yaml` Blueprint) | Render redeploys after a push to `main` that touches `frontend/`, once CI passes |
+| **The app**: the real frontend, with the real backend and database | https://praying-mantis-web.onrender.com (Render static site `praying-mantis-web`) | Render redeploys after a push to `main` that touches `frontend/`, once CI passes |
 | Backend API + Postgres | Render, https://praying-mantis-api-u1c3.onrender.com | Render redeploys after a push to `main` that touches `backend/` or `api/`, once CI passes |
 | Frontend demo, with mock data (MSW) | https://cofinpro.github.io/praying-mantis-2/ | `.github/workflows/pages.yml` on every push to `main` |
 
