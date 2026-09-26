@@ -7,6 +7,7 @@ import type {
   AbsenceStatus,
   AbsenceType,
   AppNotification,
+  Client,
   CurrentUser,
   ExportTemplate,
   Hello,
@@ -771,7 +772,19 @@ function timesheetMonth(userId: number, month: string): TimesheetMonth {
       .reduce((sum, e) => sum + e.hours, 0)
     weeks.push({ weekStart, status: sheet?.status ?? ('DRAFT' as const), hoursInMonth })
   }
-  return { month, totalHours: weeks.reduce((sum, w) => sum + w.hoursInMonth, 0), weeks }
+  const byClient = new Map<Client | undefined, number>()
+  for (let weekStart = weekStartOf(first); weekStart <= last; weekStart = addDays(weekStart, 7)) {
+    for (const e of myTimesheets.get(`${userId}|${weekStart}`)?.entries ?? []) {
+      if (e.workDate >= first && e.workDate <= last) {
+        const client = projects.find((p) => p.id === e.project.id)?.client ?? undefined
+        byClient.set(client, (byClient.get(client) ?? 0) + e.hours)
+      }
+    }
+  }
+  const clients = [...byClient]
+    .map(([client, hours]) => (client ? { client, hours } : { hours }))
+    .sort((a, b) => b.hours - a.hours)
+  return { month, totalHours: weeks.reduce((sum, w) => sum + w.hoursInMonth, 0), weeks, clients }
 }
 
 /** The week as GET returns it: the stored one or an empty draft, plus absences and holidays */

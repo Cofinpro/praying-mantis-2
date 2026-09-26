@@ -109,6 +109,19 @@ class MonthlyExportIntegrationTest {
 
     @Test
     @WithUserDetails(EVA)
+    void theSummarySplitsTheHoursByProjectClientMostFirst() throws Exception {
+        mockMvc.perform(get("/api/me/timesheet-months/{month}", "2026-10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.clients", hasSize(2)))
+                .andExpect(jsonPath("$.clients[0].client").value("DKB"))
+                .andExpect(jsonPath("$.clients[0].hours").value(15.5))
+                // INTERNAL has no client, so the field is absent (null)
+                .andExpect(jsonPath("$.clients[1].client").doesNotExist())
+                .andExpect(jsonPath("$.clients[1].hours").value(2.0));
+    }
+
+    @Test
+    @WithUserDetails(EVA)
     void theExportIsAnXlsxAttachmentWithTheMonthsEntries() throws Exception {
         byte[] file = mockMvc.perform(get("/api/me/timesheet-exports").param("month", "2026-10").param("template", "GENERIC"))
                 .andExpect(status().isOk())

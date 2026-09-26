@@ -1,5 +1,7 @@
 import type { Client, ExportTemplate, TimesheetMonth } from '@/api/client'
 import { addMonths, formatMonth, formatMonthName, isoWeek } from '@/format/dates'
+import { clientLabel } from '@/format/labels'
+import { formatHours } from '@/timesheets/grid'
 
 // The logic of the export dialog (FE-8.1), kept out of the component so it's easy to test.
 
@@ -24,16 +26,68 @@ export function orderTemplates(templates: ExportTemplate[]): ExportTemplate[] {
   return [...templates.filter((t) => !t.client), ...templates.filter((t) => t.client)]
 }
 
-/** Decision 33: the template of the user's client, else the generic one, else the first */
+/**
+ * The template to preselect. A client's sheet only holds that client's projects' hours, so once
+ * the month's summary is there it's the sheet of the client with the most hours that month, or the
+ * generic one when all of them are internal. Without hours (or before the summary loads) it's
+ * decision 33: the user's client's sheet, else the generic one, else the first.
+ */
 export function defaultTemplate(
   templates: ExportTemplate[],
   client: Client | undefined,
+  summary?: TimesheetMonth,
 ): ExportTemplate | undefined {
-  return (
-    templates.find((t) => client && t.client === client) ??
-    templates.find((t) => !t.client) ??
-    templates[0]
+  const generic = templates.find((t) => !t.client)
+  if (summary && summary.totalHours > 0) {
+    // `clients` comes most hours first
+    const worked = summary.clients.find((c) =>
+      templates.some((t) => c.client && t.client === c.client),
+    )
+    const template = worked && templates.find((t) => t.client === worked.client)
+    if (template) {
+      return template
+    }
+    if (generic) {
+      return generic
+    }
+  }
+  return templates.find((t) => client && t.client === client) ?? generic ?? templates[0]
+}
+
+/** "DKB", "DKB and internal", "DBIS, Deka and internal" */
+function joinClients(clients: (Client | undefined)[]): string {
+  const names = clients.map((c) => (c ? clientLabel(c) : 'internal'))
+  return names.length === 1
+    ? names[0]!
+    : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+}
+
+const hours = (n: number) => `${formatHours(n)} ${n === 1 ? 'hour' : 'hours'}`
+
+/**
+ * A warning when the chosen client sheet leaves hours out, or null. Only the generic sheet has
+ * every hour; a client's sheet has only the hours on that client's projects (decision 33).
+ */
+export function coverageWarning(
+  summary: TimesheetMonth,
+  template: ExportTemplate | undefined,
+): string | null {
+  if (!template?.client || summary.totalHours === 0) {
+    return null
+  }
+  const monthName = formatMonthName(`${summary.month}-01`)
+  const label = clientLabel(template.client)
+  const onSheet = summary.clients.find((c) => c.client === template.client)?.hours ?? 0
+  if (onSheet >= summary.totalHours) {
+    return null
+  }
+  const elsewhere = joinClients(
+    summary.clients.filter((c) => c.client !== template.client).map((c) => c.client),
   )
+  if (onSheet === 0) {
+    return `None of your ${hours(summary.totalHours)} in ${monthName} are on ${label} projects, so this sheet will be empty. They are on ${elsewhere} projects.`
+  }
+  return `This sheet only has the ${hours(onSheet)} on ${label} projects. Your other ${hours(summary.totalHours - onSheet)} in ${monthName} are on ${elsewhere} projects.`
 }
 
 /** "43", "43 and 44", "40, 41 and 42" */

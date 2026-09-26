@@ -9,6 +9,8 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -23,6 +25,7 @@ import pt.cofinpro.prayingmantis.timesheets.TimeEntryRepository;
 import pt.cofinpro.prayingmantis.timesheets.Timesheet;
 import pt.cofinpro.prayingmantis.timesheets.TimesheetRepository;
 import pt.cofinpro.prayingmantis.timesheets.TimesheetStatus;
+import pt.cofinpro.prayingmantis.users.Client;
 import pt.cofinpro.prayingmantis.users.User;
 import pt.cofinpro.prayingmantis.users.UserRepository;
 
@@ -33,7 +36,11 @@ public class ExportService {
     public record WeekSummary(LocalDate weekStart, TimesheetStatus status, BigDecimal hoursInMonth) {
     }
 
-    public record MonthSummary(YearMonth month, BigDecimal totalHours, List<WeekSummary> weeks) {
+    /** {@code client} is null for internal projects. */
+    public record ClientHours(Client client, BigDecimal hours) {
+    }
+
+    public record MonthSummary(YearMonth month, BigDecimal totalHours, List<WeekSummary> weeks, List<ClientHours> clients) {
     }
 
     public record ExportFile(String filename, byte[] content) {
@@ -63,7 +70,9 @@ public class ExportService {
 
     /**
      * Every week that touches the month, with its status and its hours inside the month (T-8.1). A week with no
-     * timesheet is DRAFT with 0 hours. The FE warns when any week isn't APPROVED (decision #18).
+     * timesheet is DRAFT with 0 hours. The FE warns when any week isn't APPROVED (decision #18). Also the hours per
+     * project client, most first: a client's sheet only holds its own projects' hours, so the dialog warns when the
+     * chosen sheet leaves some out.
      */
     @Transactional(readOnly = true)
     public MonthSummary summary(Long userId, YearMonth month) {
@@ -86,7 +95,18 @@ public class ExportService {
             weeks.add(new WeekSummary(weekStart, timesheet == null ? TimesheetStatus.DRAFT : timesheet.getStatus(), hours));
         }
         BigDecimal total = monthEntries.stream().map(TimeEntry::getHours).reduce(BigDecimal.ZERO, BigDecimal::add);
-        return new MonthSummary(month, total, weeks);
+        return new MonthSummary(month, total, weeks, hoursByClient(monthEntries));
+    }
+
+    /** A HashMap, not groupingBy: internal projects have no client, and groupingBy rejects a null key. */
+    private static List<ClientHours> hoursByClient(List<TimeEntry> entries) {
+        Map<Client, BigDecimal> byClient = new HashMap<>();
+        entries.forEach(e -> byClient.merge(e.getProject().getClient(), e.getHours(), BigDecimal::add));
+        return byClient.entrySet().stream()
+                .map(e -> new ClientHours(e.getKey(), e.getValue()))
+                .sorted(Comparator.comparing(ClientHours::hours).reversed()
+                        .thenComparing(ClientHours::client, Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
     }
 
     /** The month as an .xlsx in the given template (400 on {@code template} if there's no such template). */

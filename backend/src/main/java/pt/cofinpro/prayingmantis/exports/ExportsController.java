@@ -10,6 +10,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.RestController;
 import pt.cofinpro.prayingmantis.api.ExportsApi;
 import pt.cofinpro.prayingmantis.api.model.TimesheetMonth;
+import pt.cofinpro.prayingmantis.api.model.TimesheetMonthClient;
 import pt.cofinpro.prayingmantis.api.model.TimesheetMonthWeek;
 import pt.cofinpro.prayingmantis.auth.AuthenticatedUsers;
 
@@ -51,6 +52,10 @@ public class ExportsController implements ExportsApi {
                                 w.weekStart(),
                                 pt.cofinpro.prayingmantis.api.model.TimesheetStatus.valueOf(w.status().name()),
                                 w.hoursInMonth()))
+                        .toList(),
+                summary.clients().stream()
+                        .map(c -> new TimesheetMonthClient(c.hours())
+                                .client(c.client() == null ? null : pt.cofinpro.prayingmantis.api.model.Client.valueOf(c.client().name())))
                         .toList());
     }
 
