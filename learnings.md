@@ -279,13 +279,15 @@ use Node APIs. `pnpm build` runs it first, so a type error in a test fails the b
 
 ## Java
 
-### An Apache POI formula has no value until a spreadsheet app opens the file
-The client templates' "Summe" cell is written as `<f>SUM(D8:D38)</f>` with no cached `<v>`, and the
-workbook has `fullCalcOnLoad="true"`, so Excel and LibreOffice show the total, but anything that
-reads the file without a calculation engine (openpyxl with `data_only=True`, a quick look at the
-XML, a test that reads the cell's value) sees an empty cell. To get the number into the file itself,
-POI's `FormulaEvaluator.evaluateAll()` computes and caches every formula before writing; to check a
-file by hand, compare against the data rows instead (FE-8.2).
+### An Apache POI formula has no value until something computes it
+A formula POI writes is `<f>SUM(D8:D38)</f>` with no cached `<v>`. `setForceFormulaRecalculation(true)` only
+asks Excel to recalculate when it opens the file. Excel's **Protected View**, which is how it opens a
+download, doesn't calculate. Neither do file previews, openpyxl with `data_only=True`, or a test that
+reads the cell. All of them show the cached value, and that value is empty: the exported "Summe" came out
+blank. `workbook.getCreationHelper().createFormulaEvaluator().evaluateAll()` computes every formula and
+caches the results before `write()`. A test should read the cell's cached value
+(`getNumericCellValue()` on a FORMULA cell), not run its own evaluator, because an evaluator in the test
+hides exactly this bug. (FE-8.2, fixed after the demo)
 
 ## Spring Boot
 
