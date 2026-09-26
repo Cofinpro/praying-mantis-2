@@ -148,39 +148,9 @@ const editing = ref<AdminUser | null | undefined>(undefined)
   </section>
 </template>
 
+<style scoped src="../../admin/section.css"></style>
+
 <style scoped>
-.section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.section__header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-}
-
-.section__title {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 700;
-}
-
-.section__subtitle {
-  margin: var(--space-1) 0 0;
-  font-size: 13px;
-  color: var(--color-muted);
-}
-
-.section__actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
 .search {
   display: flex;
   align-items: center;
@@ -219,43 +189,6 @@ const editing = ref<AdminUser | null | undefined>(undefined)
   outline: none;
 }
 
-.card {
-  overflow-x: auto;
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-card);
-  background: var(--color-surface);
-}
-
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-
-.table th,
-.table td {
-  padding: var(--space-3) var(--space-4);
-  text-align: left;
-  white-space: nowrap;
-}
-
-.table thead th {
-  background: var(--color-surface-alt);
-  color: var(--color-muted);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.table tbody tr {
-  border-top: 1px solid var(--color-line);
-}
-
-.table tbody th {
-  font-weight: inherit;
-}
-
 .col-client {
   width: 100px;
 }
@@ -276,35 +209,6 @@ const editing = ref<AdminUser | null | undefined>(undefined)
   width: 80px;
 }
 
-.person {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.person__avatar {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-pill);
-  color: var(--color-surface);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.person__text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.person__name {
-  font-weight: 600;
-}
-
 .person__email {
   font-size: 12px;
   color: var(--color-muted);
@@ -314,70 +218,7 @@ const editing = ref<AdminUser | null | undefined>(undefined)
   font-weight: 500;
 }
 
-.muted {
-  color: var(--color-muted);
-}
-
 .table td.edit {
   text-align: right;
-}
-
-.icon-button {
-  display: inline-flex;
-  padding: var(--space-1);
-  border: none;
-  border-radius: var(--radius-pill);
-  background: none;
-  color: var(--color-ink);
-  cursor: pointer;
-}
-
-.icon-button:hover {
-  background: var(--color-grey);
-}
-
-.icon-button:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
-
-.state {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-3);
-  margin: 0;
-  padding: var(--space-6);
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-card);
-  background: var(--color-surface);
-  color: var(--color-muted);
-}
-
-.state p {
-  margin: 0;
-}
-
-.state--error {
-  color: var(--color-ink);
-}
-
-.state__icon {
-  color: var(--color-muted);
-}
-
-.state .state__title {
-  color: var(--color-ink);
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
 }
 </style>

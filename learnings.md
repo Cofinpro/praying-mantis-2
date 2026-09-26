@@ -239,6 +239,22 @@ field it's about, and builds the wording from data the page already has ("This e
 used by Eva Santos." from the users list), instead of parsing `detail`. Only unknown types and
 server errors go to the banner. Snapshot what was sent, or the message changes as the user types.
 
+### Save a grid without a batch endpoint: `Promise.allSettled`, and keep only the failed edits
+The entitlements grid saves every changed row with its own `PUT` (the contract's upsert). With
+`Promise.all` one failed row would reject the whole save and hide which rows did go through. The
+mutation returns `Promise.allSettled(...)`, so it never rejects: the page drops the edit of each
+fulfilled row (the refetched grid shows it) and keeps the rejected ones with their error. Only the
+edits are stored, not a copy of the grid, so the `onSettled` refetch can't wipe what's still
+unsaved. `onSettled` returns the invalidation promise, and `mutateAsync` waits for it, so the saved
+values never flash back to the old ones (FE-9.2).
+
+### Vetoing a `v-model` change: the native control has already moved
+Switching the year with unsaved changes asks "Discard unsaved changes?" first, through a
+`computed` with a setter that only applies the value after "Discard". But the `<select>` already
+shows the new year, and since nothing reactive changed, Vue doesn't re-render it on "Keep
+editing". Bumping a `:key` on the controls re-creates them from the model, back on the old year
+(FE-9.2).
+
 ## TypeScript
 
 ### One tsconfig per environment, tied together with project references

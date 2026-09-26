@@ -53,8 +53,7 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'entitlements',
         name: 'admin-entitlements',
-        component: adminPlaceholder,
-        props: { title: 'Entitlements', story: 'FE-9.2' },
+        component: () => import('../views/admin/AdminEntitlementsView.vue'),
       },
       {
         path: 'projects',

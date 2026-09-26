@@ -1,9 +1,11 @@
 import { http, HttpResponse } from 'msw'
 
 import type {
+  AdminEntitlement,
   AdminUser,
   AdminUserUpdate,
   CurrentUser,
+  EntitlementInput,
   NewAdminUser,
   PasswordReset,
   Problem,
@@ -37,10 +39,45 @@ const seed = (): StoredUser[] =>
 let users: StoredUser[] = seed()
 let nextUserId = 100
 
+type StoredEntitlement = Omit<AdminEntitlement, 'user'> & { userId: number }
+
+// As the backend's dev seed (0003-absence-entitlements-dev-seed): 22 vacation days for everyone in
+// the current year, Ana and Carla carry days over. Carla also has training days (her balance).
+const seedEntitlements = (): StoredEntitlement[] => [
+  ...mockUsers.map((u) => ({
+    id: u.id,
+    userId: u.id,
+    type: 'VACATION' as const,
+    year: 2026,
+    entitledDays: 22,
+    carriedOverDays: u.id === 2 ? 3 : u.id === 4 ? 2.5 : 0,
+  })),
+  { id: 50, userId: 4, type: 'TRAINING', year: 2026, entitledDays: 5, carriedOverDays: 0 },
+]
+
+let entitlements: StoredEntitlement[] = seedEntitlements()
+let nextEntitlementId = 100
+
 /** Called from resetMockSession() after every test */
 export function resetAdminMock() {
   users = seed()
   nextUserId = 100
+  entitlements = seedEntitlements()
+  nextEntitlementId = 100
+}
+
+function entitlementView(e: StoredEntitlement): AdminEntitlement {
+  const { userId, ...rest } = e
+  const user = users.find((u) => u.id === userId)!
+  return { ...rest, user: { id: user.id, name: user.name } }
+}
+
+/** 0 to 366 in steps of 0.5 (contract), checked by BE-9.2 with the same field names */
+function daysError(field: string, days: unknown) {
+  if (typeof days !== 'number' || days < 0 || days > 366) {
+    return invalid(field, 'must be between 0 and 366')
+  }
+  return Number.isInteger(days * 2) ? null : invalid(field, 'must be in steps of 0.5')
 }
 
 /** Ordered by name, with the team lead and the derived "is team lead" (decision #9), as BE-9.1 */
@@ -217,5 +254,65 @@ export function createAdminHandlers(session: {
         return new HttpResponse(null, { status: 204 })
       },
     ),
+
+    // Entitlements (BE-9.2): by user name, then type
+    http.get<never, never, AdminEntitlement[] | Problem>(
+      '*/api/admin/entitlements',
+      ({ request }) => {
+        const denied = guard('/api/admin/entitlements')
+        if (denied) return denied
+        const year = Number(new URL(request.url).searchParams.get('year'))
+        if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+          return invalid('year', 'must be between 2000 and 2100')
+        }
+        return HttpResponse.json(
+          entitlements
+            .filter((e) => e.year === year)
+            .map(entitlementView)
+            .sort((a, b) => a.user.name.localeCompare(b.user.name) || a.type.localeCompare(b.type)),
+        )
+      },
+    ),
+
+    // An upsert on (user, type, year), decision 35
+    http.put<never, EntitlementInput, AdminEntitlement | Problem>(
+      '*/api/admin/entitlements',
+      async ({ request }) => {
+        const denied = guard('/api/admin/entitlements')
+        if (denied) return denied
+        const body = await request.json()
+        const error =
+          daysError('entitledDays', body.entitledDays) ??
+          daysError('carriedOverDays', body.carriedOverDays)
+        if (error) return error
+        if (!users.some((u) => u.id === body.userId)) return invalid('userId', 'no such user')
+        let stored = entitlements.find(
+          (e) => e.userId === body.userId && e.type === body.type && e.year === body.year,
+        )
+        if (!stored) {
+          stored = { id: nextEntitlementId++, ...body }
+          entitlements.push(stored)
+        }
+        Object.assign(stored, {
+          entitledDays: body.entitledDays,
+          carriedOverDays: body.carriedOverDays,
+        })
+        return HttpResponse.json(entitlementView(stored))
+      },
+    ),
+
+    http.delete<{ id: string }, never, Problem>('*/api/admin/entitlements/:id', ({ params }) => {
+      const denied = guard(`/api/admin/entitlements/${params.id}`)
+      if (denied) return denied
+      if (!entitlements.some((e) => e.id === Number(params.id))) {
+        return problem(404, {
+          type: 'about:blank',
+          title: 'Not Found',
+          detail: 'Entitlement not found',
+        })
+      }
+      entitlements = entitlements.filter((e) => e.id !== Number(params.id))
+      return new HttpResponse(null, { status: 204 })
+    }),
   ]
 }

@@ -1,3 +1,4 @@
+import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 
 import {
@@ -9,6 +10,7 @@ import {
 } from '@/api/client'
 import { queryKeys } from '@/api/queryKeys'
 import { useCurrentUser } from '@/auth/session'
+import type { EntitlementChange } from './entitlements'
 
 // FE-9.1: the users an admin manages (T-9.1). The backend checks the admin flag in the DB on every
 // call (decisions #11, #35), so a non-admin gets a 403 here, not an empty list.
@@ -59,5 +61,36 @@ export function useSetAdminUserPassword() {
   return useMutation({
     mutationFn: ({ id, body }: { id: number; body: PasswordReset }) =>
       api.setAdminUserPassword(id, body),
+  })
+}
+
+// FE-9.2: entitlements of a year, for every type; the page filters on the type
+export function useAdminEntitlements(year: MaybeRefOrGetter<number>) {
+  return useQuery({
+    queryKey: computed(() => queryKeys.admin.entitlements.year(toValue(year))),
+    queryFn: () => api.getAdminEntitlements(toValue(year)),
+    retry: false,
+  })
+}
+
+/**
+ * Saves the changed rows of the grid, one call each (the contract has no batch endpoint), and
+ * settles all of them: a failed row keeps its edit and shows its error, the others are saved.
+ * Afterwards the grid and everyone's balances are stale, mine included when I changed my own row.
+ */
+export function useSaveEntitlements() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (changes: EntitlementChange[]) =>
+      Promise.allSettled(
+        changes.map((c) =>
+          c.kind === 'save' ? api.saveAdminEntitlement(c.body) : api.deleteAdminEntitlement(c.id),
+        ),
+      ),
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.entitlements.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.absences.all }),
+      ]),
   })
 }
