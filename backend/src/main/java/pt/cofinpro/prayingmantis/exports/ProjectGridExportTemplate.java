@@ -84,7 +84,7 @@ class ProjectGridExportTemplate implements ExportTemplate {
                     Sheets.cell(sheet, row, Sheets.column(layout.remarkColumn())).setCellValue(Sheets.remark(month, day));
                 }
             }
-            workbook.setForceFormulaRecalculation(true);
+            Sheets.computeFormulas(workbook);
             workbook.write(out);
         }
     }

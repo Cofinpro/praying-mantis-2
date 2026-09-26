@@ -72,8 +72,7 @@ class DailyListExportTemplate implements ExportTemplate {
                 Sheets.cell(sheet, row, Sheets.column(layout.hoursColumn())).setCellValue(hours.doubleValue());
                 Sheets.cell(sheet, row, Sheets.column(layout.descriptionColumn())).setCellValue(describe(entries));
             }
-            // The template's SUM formulas are computed by Excel on opening, with the new values
-            workbook.setForceFormulaRecalculation(true);
+            Sheets.computeFormulas(workbook);
             workbook.write(out);
         }
     }

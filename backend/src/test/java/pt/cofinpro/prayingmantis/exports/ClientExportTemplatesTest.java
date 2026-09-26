@@ -11,8 +11,9 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DataFormatter;
-import org.apache.poi.ss.usermodel.FormulaEvaluator;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.util.CellReference;
@@ -105,7 +106,7 @@ class ClientExportTemplatesTest {
                 assertThat(text(sheet, "E6")).isEqualTo(ProjectGridExportTemplate.MORE);
                 // Day 13 is row 7 + 12 = 19; D and E together in the last column
                 assertThat(Sheets.cell(sheet, "E19").getNumericCellValue()).isEqualTo(2.0);
-                assertThat(evaluate(wb, sheet, "F19")).isEqualTo(5.0);
+                assertThat(cached(sheet, "F19")).isEqualTo(5.0);
             }
         }
     }
@@ -154,7 +155,7 @@ class ClientExportTemplatesTest {
                 assertThat(text(sheet, "D21")).isEmpty();
                 assertThat(text(sheet, "E10")).isEqualTo("Wochenende");               // Sat 3 Oct
                 assertThat(text(sheet, "E12")).isEqualTo("Feiertag: Republic Day");   // Mon 5 Oct
-                assertThat(evaluate(wb, sheet, l.totalCell())).isEqualTo(10.0);
+                assertThat(cached(sheet, l.totalCell())).isEqualTo(10.0);
             }
         }
 
@@ -171,8 +172,8 @@ class ClientExportTemplatesTest {
                 assertThat(text(sheet, "B7")).isEqualTo("DEKA-RISK");
                 assertThat(text(sheet, "C7")).isEmpty();
                 assertThat(Sheets.cell(sheet, "B20").getNumericCellValue()).isEqualTo(6.0);  // 13 Oct
-                assertThat(evaluate(wb, sheet, "H20")).isEqualTo(6.0);                        // day total
-                assertThat(evaluate(wb, sheet, "H" + l.totalRow())).isEqualTo(13.5);           // month total
+                assertThat(cached(sheet, "H20")).isEqualTo(6.0);                        // day total
+                assertThat(cached(sheet, "H" + l.totalRow())).isEqualTo(13.5);           // month total
             }
         }
 
@@ -206,8 +207,13 @@ class ClientExportTemplatesTest {
         return TEXT.formatCellValue(Sheets.cell(sheet, reference));
     }
 
-    private static double evaluate(Workbook wb, Sheet sheet, String reference) {
-        FormulaEvaluator evaluator = wb.getCreationHelper().createFormulaEvaluator();
-        return evaluator.evaluate(Sheets.cell(sheet, reference)).getNumberValue();
+    /**
+     * The total as the file stores it. Viewers that don't recalculate (Excel's Protected View for downloads,
+     * previews, Google Sheets imports) show this cached value, so the export has to compute it.
+     */
+    private static double cached(Sheet sheet, String reference) {
+        Cell cell = Sheets.cell(sheet, reference);
+        assertThat(cell.getCellType()).isEqualTo(CellType.FORMULA);
+        return cell.getNumericCellValue();
     }
 }

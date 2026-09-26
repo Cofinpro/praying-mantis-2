@@ -50,6 +50,16 @@ final class Sheets {
         return r.getCell(column) != null ? r.getCell(column) : r.createCell(column);
     }
 
+    /**
+     * Computes the template's formulas (the SUM totals) and stores the results in the file. Excel would recalculate
+     * on opening anyway, but Protected View, which is how Excel opens a download, file previews and imports
+     * show the stored value, and without this that is empty.
+     */
+    static void computeFormulas(Workbook workbook) {
+        workbook.getCreationHelper().createFormulaEvaluator().evaluateAll();
+        workbook.setForceFormulaRecalculation(true);
+    }
+
     static int column(String letters) {
         return CellReference.convertColStringToIndex(letters);
     }
