@@ -48,6 +48,10 @@ export type ProjectHours = components['schemas']['ProjectHours']
 export type ExportTemplate = components['schemas']['ExportTemplate']
 export type TimesheetMonth = components['schemas']['TimesheetMonth']
 export type TimesheetMonthWeek = components['schemas']['TimesheetMonthWeek']
+export type AdminUser = components['schemas']['AdminUser']
+export type AdminUserUpdate = components['schemas']['AdminUserUpdate']
+export type NewAdminUser = components['schemas']['NewAdminUser']
+export type PasswordReset = components['schemas']['PasswordReset']
 
 /** A downloaded file: the body and the name the server gave it in `Content-Disposition` */
 export interface DownloadedFile {
@@ -255,4 +259,13 @@ export const api = {
         `timesheet-${month}-${template}.xlsx`,
     }
   },
+  /** Every user, by name (BE-9.1). 403 for anyone who isn't an admin (decision 11). */
+  getAdminUsers: () => unwrap(client.GET('/admin/users')),
+  /** The admin sets the initial password (decision 35) */
+  createAdminUser: (body: NewAdminUser) => unwrap(client.POST('/admin/users', { body })),
+  /** Replaces name, email, client, level, admin flag and team lead; leave `teamLeadId` out for none */
+  updateAdminUser: (id: number, body: AdminUserUpdate) =>
+    unwrap(client.PUT('/admin/users/{id}', { params: { path: { id } }, body })),
+  setAdminUserPassword: (id: number, body: PasswordReset) =>
+    unwrap(client.POST('/admin/users/{id}/password', { params: { path: { id } }, body })),
 }

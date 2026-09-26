@@ -8,7 +8,7 @@ declare module 'vue-router' {
 }
 
 // Placeholder pages until each feature's story builds the real one
-const placeholder = () => import('../views/PlaceholderView.vue')
+const adminPlaceholder = () => import('../views/admin/AdminPlaceholderView.vue')
 
 export const routes: RouteRecordRaw[] = [
   { path: '/', redirect: { name: 'absences' } },
@@ -38,11 +38,37 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('../views/ApprovalsView.vue'),
   },
   {
-    // In the nav for admins only; the backend enforces it (decision #11)
+    // In the nav for admins only; the backend enforces it (decision #11). The layout (sub-nav) is
+    // the parent, each section a child route; `/admin` itself opens Users.
     path: '/admin',
     name: 'admin',
-    component: placeholder,
-    props: { title: 'Admin', story: 'FE-9.1' },
+    component: () => import('../views/AdminView.vue'),
+    redirect: { name: 'admin-users' },
+    children: [
+      {
+        path: 'users',
+        name: 'admin-users',
+        component: () => import('../views/admin/AdminUsersView.vue'),
+      },
+      {
+        path: 'entitlements',
+        name: 'admin-entitlements',
+        component: adminPlaceholder,
+        props: { title: 'Entitlements', story: 'FE-9.2' },
+      },
+      {
+        path: 'projects',
+        name: 'admin-projects',
+        component: adminPlaceholder,
+        props: { title: 'Projects', story: 'FE-9.3' },
+      },
+      {
+        path: 'public-holidays',
+        name: 'admin-public-holidays',
+        component: adminPlaceholder,
+        props: { title: 'Public holidays', story: 'FE-9.4' },
+      },
+    ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]

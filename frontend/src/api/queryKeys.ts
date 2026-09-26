@@ -39,4 +39,9 @@ export const queryKeys = {
     month: (month: string) => ['timesheets', 'month', month] as const,
   },
   exportTemplates: ['export-templates'] as const,
+  // The admin pages (epic 9). Invalidating ['admin'] refreshes every section.
+  admin: {
+    all: ['admin'] as const,
+    users: ['admin', 'users'] as const,
+  },
 }

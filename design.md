@@ -64,6 +64,16 @@ States and choices the code has that Figma doesn't show yet. Add them to Figma w
   - States inside the card, under the toolbar (so the month stays navigable): "Loading the team calendar…", a load error with "Try again", and for someone who leads nobody (only their own row, decision 36) a muted note "Nobody has you as their team lead, so the calendar only shows your own absences." above the grid.
   - Under ~1360px the grid scrolls sideways inside the card, the member column stays sticky.
 
+- **11 Admin – Users and 12 Admin – Edit user (FE-9.1):**
+  - The admin layout is built once for FE-9.1 to 9.4 (`AdminView`, nested routes): `/admin` opens `/admin/users`; Entitlements, Projects and Public holidays show a placeholder section until their stories. Under 800px the sub-nav wraps above the section.
+  - The **Admin** column shows the flag only (a read-only `BaseToggle`, "Yes"/"No" for screen readers). It's changed in the edit dialog, where the last-admin 409 can be explained next to the switch.
+  - Search filters on the client (the contract returns everyone); no match says "No user matches “x”.". The subtitle counts everyone ("9 people · …").
+  - **Add user** uses the edit dialog titled "Add user", with an extra "Initial password (8 to 72 characters)" field under Email, no "Set new password", and a primary "Add user". New users start as DKB · Junior, no team lead.
+  - **Team lead** select: "No team lead (an admin approves)" first, then everyone but the user themself, by name.
+  - **Errors** under their field: "This email is already used by Ana Silva." (409), "Ana Silva already leads Bruno Costa, directly or through others. Pick another team lead." (409 cycle), "This is the only admin. Make someone else an admin first." under the Admin card, whose border turns danger (409 last admin), and 400 messages from the backend under the field they name. Anything else is a danger banner above the footer.
+  - **Set new password** opens a narrow (460px) dialog on top: "Set new password", "For Inês Rocha. They can log in with it straight away; sessions already open stay valid until they expire.", a password field (8 to 72 characters), secondary "Cancel", primary "Set password". After it closes, the edit dialog shows a success-soft note "New password set for Inês Rocha.".
+  - **States**: "Loading users…", load error with "Try again", and for a non-admin (403) a card with a lock icon, "You need an admin account" and "Only admins can manage users. Ask an admin if you need access." (no search or Add user).
+
 - **05 Timesheets (FE-6.1):**
   - **Descriptions per entry** (the contract's `TimeEntry.description`): a message icon button in each row (between the project and Monday, in its own cell) opens a `BaseDialog` (520px) "Descriptions · DKB-CORE" with one text field per day that has hours ("Monday 19 Oct · 6 h", 500 characters max). Secondary "Cancel", primary "Apply"; Apply updates the grid and the week's Save sends it. The icon turns primary with a count when the row has descriptions. Read-only weeks show them as a list with "Close".
   - **Remove a row**: a trash icon button next to the descriptions button (editable weeks only).
@@ -141,9 +151,9 @@ Build these once as Vue components and reuse them. The names are a suggestion:
 - `AppHeader`: logo, nav (Absences, Timesheets, Approvals if team lead, Admin if admin; Trainings and Seats as external links), bell, user, logout.
 - `BaseButton`: variants `primary` · `secondary` (ink outline) · `dark` · `ghost` · `danger` (red outline) · `danger-fill` (destructive confirm), sizes default/small, optional leading icon. Disabled = 40% opacity.
 - `StatusBadge`: the five statuses above.
-- `BaseInput` (error state: 2px danger border + danger helper text), `BaseSelect`, `SegmentedControl` (full day / morning / afternoon), `BaseToggle`.
+- `BaseInput` (error state: 2px danger border + danger helper text), `BaseSelect`, `SegmentedControl` (full day / morning / afternoon), `BaseToggle` (38×22 switch, line track with a white 16px knob when off, primary track when on; a `<button role="switch">`, Space and Enter flip it; `readonly` shows the state only).
 - `BaseDialog`: overlay, 20px radius, title plus close icon, actions right-aligned (secondary, then primary). Widths 580px (forms), 520px (details) and 460px (confirmations, which have no title row: an icon, a heading and the actions).
 - `BalanceCard`, `AbsenceCalendar` (month grid, chips, half days), `TeamCalendar` (people × days, conflict days highlighted), `TimesheetGrid`, `NotificationBell` (a disclosure: the 40px bell with an 18px primary badge, capped at "9+", opens a 420px panel below it, right-aligned; the frame's "See all notifications" footer is left out until a story adds that page), `DataTable` (uppercase muted header on surface-alt, 1px row dividers).
-- Admin pages share a layout: page title, a 220px sub-nav on the left (active item white with a 3px primary bar), and the section on the right.
+- Admin pages share a layout (`AdminView`, FE-9.1): page title "Admin" and "Users, entitlements, projects and public holidays", a 220px sub-nav on the left (items 14/500 muted; active item white with a line border, 14/600 ink and a 3px × 20px primary bar on its left edge), and the section on the right with its own 20/700 title, 13px muted subtitle and actions.
 
 Icons are [Lucide](https://lucide.dev) at stroke width 2 (bell, chevrons, plus, x, check, calendar, download, alert-triangle, info, external-link, log-out, trash, pencil, search, copy, key).
