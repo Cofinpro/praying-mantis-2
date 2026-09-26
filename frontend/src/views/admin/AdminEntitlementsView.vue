@@ -229,8 +229,8 @@ const errorId = (userId: number, cell: string) => `entitlement-${userId}-${cell}
       <p>The entitlements couldn't be loaded.</p>
       <BaseButton variant="secondary" size="small" @click="retry">Try again</BaseButton>
     </div>
-    <div v-else class="card">
-      <table class="table">
+    <div v-else class="card card--stack">
+      <table class="table table--stack">
         <caption class="visually-hidden">
           {{
             `Entitlements ${year}, ${typeName}`
@@ -257,7 +257,7 @@ const errorId = (userId: number, cell: string) => `entitlement-${userId}-${cell}
                 <span class="person__name">{{ row.user.name }}</span>
               </span>
             </th>
-            <td class="days">
+            <td class="days" data-label="Entitled">
               <input
                 type="number"
                 min="0"
@@ -281,7 +281,7 @@ const errorId = (userId: number, cell: string) => `entitlement-${userId}-${cell}
                 {{ row.entitledError }}
               </p>
             </td>
-            <td class="days">
+            <td class="days" data-label="Carried over">
               <input
                 type="number"
                 min="0"
@@ -301,7 +301,7 @@ const errorId = (userId: number, cell: string) => `entitlement-${userId}-${cell}
                 {{ row.carriedError }}
               </p>
             </td>
-            <td class="total">{{ row.total }}</td>
+            <td class="total" data-label="Total">{{ row.total }}</td>
           </tr>
         </tbody>
       </table>
@@ -446,5 +446,15 @@ const errorId = (userId: number, cell: string) => `entitlement-${userId}-${cell}
   height: 8px;
   border-radius: var(--radius-pill);
   background: var(--color-primary);
+}
+
+/* Phones (design.md, "Mobile"): the footer sits under the row cards, Save fills its width */
+@media (max-width: 720px) {
+  .footer {
+    flex-direction: column;
+    align-items: stretch;
+    padding: var(--space-2) 0 0;
+    border-top: none;
+  }
 }
 </style>

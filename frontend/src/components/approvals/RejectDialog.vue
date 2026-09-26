@@ -113,4 +113,11 @@ const banner = computed(() => problemMessage(error.value, APPROVAL_MESSAGES))
   justify-content: flex-end;
   gap: var(--space-2);
 }
+
+/* Phones (design.md, "Mobile"): full-width buttons, the main action on top */
+@media (max-width: 720px) {
+  .reject__footer {
+    flex-direction: column-reverse;
+  }
+}
 </style>

@@ -301,6 +301,8 @@ async function confirmAdd() {
 
 <style scoped>
 .card {
+  /* relative: so absolutely positioned .visually-hidden text is clipped by the scroll box too */
+  position: relative;
   overflow-x: auto;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-card);
@@ -572,5 +574,69 @@ tfoot {
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/*
+ * Phones (design.md, "Mobile"): the week still scrolls sideways inside the card, but with
+ * narrower days, and the project column stays put so you know which row you're typing in.
+ */
+@media (max-width: 720px) {
+  .col-project {
+    min-width: 0;
+  }
+
+  .col-project,
+  .project,
+  .totals-label {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    box-shadow: 1px 0 0 var(--color-line);
+  }
+
+  .col-project,
+  .totals-label {
+    background: var(--color-surface-alt);
+  }
+
+  .project {
+    max-width: 128px;
+    padding: var(--space-3);
+    background: var(--color-surface);
+  }
+
+  .project__name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .col-day,
+  .col-total {
+    width: 64px;
+  }
+
+  .col-day {
+    padding: var(--space-2) var(--space-1);
+  }
+
+  .chip {
+    max-width: 56px;
+    padding: 2px 6px;
+    font-size: 11px;
+  }
+
+  .cell {
+    padding: var(--space-2) var(--space-1);
+  }
+
+  .hours {
+    width: 52px;
+    height: 40px;
+  }
+
+  .total {
+    padding: var(--space-3);
+  }
 }
 </style>

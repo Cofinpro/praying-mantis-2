@@ -121,12 +121,46 @@ const sections = [
 @media (max-width: 800px) {
   .admin__main {
     flex-direction: column;
+    align-items: stretch;
   }
 
+  /* design.md, "Mobile": the side nav becomes a row of pills that scrolls sideways */
   .subnav {
     flex-direction: row;
-    flex-wrap: wrap;
+    overflow-x: auto;
     width: auto;
+    margin: 0 calc(-1 * var(--space-4));
+    padding: 0 var(--space-4) var(--space-1);
+    scrollbar-width: none;
+  }
+
+  .subnav__link {
+    flex: none;
+    padding: var(--space-2) var(--space-4);
+    border-color: var(--color-line);
+    border-radius: var(--radius-pill);
+    background: var(--color-surface);
+    white-space: nowrap;
+  }
+
+  .subnav__link--active {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+    color: var(--color-surface);
+  }
+
+  .subnav__link--active::before {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .admin {
+    gap: var(--space-5);
+  }
+
+  .page-header__title {
+    font-size: 26px;
   }
 }
 </style>

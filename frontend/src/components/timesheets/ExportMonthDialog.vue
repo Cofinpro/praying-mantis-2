@@ -320,4 +320,11 @@ watch([month, selected], () => {
   justify-content: flex-end;
   gap: var(--space-3);
 }
+
+/* Phones (design.md, "Mobile"): full-width buttons, the main action on top */
+@media (max-width: 720px) {
+  .export__footer {
+    flex-direction: column-reverse;
+  }
+}
 </style>

@@ -127,4 +127,11 @@ function apply() {
   gap: var(--space-3);
   margin-top: var(--space-6);
 }
+
+/* Phones (design.md, "Mobile"): full-width buttons, the main action on top */
+@media (max-width: 720px) {
+  .footer {
+    flex-direction: column-reverse;
+  }
+}
 </style>

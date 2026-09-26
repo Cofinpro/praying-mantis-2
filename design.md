@@ -119,6 +119,38 @@ States and choices the code has that Figma doesn't show yet. Add them to Figma w
   - **Warning** (primary-soft, as in the frame) comes from `GET /me/timesheet-months/{month}`: it lists only the weeks that aren't `APPROVED` **and** have hours in the month ("Week 38 in September is not approved yet. It will be included as it is." / "2 weeks in October are not approved yet (weeks 41 and 43). They will be included as they are."). A week without hours adds nothing to the file, so it isn't named. A month with no hours at all says "You have no hours in October yet, so the file will have no entries." If the month can't be loaded: "Couldn’t check which weeks of this month are approved."
   - **States**: "Loading templates…", a load error with "Try again" (Download disabled), "Preparing…" on the disabled Download button while the file is on its way, and a danger banner above the footer for errors ("This template isn’t available any more. Pick another one." for a 400 on `template` or a 404, "This month can’t be exported. Pick another one." for a 400 on `month`, else "Something went wrong. Please try again."). The dialog closes once the download has started.
 
+## Mobile
+
+The frames are desktop only (1440px). Until they get mobile variants, the code follows these rules. They keep the same tokens, components and copy, and change only the layout. **Figma still needs mobile frames for them**: whoever has edit access, please add them.
+
+- **Breakpoints**:
+  - **≤1024px (tablet)**: page padding 24px, and the header hides the user's name and role (the avatar stays).
+  - **≤720px (phone)**: page padding 16px.
+  - Two views use their own widths. Admin drops its side nav under 800px, and the approval tables stack under 900px because their two buttons don't fit a portrait tablet.
+- **Header (phone)**:
+  - 60px tall and sticky. The logo, the bell and a menu button (Lucide `Menu`/`X`) stay in the row.
+  - The menu opens a panel under the header with the nav links (48px rows, the active one on primary-soft with a 3px primary bar on the left), then the user and a labelled "Log out".
+  - Esc or navigating closes it.
+- **Page headers (phone)**: the title drops to 26px, and the header actions stack under the title at full width (e.g. "Request absence", "Export month"). The balance cards go to one column.
+- **Tabs and sub-navigation**:
+  - The Approvals tabs keep one row and scroll sideways.
+  - Under 800px the admin side nav becomes a row of pills that scrolls sideways: surface with a line border, the active one filled with primary.
+- **Tables become cards (phone)**:
+  - Admin users, projects, holidays and entitlements, and the absence and timesheet approvals, show each row as a card (surface, line border, `--radius-card`).
+  - The row header (person, code, date) leads, with the edit, delete or expand button beside it.
+  - Each other column becomes a "Label … value" line, with the label muted and 13px.
+  - Action buttons (Reject, Approve) fill the bottom of the card, side by side.
+  - In the code this means `card--stack` / `table--stack` plus `data-label` on each cell (`approvals/table.css`, `admin/section.css`).
+- **Grids that stay grids**: these scroll sideways inside their card, and the page itself never does.
+  - The timesheet week: 64px day columns, and the project column stays in place.
+  - The team calendar: a 150px sticky name column, 32px days.
+- **Absence calendar (phone)**: 56px cells, the month title fills the row between the arrows, and the chips become 8px coloured bars without text (tapping one still opens the details). Holiday names are hidden, but the grey cell stays.
+- **Dialogs (phone)**:
+  - Every `BaseDialog` becomes a bottom sheet: full width, top corners rounded, at most 92% of the screen tall, with a 20px title.
+  - Field pairs stack one per line.
+  - Footer buttons go full width, with the main action on top.
+- **Footers (phone)**: Save and Submit week share the row. The entitlements "Save changes" button fills it.
+
 ## Tokens
 
 They live in `frontend/src/assets/tokens.css` (created in FE-1.1). Use them everywhere with `var(--…)`. Spacing is available as `--space-1` … `--space-10`, `--space-12` and `--space-16` (the number × 4px; add a step when a frame needs it) and the float shadow as `--shadow-float`.

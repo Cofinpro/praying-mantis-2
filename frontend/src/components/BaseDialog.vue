@@ -104,4 +104,26 @@ defineExpose({ close })
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
+
+/* Phones (design.md, "Mobile"): a bottom sheet, full width, rounded on top only */
+@media (max-width: 720px) {
+  .dialog,
+  .dialog--medium,
+  .dialog--narrow {
+    width: 100%;
+    max-width: 100%;
+    max-height: 92dvh;
+    margin: auto 0 0;
+    padding: var(--space-6) var(--space-4) var(--space-5);
+    border-radius: var(--radius-dialog) var(--radius-dialog) 0 0;
+  }
+
+  .dialog__header {
+    margin-bottom: var(--space-4);
+  }
+
+  .dialog__title {
+    font-size: 20px;
+  }
+}
 </style>

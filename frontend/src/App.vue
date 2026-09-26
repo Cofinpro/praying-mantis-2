@@ -21,4 +21,17 @@ const route = useRoute()
 .page {
   padding: var(--space-9) var(--space-12);
 }
+
+/* design.md, "Mobile": 24px sides on tablets, 16px on phones */
+@media (max-width: 1024px) {
+  .page {
+    padding: var(--space-7) var(--space-6);
+  }
+}
+
+@media (max-width: 720px) {
+  .page {
+    padding: var(--space-5) var(--space-4) var(--space-10);
+  }
+}
 </style>

@@ -11,6 +11,8 @@
 }
 
 .card {
+  /* relative: so absolutely positioned .visually-hidden text is clipped by the scroll box too */
+  position: relative;
   overflow-x: auto;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-card);
@@ -123,4 +125,99 @@
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/*
+ * Phones and small tablets (design.md, "Mobile"): each row becomes a card. From 900px here, not
+ * 720px, since the approval tables with their two buttons don't fit a portrait tablet either.
+ * The row header (th) leads, a .stack-corner cell (edit, toggle) sits beside it, every
+ * td[data-label] becomes a "label: value" line, and .stack-actions buttons fill the bottom.
+ */
+@media (max-width: 900px) {
+  .card--stack {
+    overflow: visible;
+    border: none;
+    border-radius: 0;
+    background: none;
+  }
+
+  .table--stack thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .table--stack,
+  .table--stack tbody {
+    display: block;
+  }
+
+  .table--stack tbody tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-4);
+    margin-bottom: var(--space-3);
+    padding: var(--space-4);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+    background: var(--color-surface);
+  }
+
+  .table--stack th,
+  .table--stack td {
+    display: block;
+    width: auto;
+    padding: 0;
+    white-space: normal;
+  }
+
+  .table--stack tbody > tr > th,
+  .table--stack .stack-lead {
+    flex: 1 1 0;
+    min-width: 0;
+    font-weight: 600;
+  }
+
+  .table--stack td[data-label] {
+    order: 1;
+    display: flex;
+    flex: 1 0 100%;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-1) var(--space-3);
+    max-width: none;
+    text-align: right;
+  }
+
+  .table--stack td[data-label]::before {
+    content: attr(data-label);
+    color: var(--color-muted);
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .table--stack .stack-full {
+    order: 3;
+    flex: 1 0 100%;
+    min-width: 0;
+  }
+
+  .table--stack .stack-actions {
+    order: 2;
+    flex: 1 0 100%;
+    padding-top: var(--space-2);
+  }
+
+  .table--stack .stack-actions > * {
+    display: flex;
+    width: 100%;
+  }
+
+  .table--stack .stack-actions > * > * {
+    flex: 1;
+  }
 }

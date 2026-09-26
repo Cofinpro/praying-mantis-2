@@ -319,4 +319,21 @@ const adminDescribedBy = computed(() =>
   gap: var(--space-3);
   margin-left: auto;
 }
+
+/* Phones (design.md, "Mobile"): one field per line, full-width buttons with the main action on top */
+@media (max-width: 720px) {
+  .form__row {
+    grid-template-columns: 1fr;
+  }
+
+  .form__footer,
+  .form__actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .form__actions {
+    margin-left: 0;
+  }
+}
 </style>

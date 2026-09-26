@@ -187,4 +187,30 @@ const balances = computed(() => [...(balance.data.value ?? [])].sort(byTypeOrder
 .card-state--error {
   color: var(--color-ink);
 }
+
+/* Phone (design.md, "Mobile"): title above, the year and the button share one full-width row */
+@media (max-width: 720px) {
+  .absences {
+    gap: var(--space-5);
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-4);
+  }
+
+  .page-header__title {
+    font-size: 26px;
+  }
+
+  .page-header__actions > :last-child {
+    flex: 1;
+  }
+
+  .cards {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+}
 </style>

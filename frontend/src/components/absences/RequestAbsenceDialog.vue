@@ -286,4 +286,15 @@ function submit() {
   justify-content: flex-end;
   gap: var(--space-3);
 }
+
+/* Phones (design.md, "Mobile"): one field per line, full-width buttons with the main action on top */
+@media (max-width: 720px) {
+  .form__row {
+    grid-template-columns: 1fr;
+  }
+
+  .form__footer {
+    flex-direction: column-reverse;
+  }
+}
 </style>

@@ -88,8 +88,8 @@ const editing = ref<Project | null | undefined>(undefined)
         <TriangleAlert :size="18" aria-hidden="true" />
         {{ switchError }}
       </div>
-      <div class="card">
-        <table class="table">
+      <div class="card card--stack">
+        <table class="table table--stack">
           <caption class="visually-hidden">
             Projects
           </caption>
@@ -106,13 +106,15 @@ const editing = ref<Project | null | undefined>(undefined)
           <tbody>
             <tr v-for="row in rows" :key="row.project.id">
               <th scope="row" class="code">{{ row.project.code }}</th>
-              <td :class="{ muted: !row.project.isActive }">{{ row.project.name }}</td>
-              <td :class="{ muted: !row.project.client }">{{ row.client }}</td>
-              <td>
+              <td :class="{ muted: !row.project.isActive }" data-label="Name">
+                {{ row.project.name }}
+              </td>
+              <td :class="{ muted: !row.project.client }" data-label="Client">{{ row.client }}</td>
+              <td data-label="Billing">
                 <StatusBadge v-if="row.project.isBillable" status="approved" label="Billable" />
                 <StatusBadge v-else status="draft" label="Non-billable" />
               </td>
-              <td>
+              <td data-label="Active">
                 <BaseToggle
                   :model-value="row.project.isActive"
                   :label="row.activeLabel"
@@ -120,7 +122,7 @@ const editing = ref<Project | null | undefined>(undefined)
                   @update:model-value="setActive(row.project, $event)"
                 />
               </td>
-              <td class="edit">
+              <td class="edit stack-corner">
                 <button
                   type="button"
                   class="icon-button"
