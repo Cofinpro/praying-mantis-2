@@ -27,6 +27,10 @@ const checkedValue = (wrapper: Wrapper) =>
 const downloadButton = (wrapper: Wrapper) =>
   wrapper.findAll('button').find((b) => /Download \.xlsx|Preparing…/.test(b.text()))!
 const warning = (wrapper: Wrapper) => wrapper.find('.export__warning')
+const warningLines = (wrapper: Wrapper) =>
+  warning(wrapper)
+    .findAll('p')
+    .map((p) => p.text())
 
 /** Collects the export requests' query strings, without replacing the mock's handler */
 function recordExports() {
@@ -132,15 +136,17 @@ describe('ExportMonthDialog', () => {
   it('warns about the weeks with hours that aren’t approved yet, for the chosen month', async () => {
     const wrapper = await mountDialog()
 
-    // September: week 37 is approved, week 38 is submitted
-    expect(warning(wrapper).text()).toBe(
+    // September: week 37 is approved, week 38 is submitted. The DKB sheet also leaves out 8
+    // internal hours, and that comes first.
+    expect(warningLines(wrapper)).toEqual([
+      'This sheet only has the 72 hours on DKB projects. Your other 8 hours in September are on internal projects.',
       'Week 38 in September is not approved yet. It will be included as it is.',
-    )
+    ])
 
     await wrapper.find('select').setValue('2026-10')
     await flushPromises()
     // October: week 41 was rejected, week 43 is a draft; the other weeks have no hours
-    expect(warning(wrapper).text()).toBe(
+    expect(warningLines(wrapper).slice(-1)[0]).toBe(
       '2 weeks in October are not approved yet (weeks 41 and 43). They will be included as they are.',
     )
   })
@@ -155,6 +161,7 @@ describe('ExportMonthDialog', () => {
             { weekStart: '2026-08-31', status: 'DRAFT', hoursInMonth: 0 },
             { weekStart: '2026-09-07', status: 'APPROVED', hoursInMonth: 40 },
           ],
+          clients: [{ client: 'DKB', hours: 40 }],
         }),
       ),
     )
@@ -271,6 +278,44 @@ describe('ExportMonthDialog', () => {
       .trigger('click')
     await vi.waitFor(() => expect(wrapper.findAll('input[type="radio"]')).toHaveLength(6))
     expect(checkedValue(wrapper)).toBe('DKB')
+  })
+
+  describe('when the hours are on another client’s projects', () => {
+    beforeEach(() => {
+      // Ana works for DKB, but her September hours are all on DBIS-PORTAL
+      server.use(
+        http.get('*/api/me/timesheet-months/:month', ({ params }) =>
+          HttpResponse.json({
+            month: params.month,
+            totalHours: 40,
+            weeks: [{ weekStart: '2026-09-21', status: 'APPROVED', hoursInMonth: 40 }],
+            clients: [{ client: 'DBIS', hours: 40 }],
+          }),
+        ),
+      )
+    })
+
+    it('preselects the sheet of the client the hours are for', async () => {
+      const wrapper = await mountDialog()
+
+      await vi.waitFor(() => expect(checkedValue(wrapper)).toBe('DBIS'))
+      expect(warning(wrapper).exists()).toBe(false)
+    })
+
+    it('warns that the user’s own client sheet would be empty', async () => {
+      const wrapper = await mountDialog()
+      await vi.waitFor(() => expect(checkedValue(wrapper)).toBe('DBIS'))
+
+      await wrapper.find('input[value="DKB"]').setValue()
+      expect(warning(wrapper).text()).toBe(
+        'None of your 40 hours in September are on DKB projects, so this sheet will be empty. They are on DBIS projects.',
+      )
+
+      // The user's own choice sticks when the summary comes in again
+      await wrapper.find('select').setValue('2026-10')
+      await flushPromises()
+      expect(checkedValue(wrapper)).toBe('DKB')
+    })
   })
 
   it('preselects another client for another user', async () => {

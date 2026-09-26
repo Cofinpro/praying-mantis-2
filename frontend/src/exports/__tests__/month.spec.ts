@@ -2,13 +2,29 @@ import { describe, it, expect } from 'vitest'
 
 import type { TimesheetMonth } from '@/api/client'
 import { exportTemplates } from '@/mocks/data/exports'
-import { defaultTemplate, monthOptions, monthWarning, orderTemplates } from '../month'
+import {
+  coverageWarning,
+  defaultTemplate,
+  monthOptions,
+  monthWarning,
+  orderTemplates,
+} from '../month'
 
 const month = (weeks: TimesheetMonth['weeks']): TimesheetMonth => ({
   month: '2026-10',
   totalHours: weeks.reduce((sum, w) => sum + w.hoursInMonth, 0),
   weeks,
+  clients: [],
 })
+
+/** A month with only its hours per client, most first as the API sends them */
+const hoursOn = (clients: TimesheetMonth['clients']): TimesheetMonth => ({
+  month: '2026-09',
+  totalHours: clients.reduce((sum, c) => sum + c.hours, 0),
+  weeks: [],
+  clients,
+})
+const template = (code: string) => exportTemplates.find((t) => t.code === code)
 
 describe('monthOptions', () => {
   it('goes from next month down to a year ago, across the year boundary', () => {
@@ -87,5 +103,56 @@ describe('monthWarning', () => {
     expect(
       monthWarning(month([{ weekStart: '2026-10-05', status: 'DRAFT', hoursInMonth: 0 }])),
     ).toBe('You have no hours in October yet, so the file will have no entries.')
+  })
+})
+
+describe('defaultTemplate with the month’s hours', () => {
+  it('picks the client the hours are for, not the user’s own', () => {
+    // Ana works for DKB, but September went to DBIS
+    const september = hoursOn([{ client: 'DBIS', hours: 40 }])
+    expect(defaultTemplate(exportTemplates, 'DKB', september)?.code).toBe('DBIS')
+  })
+
+  it('picks the client with the most hours, skipping internal ones', () => {
+    const month = hoursOn([
+      { hours: 30 },
+      { client: 'DEKA', hours: 8 },
+      { client: 'DKB', hours: 2 },
+    ])
+    expect(defaultTemplate(exportTemplates, 'DKB', month)?.code).toBe('DEKA')
+  })
+
+  it('picks the generic sheet when every hour is internal', () => {
+    expect(defaultTemplate(exportTemplates, 'DKB', hoursOn([{ hours: 16 }]))?.code).toBe('GENERIC')
+  })
+
+  it('falls back to the user’s client without hours', () => {
+    expect(defaultTemplate(exportTemplates, 'DKB', hoursOn([]))?.code).toBe('DKB')
+  })
+})
+
+describe('coverageWarning', () => {
+  it('says a client sheet will be empty, and where the hours are', () => {
+    expect(coverageWarning(hoursOn([{ client: 'DBIS', hours: 40 }]), template('DKB'))).toBe(
+      'None of your 40 hours in September are on DKB projects, so this sheet will be empty. They are on DBIS projects.',
+    )
+  })
+
+  it('says how many hours a client sheet leaves out', () => {
+    const month = hoursOn([
+      { client: 'DKB', hours: 32 },
+      { client: 'DEKA', hours: 6 },
+      { hours: 1.5 },
+    ])
+    expect(coverageWarning(month, template('DKB'))).toBe(
+      'This sheet only has the 32 hours on DKB projects. Your other 7.5 hours in September are on Deka and internal projects.',
+    )
+  })
+
+  it('stays quiet for the generic sheet, a complete client sheet, or no hours', () => {
+    const month = hoursOn([{ client: 'DKB', hours: 32 }, { hours: 8 }])
+    expect(coverageWarning(month, template('GENERIC'))).toBeNull()
+    expect(coverageWarning(hoursOn([{ client: 'DKB', hours: 40 }]), template('DKB'))).toBeNull()
+    expect(coverageWarning(hoursOn([]), template('DKB'))).toBeNull()
   })
 })

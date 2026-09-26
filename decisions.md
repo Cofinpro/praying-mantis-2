@@ -423,6 +423,11 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 - The cell positions live in `ClientExportTemplates`. `MockExportTemplateGenerator` (test sources) builds the files from them, and a test fails if the two drift apart.
 - To use a real sheet: replace the file, point the client's layout at its cells, and drop that client from the generator.
 
+**Update (after the demo):** People often work on another client's projects than their own `client` (Ana is DKB but books DBIS-PORTAL), so preselecting their own client gave an empty sheet.
+- `GET /me/timesheet-months/{month}` now also returns `clients`: the month's hours per project client, most first. Internal projects have no client.
+- The dialog preselects the sheet of the client with the most hours that month. When every hour is internal, it preselects `GENERIC`. With no hours, it keeps the rule above (your client, else `GENERIC`).
+- When the chosen client sheet leaves hours out, the dialog says how many and which clients they're on. The rule that a sheet only holds its client's hours stays: a client shouldn't see hours billed to someone else.
+
 ## 34. Contract PRs merge without waiting for the other dev
 **Status:** Accepted · changes the contract bullet of #27
 

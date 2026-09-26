@@ -8,7 +8,13 @@ import { useCurrentUser } from '@/auth/session'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseDialog from '@/components/BaseDialog.vue'
 import BaseSelect from '@/components/BaseSelect.vue'
-import { defaultTemplate, monthOptions, monthWarning, orderTemplates } from '@/exports/month'
+import {
+  coverageWarning,
+  defaultTemplate,
+  monthOptions,
+  monthWarning,
+  orderTemplates,
+} from '@/exports/month'
 import { useExportMonth, useExportTemplates, useMyTimesheetMonth } from '@/exports/queries'
 import { today } from '@/format/dates'
 import { clientLabel } from '@/format/labels'
@@ -30,28 +36,44 @@ const months = monthOptions(today())
 /** `YYYY-MM`, the current month to start with */
 const month = ref(today().slice(0, 7))
 const summary = useMyTimesheetMonth(month)
-const warning = computed(() => {
-  if (summary.isError.value) {
-    return 'Couldn’t check which weeks of this month are approved.'
-  }
-  return summary.data.value ? monthWarning(summary.data.value) : null
-})
 
 // --- Template -------------------------------------------------------------------------------------
 
 const templates = computed(() => orderTemplates(templatesQuery.data.value ?? []))
 const selected = ref<string | null>(null)
+/** Set once the user picks a card: from then on only a template that's gone gets replaced */
+const picked = ref(false)
 
-// Preselect once the templates are there (decision 33); never overwrite the user's own choice
+// Preselect once the templates are there, and again when the month's hours come in (decision
+// 33): the sheet of the client the hours are for. Never overwrite the user's own choice.
 watch(
-  templates,
-  (list) => {
-    if (selected.value === null || !list.some((t) => t.code === selected.value)) {
-      selected.value = defaultTemplate(list, me.value?.client)?.code ?? null
+  [templates, summary.data],
+  ([list, data]) => {
+    const gone = !list.some((t) => t.code === selected.value)
+    if (!picked.value || gone) {
+      selected.value = defaultTemplate(list, me.value?.client, data)?.code ?? null
     }
   },
   { immediate: true },
 )
+
+const selectedTemplate = computed(() => templates.value.find((t) => t.code === selected.value))
+
+// --- Warnings -------------------------------------------------------------------------------------
+
+/** What the file will leave out (hours on other clients' projects), then the unapproved weeks */
+const warnings = computed(() => {
+  if (summary.isError.value) {
+    return ['Couldn’t check which weeks of this month are approved.']
+  }
+  const data = summary.data.value
+  if (!data) {
+    return []
+  }
+  return [coverageWarning(data, selectedTemplate.value), monthWarning(data)].filter(
+    (w): w is string => w !== null,
+  )
+})
 
 const isMine = (client: string | undefined | null) => !!client && client === me.value?.client
 
@@ -126,6 +148,7 @@ watch([month, selected], () => {
               class="card__radio"
               :name="radioName"
               :value="template.code"
+              @change="picked = true"
             />
             <span class="card__text">
               <span class="card__title">
@@ -139,9 +162,11 @@ watch([month, selected], () => {
         </div>
       </fieldset>
 
-      <div v-if="warning" class="export__warning" role="status">
+      <div v-if="warnings.length" class="export__warning" role="status">
         <TriangleAlert :size="20" aria-hidden="true" />
-        <p>{{ warning }}</p>
+        <div class="export__warning-text">
+          <p v-for="text in warnings" :key="text">{{ text }}</p>
+        </div>
       </div>
 
       <div v-if="error" class="export__error" role="alert">
@@ -295,6 +320,12 @@ watch([month, selected], () => {
 .export__warning svg {
   flex-shrink: 0;
   color: var(--color-primary);
+}
+
+.export__warning-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 .export__warning p {

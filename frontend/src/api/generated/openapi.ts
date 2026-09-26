@@ -446,7 +446,9 @@ export interface paths {
          * @description BE-8.2. For the export dialog: the hours of the month and the status of every week that
          *     touches it. A week without a timesheet counts as `DRAFT` with 0 hours. The export includes all
          *     entries whatever their week's status (decision 18), so the dialog warns when a week isn't
-         *     `APPROVED`.
+         *     `APPROVED`. A client's sheet only lists the hours on that client's projects, so `clients`
+         *     says how many hours each sheet would hold: the dialog picks the client you worked for and
+         *     warns when the chosen sheet leaves hours out.
          *
          *     **400** on `month` unless it's `YYYY-MM`.
          */
@@ -1160,6 +1162,17 @@ export interface components {
             totalHours: number;
             /** @description Every week that touches the month, by `weekStart` */
             weeks: components["schemas"]["TimesheetMonthWeek"][];
+            /**
+             * @description The month's hours per project client, most hours first. Only clients with hours are
+             *     listed. They add up to `totalHours`.
+             */
+            clients: components["schemas"]["TimesheetMonthClient"][];
+        };
+        TimesheetMonthClient: {
+            /** @description The projects' client; absent for internal projects */
+            client?: components["schemas"]["Client"];
+            /** @example 120 */
+            hours: number;
         };
         TimesheetMonthWeek: {
             /**
