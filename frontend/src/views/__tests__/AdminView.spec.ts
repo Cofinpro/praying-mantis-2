@@ -94,13 +94,13 @@ describe('Admin layout', () => {
   it('moves between sections with the sub-nav', async () => {
     const { wrapper, router } = await mountPage('/admin/users')
 
-    await wrapper.findAll('nav a')[2]!.trigger('click')
-    await vi.waitFor(() => expect(wrapper.get('h2').text()).toBe('Projects'))
+    await wrapper.findAll('nav a')[3]!.trigger('click')
+    await vi.waitFor(() => expect(wrapper.get('h2').text()).toBe('Public holidays'))
 
-    expect(router.currentRoute.value.path).toBe('/admin/projects')
-    expect(wrapper.text()).toContain('This section comes with FE-9.3.')
+    expect(router.currentRoute.value.path).toBe('/admin/public-holidays')
+    expect(wrapper.text()).toContain('This section comes with FE-9.4.')
     const active = wrapper.findAll('nav a').filter((a) => a.classes('subnav__link--active'))
-    expect(active.map((a) => a.text())).toEqual(['Projects'])
+    expect(active.map((a) => a.text())).toEqual(['Public holidays'])
   })
 
   it('tells a non-admin they need an admin account (403)', async () => {

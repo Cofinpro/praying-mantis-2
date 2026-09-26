@@ -54,6 +54,7 @@ export type NewAdminUser = components['schemas']['NewAdminUser']
 export type PasswordReset = components['schemas']['PasswordReset']
 export type AdminEntitlement = components['schemas']['AdminEntitlement']
 export type EntitlementInput = components['schemas']['EntitlementInput']
+export type ProjectInput = components['schemas']['ProjectInput']
 
 /** A downloaded file: the body and the name the server gave it in `Content-Disposition` */
 export interface DownloadedFile {
@@ -279,4 +280,11 @@ export const api = {
   /** The user then has no days of that type left in that year (decision 29) */
   deleteAdminEntitlement: (id: number) =>
     unwrap(client.DELETE('/admin/entitlements/{id}', { params: { path: { id } } })),
+  /** Active and inactive, by code (BE-9.3) */
+  getAdminProjects: () => unwrap(client.GET('/admin/projects')),
+  /** The code is stored in upper case; leave `client` out for an internal project */
+  createAdminProject: (body: ProjectInput) => unwrap(client.POST('/admin/projects', { body })),
+  /** Projects are never deleted: `isActive: false` stops new hours on it (decision 32) */
+  updateAdminProject: (id: number, body: ProjectInput) =>
+    unwrap(client.PUT('/admin/projects/{id}', { params: { path: { id } }, body })),
 }

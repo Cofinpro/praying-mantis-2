@@ -255,6 +255,13 @@ shows the new year, and since nothing reactive changed, Vue doesn't re-render it
 editing". Bumping a `:key` on the controls re-creates them from the model, back on the old year
 (FE-9.2).
 
+### A switch that saves at once: `:model-value` + `@update:model-value`, not `v-model`
+The Active switch in each project row sends a `PUT` straight away. With `v-model` on the row's
+data it would flip before the server answered, and stay flipped when the call failed. Binding
+`:model-value="project.isActive"` and handling `@update:model-value` keeps the switch showing the
+server's value: it moves when the refetched list says so, and a failure leaves it where it was
+(FE-9.3).
+
 ## TypeScript
 
 ### One tsconfig per environment, tied together with project references

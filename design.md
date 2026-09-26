@@ -84,6 +84,14 @@ States and choices the code has that Figma doesn't show yet. Add them to Figma w
   - **Unsaved changes guard** as in "05 Timesheets": switching the year or type, or leaving the page, opens "Discard unsaved changes?" (secondary "Keep editing", danger-fill "Discard changes"); closing the tab uses the browser's prompt.
   - States: "Loading entitlements…", load error with "Try again", and the 403 card ("Only admins can manage entitlements.").
 
+- **14 Admin – Projects (FE-9.3):**
+  - The frame has no project dialog, so it follows "12 Admin – Edit user" (580px `BaseDialog`): "Add project" / "Edit project", Code and Client side by side, then Name, then two bordered switch cards, **Billable** ("Hours on it are billed to the client") and **Active** ("Only active projects can be picked in timesheets. Hours already booked stay."), secondary "Cancel" and primary "Add project" / "Save changes". A new project starts as DKB, billable, active.
+  - **Client** select: "Internal (no client)" first, then the clients; internal sends no `client`.
+  - The **Active switch in each row saves at once** (the project with the flag flipped), disabled while saving. If it fails, the switch stays as it was and a danger banner above the table says "Couldn’t deactivate DKB-CORE. …". Its accessible name is "DKB-CORE active"; the pencil is "Edit DKB-CORE".
+  - An inactive project's name is muted, as VV-PORTAL in the frame; "Internal" is muted too. Billing uses the status badges: Billable = approved (success), Non-billable = draft (grey).
+  - **Errors** under their field: the code is checked before sending ("Use 2 to 30 letters, digits or dashes, e.g. DKB-CORE.", also for the backend's pattern 400), an empty name ("Enter a name."), "Another project already has the code DKB-CORE." (409, the code as it would be stored, in upper case), and other 400 messages under the field they name. Anything else is a danger banner above the footer.
+  - States: "Loading projects…", load error with "Try again", empty "No projects yet. Add the first one.", and the 403 card ("Only admins can manage projects.").
+
 - **05 Timesheets (FE-6.1):**
   - **Descriptions per entry** (the contract's `TimeEntry.description`): a message icon button in each row (between the project and Monday, in its own cell) opens a `BaseDialog` (520px) "Descriptions · DKB-CORE" with one text field per day that has hours ("Monday 19 Oct · 6 h", 500 characters max). Secondary "Cancel", primary "Apply"; Apply updates the grid and the week's Save sends it. The icon turns primary with a count when the row has descriptions. Read-only weeks show them as a list with "Close".
   - **Remove a row**: a trash icon button next to the descriptions button (editable weeks only).
