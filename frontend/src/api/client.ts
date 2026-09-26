@@ -52,6 +52,8 @@ export type AdminUser = components['schemas']['AdminUser']
 export type AdminUserUpdate = components['schemas']['AdminUserUpdate']
 export type NewAdminUser = components['schemas']['NewAdminUser']
 export type PasswordReset = components['schemas']['PasswordReset']
+export type AdminEntitlement = components['schemas']['AdminEntitlement']
+export type EntitlementInput = components['schemas']['EntitlementInput']
 
 /** A downloaded file: the body and the name the server gave it in `Content-Disposition` */
 export interface DownloadedFile {
@@ -268,4 +270,13 @@ export const api = {
     unwrap(client.PUT('/admin/users/{id}', { params: { path: { id } }, body })),
   setAdminUserPassword: (id: number, body: PasswordReset) =>
     unwrap(client.POST('/admin/users/{id}/password', { params: { path: { id } }, body })),
+  /** Every entitlement of a year, by user name, then type (BE-9.2) */
+  getAdminEntitlements: (year: number) =>
+    unwrap(client.GET('/admin/entitlements', { params: { query: { year } } })),
+  /** An upsert on (user, type, year): creates the entitlement or replaces its days (decision 35) */
+  saveAdminEntitlement: (body: EntitlementInput) =>
+    unwrap(client.PUT('/admin/entitlements', { body })),
+  /** The user then has no days of that type left in that year (decision 29) */
+  deleteAdminEntitlement: (id: number) =>
+    unwrap(client.DELETE('/admin/entitlements/{id}', { params: { path: { id } } })),
 }

@@ -9,6 +9,8 @@ defineProps<{
   label: string
   options: { value: T; label: string; disabled?: boolean }[]
   error?: string
+  /** Keep the legend for screen readers only, when the context names the choice (a toolbar) */
+  hideLabel?: boolean
 }>()
 
 const name = useId()
@@ -16,7 +18,7 @@ const name = useId()
 
 <template>
   <fieldset class="segmented" :aria-invalid="error ? 'true' : undefined">
-    <legend class="segmented__label">{{ label }}</legend>
+    <legend class="segmented__label" :class="{ 'visually-hidden': hideLabel }">{{ label }}</legend>
     <div class="segmented__track">
       <label
         v-for="option in options"
@@ -104,6 +106,15 @@ const name = useId()
 .segmented__option:has(.segmented__radio:focus-visible) {
   outline: 2px solid var(--color-primary);
   outline-offset: 1px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .segmented__error {

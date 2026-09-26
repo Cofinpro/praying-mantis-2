@@ -43,5 +43,9 @@ export const queryKeys = {
   admin: {
     all: ['admin'] as const,
     users: ['admin', 'users'] as const,
+    entitlements: {
+      all: ['admin', 'entitlements'] as const,
+      year: (year: number) => ['admin', 'entitlements', year] as const,
+    },
   },
 }
