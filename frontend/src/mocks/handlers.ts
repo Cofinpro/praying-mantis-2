@@ -31,12 +31,13 @@ import type {
 } from '@/api/client'
 import { workingDays } from '@/absences/workingDays'
 import { addDays, daysInMonth, isIsoDate, today, weekStartOf, weekday } from '@/format/dates'
+import { createAdminHandlers, resetAdminMock } from './adminHandlers'
 import { absenceRequests, absenceTypes, balances, publicHolidays } from './data/absences'
 import { exportTemplates, XLSX_TYPE } from './data/exports'
 import { mockNotifications } from './data/notifications'
 import { teamAbsenceRequests, teamCalendarAbsences } from './data/team'
 import { projects, teamTimesheets, timesheets, type StoredTimesheet } from './data/timesheets'
-import { findMockUser, mockUsers } from './data/users'
+import { findMockUser, mockTeamLeads, mockUsers } from './data/users'
 
 // Mock backend that follows api/openapi.yaml (decision #4). Used by `pnpm dev:mock` and by Vitest.
 // Paths are wildcards so they match both the dev origin and the jsdom origin in tests.
@@ -100,6 +101,7 @@ export function resetMockSession() {
   notifications = null
   teamRequests = structuredClone(teamAbsenceRequests)
   myTimesheets = seedTimesheets()
+  resetAdminMock()
 }
 
 const problem = (status: number, body: Omit<Problem, 'status'>) =>
@@ -126,6 +128,11 @@ const unauthorized = (instance: string) =>
   )
 
 export const handlers = [
+  ...createAdminHandlers({
+    current: () => loggedInAs,
+    replace: (user) => (loggedInAs = user),
+  }),
+
   http.get<never, never, Hello>('*/api/hello', () =>
     HttpResponse.json({ message: 'Hello from the MSW mock' }),
   ),
@@ -436,7 +443,7 @@ export const handlers = [
     // The mock's "my requests" are the caller's own, whoever is logged in
     const mine = requests.filter(inRange).map(view).sort(byStart)
     const team = mockUsers
-      .filter((u) => TEAM_LEADS[u.id] === me.id)
+      .filter((u) => mockTeamLeads[u.id] === me.id)
       .sort((a, b) => a.name.localeCompare(b.name))
       .map((u) => ({
         user: { id: u.id, name: u.name },
@@ -741,10 +748,9 @@ function yearParam(request: Request): number {
 
 // The team leads of the dev seed (test-users.md). Without one, the admin approves (decision 16);
 // the admin has nobody.
-const TEAM_LEADS: Record<number, number> = { 3: 2, 4: 2, 5: 2, 6: 3, 7: 3, 8: 3 }
 function approverFor(userId: number) {
   const ADMIN_ID = 1
-  const leadId = TEAM_LEADS[userId] ?? (userId === ADMIN_ID ? undefined : ADMIN_ID)
+  const leadId = mockTeamLeads[userId] ?? (userId === ADMIN_ID ? undefined : ADMIN_ID)
   const lead = mockUsers.find((u) => u.id === leadId)
   return lead ? { id: lead.id, name: lead.name } : undefined
 }

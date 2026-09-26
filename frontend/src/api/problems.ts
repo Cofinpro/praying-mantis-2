@@ -12,6 +12,11 @@ const CONFLICTS: Record<string, string> = {
   '/problems/absence-not-pending': 'This request was already decided or cancelled.',
   '/problems/timesheet-not-editable':
     'This week was already submitted, so it can’t be changed any more.',
+  // Admin, users (T-9.1). The user dialog shows these under the field they belong to.
+  '/problems/email-taken': 'Another user already has this email.',
+  '/problems/team-lead-cycle':
+    'Nobody can be their own team lead, directly or through others. Pick another team lead.',
+  '/problems/last-admin': 'This is the only admin. Make someone else an admin first.',
 }
 
 /**
@@ -37,6 +42,16 @@ export function problemMessage(
       : known
   }
   return 'Something went wrong. Please try again.'
+}
+
+/** The business rule a 409 broke (its Problem `type`), or undefined for any other error */
+export function conflictType(error: unknown): string | undefined {
+  return error instanceof ApiError && error.status === 409 ? error.problem.type : undefined
+}
+
+/** A 403: the caller may not do this, e.g. a non-admin on an admin page (decision #11) */
+export function isForbidden(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 403
 }
 
 /** Field messages from a 400 Problem, keyed by field name */

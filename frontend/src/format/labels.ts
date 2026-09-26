@@ -18,6 +18,10 @@ const LEVELS: Record<Level, string> = {
   SENIOR_ARCHITECT: 'Senior architect',
 }
 
+/** In the contract's order, for selects (FE-9.1) */
+export const CLIENT_CODES = Object.keys(CLIENTS) as Client[]
+export const LEVEL_CODES = Object.keys(LEVELS) as Level[]
+
 export const clientLabel = (client: Client) => CLIENTS[client]
 export const levelLabel = (level: Level) => LEVELS[level]
 

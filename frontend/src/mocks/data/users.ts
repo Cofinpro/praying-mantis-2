@@ -80,6 +80,9 @@ export const mockUsers: CurrentUser[] = [
   }),
 ]
 
+/** Who leads whom in the dev seed (test-users.md), by user id. Alex and Gabriela have no lead. */
+export const mockTeamLeads: Record<number, number> = { 3: 2, 4: 2, 5: 2, 6: 3, 7: 3, 8: 3 }
+
 /** Like the backend: emails are compared lower-cased and trimmed */
 export const findMockUser = (email: string) =>
   mockUsers.find((u) => u.email === email.trim().toLowerCase())

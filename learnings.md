@@ -216,6 +216,29 @@ we hit: a reset like `.grid th { padding: 0 }` (0,1,1) beats `.member { padding:
 sticky cells lost their padding until the rule became `.grid .member`; and the scroll container
 needs `tabindex="0"` plus a `role="region"` with a label, or keyboard users can't scroll it.
 
+### Nested routes: a named parent with `redirect`, and the header link stays active
+The admin pages (FE-9.1) are a layout route (`/admin`, the sub-nav and a `<RouterView>`) with one
+child per section. The parent keeps its `name: 'admin'` and gets `redirect: { name: 'admin-users' }`,
+so the header's existing `RouterLink :to="{ name: 'admin' }"` still works. `router.resolve()` doesn't
+follow redirects, so that link resolves to the parent record, and `active-class` applies to every
+child page (the parent is in `route.matched`); `aria-current="page"` only goes on the exact match,
+here the sub-nav item. Lazy child routes load their own chunk, so tests wait with `vi.waitFor`.
+
+### `role="switch"` on a `<button>`: Space and Enter, but only once
+`BaseToggle` (FE-9.1) is a `<button role="switch" aria-checked>`. A native button already clicks on
+Enter (keydown) and Space (keyup), but jsdom doesn't synthesise that click, so the component handles
+`@keydown.enter.prevent` and `@keydown.space.prevent` itself. `preventDefault()` on the keydown stops
+the browser's own click, so a real Space press flips it once, not twice (checked in Chrome through
+CDP `Input.dispatchKeyEvent`). A read-only copy in a table is a plain `aria-hidden` span plus a
+"Yes"/"No" text: a switch you can't flip shouldn't be announced as one.
+
+### A 409 is about a field too: map the Problem `type` to where it belongs
+The backend's 409s name the rule (`/problems/email-taken`, `/problems/team-lead-cycle`,
+`/problems/last-admin`), not a field. `src/admin/userForm.ts` turns each into a message under the
+field it's about, and builds the wording from data the page already has ("This email is already
+used by Eva Santos." from the users list), instead of parsing `detail`. Only unknown types and
+server errors go to the banner. Snapshot what was sent, or the message changes as the user types.
+
 ## TypeScript
 
 ### One tsconfig per environment, tied together with project references
