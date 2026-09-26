@@ -372,6 +372,10 @@ Architectural and tooling choices for praying-mantis-1, with the reasons behind 
 - One-time setup: in the repo settings, set Pages → Source to "GitHub Actions". In Render, create the Blueprint (New → Blueprint → this repo).
 - To get a real integrated deployment later, move the frontend to a Render static site that rewrites `/api` to the backend (the second alternative).
 
+**Update (2026-09-26): the real frontend is on Render too.** `render.yaml` now also has **`praying-mantis-web`**, a Render static site: the normal production build (no MSW) of `frontend/`. Its rewrite rule proxies `/api/*` to the backend service, so the browser sees one origin and the login cookies work (the second alternative above). The GitHub Pages site stays as the mock demo. Two consequences:
+- The backend's URL is written into `render.yaml`, because a static site's rewrite can't reference another service. If the backend is ever recreated with a new URL, update that rule.
+- Both run on the free plan. After 15 idle minutes, the first `/api` call wakes the backend, so the first page load can take about a minute.
+
 ## 31. Team approval rules
 **Status:** Accepted · T-5.1 (settles "reject comment required?" in `plan.md` epic 5)
 
