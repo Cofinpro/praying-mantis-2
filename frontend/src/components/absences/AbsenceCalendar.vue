@@ -423,4 +423,66 @@ const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/*
+ * Phones (design.md, "Mobile"): shorter cells, and the chips become coloured bars without text
+ * (tapping one still opens the details). The holiday name goes too; its grey cell stays.
+ */
+@media (max-width: 720px) {
+  .calendar {
+    padding: var(--space-4) var(--space-3);
+  }
+
+  .calendar__nav {
+    flex: 1 0 100%;
+    gap: var(--space-2);
+  }
+
+  .calendar__title {
+    flex: 1;
+    min-width: 0;
+    font-size: 17px;
+    white-space: nowrap;
+  }
+
+  .legend {
+    gap: var(--space-2) var(--space-3);
+    font-size: 12px;
+  }
+
+  .grid th {
+    padding: 0 0 var(--space-2);
+    text-align: center;
+  }
+
+  .day {
+    height: 56px;
+    padding: var(--space-1);
+  }
+
+  .day__number {
+    font-size: 12px;
+    text-align: center;
+  }
+
+  .day__holiday {
+    display: none;
+  }
+
+  .day__entries {
+    gap: 2px;
+    margin-top: var(--space-1);
+  }
+
+  .chip {
+    min-height: 0;
+    height: 8px;
+    padding: 0;
+    border-radius: var(--radius-pill);
+  }
+
+  .chip > [aria-hidden='true'] {
+    display: none;
+  }
+}
 </style>

@@ -113,4 +113,11 @@ function onSubmit() {
   gap: var(--space-3);
   align-self: stretch;
 }
+
+/* Phones (design.md, "Mobile"): full-width buttons, the main action on top */
+@media (max-width: 720px) {
+  .confirm__footer {
+    flex-direction: column-reverse;
+  }
+}
 </style>

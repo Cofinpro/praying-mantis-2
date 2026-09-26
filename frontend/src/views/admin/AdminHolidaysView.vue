@@ -181,11 +181,11 @@ const emptyText = computed(
       >
     </div>
     <p v-else-if="rows.length === 0 && !adding" class="state" role="status">{{ emptyText }}</p>
-    <div v-else class="card">
+    <div v-else class="card card--stack">
       <!-- The add row's inputs belong to this form through their `form` attribute: a <form>
            can't sit inside a <tr>, but Enter in either input still submits it -->
       <form id="add-holiday" novalidate @submit.prevent="addHoliday" />
-      <table class="table">
+      <table class="table table--stack">
         <caption class="visually-hidden">
           {{
             title
@@ -201,7 +201,7 @@ const emptyText = computed(
         </thead>
         <tbody>
           <tr v-if="adding" class="add" @keydown.esc="cancelAdding">
-            <td>
+            <td class="stack-lead">
               <input
                 ref="dateInput"
                 v-model="newDate"
@@ -219,8 +219,8 @@ const emptyText = computed(
                 {{ addErrors.date }}
               </p>
             </td>
-            <td class="muted">{{ newDay }}</td>
-            <td>
+            <td class="muted" data-label="Day">{{ newDay }}</td>
+            <td data-label="Name" class="stack-wide">
               <div class="add__name">
                 <input
                   v-model="newName"
@@ -251,7 +251,7 @@ const emptyText = computed(
                 {{ addBanner }}
               </p>
             </td>
-            <td class="actions">
+            <td class="actions stack-corner">
               <button
                 type="button"
                 class="icon-button"
@@ -264,14 +264,14 @@ const emptyText = computed(
           </tr>
           <tr v-for="row in rows" :key="row.holiday.id" :class="{ weekend: row.weekend }">
             <th scope="row" class="date">{{ row.date }}</th>
-            <td class="muted">{{ row.day }}</td>
-            <td>
+            <td class="muted" data-label="Day">{{ row.day }}</td>
+            <td data-label="Name">
               <span class="name">
                 {{ row.holiday.name }}
                 <StatusBadge v-if="row.weekend" status="draft" label="Weekend" />
               </span>
             </td>
-            <td class="actions">
+            <td class="actions stack-corner">
               <button
                 type="button"
                 class="icon-button"

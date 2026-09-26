@@ -86,8 +86,8 @@ const editing = ref<AdminUser | null | undefined>(undefined)
     <p v-else-if="rows.length === 0" class="state" role="status">
       No user matches “{{ search.trim() }}”.
     </p>
-    <div v-else class="card">
-      <table class="table">
+    <div v-else class="card card--stack">
+      <table class="table table--stack">
         <caption class="visually-hidden">
           Users
         </caption>
@@ -117,14 +117,14 @@ const editing = ref<AdminUser | null | undefined>(undefined)
                 </span>
               </span>
             </th>
-            <td class="client">{{ row.client }}</td>
-            <td>{{ row.level }}</td>
-            <td v-if="row.user.teamLead">{{ row.user.teamLead.name }}</td>
-            <td v-else class="muted">
+            <td class="client" data-label="Client">{{ row.client }}</td>
+            <td data-label="Level">{{ row.level }}</td>
+            <td v-if="row.user.teamLead" data-label="Team lead">{{ row.user.teamLead.name }}</td>
+            <td v-else class="muted" data-label="Team lead">
               <span aria-hidden="true">—</span><span class="visually-hidden">None</span>
             </td>
-            <td><BaseToggle :model-value="row.user.isAdmin" readonly /></td>
-            <td class="edit">
+            <td data-label="Admin"><BaseToggle :model-value="row.user.isAdmin" readonly /></td>
+            <td class="edit stack-corner">
               <button
                 type="button"
                 class="icon-button"

@@ -649,4 +649,49 @@ const rejection = computed(() => {
   gap: var(--space-3);
   align-self: stretch;
 }
+
+/* design.md, "Mobile": header and footer actions go full width, Save and Submit side by side */
+@media (max-width: 720px) {
+  .timesheets {
+    gap: var(--space-5);
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .page-header__title {
+    font-size: 26px;
+  }
+
+  .toolbar__title {
+    font-size: 17px;
+  }
+
+  .footer,
+  .footer__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .footer__actions {
+    flex-flow: row wrap;
+  }
+
+  .footer__actions > .footer__note {
+    flex: 1 0 100%;
+  }
+
+  .footer__actions > :not(.footer__note) {
+    flex: 1;
+  }
+}
+
+/* Phones (design.md, "Mobile"): full-width buttons, the main action on top */
+@media (max-width: 720px) {
+  .confirm__footer {
+    flex-direction: column-reverse;
+  }
+}
 </style>

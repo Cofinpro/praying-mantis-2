@@ -201,8 +201,8 @@ function onApprove(item: TeamAbsenceRequest) {
       </div>
       <p v-else-if="rows.length === 0" class="state">Nothing to approve right now.</p>
 
-      <div v-else class="card">
-        <table class="table">
+      <div v-else class="card card--stack">
+        <table class="table table--stack">
           <thead>
             <tr>
               <th scope="col" class="col-person">Person</th>
@@ -227,7 +227,7 @@ function onApprove(item: TeamAbsenceRequest) {
                   {{ row.name }}
                 </span>
               </th>
-              <td>
+              <td data-label="Type">
                 <span class="type">
                   <span
                     class="type__dot"
@@ -237,9 +237,9 @@ function onApprove(item: TeamAbsenceRequest) {
                   {{ row.type }}
                 </span>
               </td>
-              <td>{{ row.dates }}</td>
-              <td class="days">{{ row.days }}</td>
-              <td class="muted" :class="{ overdrawn: row.overdrawn }">
+              <td data-label="Dates">{{ row.dates }}</td>
+              <td class="days" data-label="Days">{{ row.days }}</td>
+              <td class="muted" :class="{ overdrawn: row.overdrawn }" data-label="Balance">
                 <template v-if="row.balance">
                   {{ row.balance }}
                   <span v-if="row.overdrawn" class="visually-hidden">(not enough days)</span>
@@ -249,8 +249,8 @@ function onApprove(item: TeamAbsenceRequest) {
                   <span class="visually-hidden">No balance for this type</span>
                 </template>
               </td>
-              <td class="muted reason">{{ row.reason }}</td>
-              <td>
+              <td class="muted reason" data-label="Reason">{{ row.reason }}</td>
+              <td class="stack-actions">
                 <div class="actions">
                   <BaseButton
                     variant="secondary"
@@ -451,5 +451,34 @@ function onApprove(item: TeamAbsenceRequest) {
   max-width: 320px;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* design.md, "Mobile": tighter header and tabs that scroll sideways rather than wrap */
+@media (max-width: 720px) {
+  .approvals {
+    gap: var(--space-5);
+  }
+
+  .page-header__title {
+    font-size: 26px;
+  }
+
+  .tabs {
+    gap: var(--space-6);
+    overflow-x: auto;
+    margin: 0 calc(-1 * var(--space-4));
+    padding: 0 var(--space-4);
+    scrollbar-width: none;
+  }
+
+  .tab {
+    flex: none;
+    white-space: nowrap;
+  }
+
+  /* bottom: -1px would be clipped by the scroll box */
+  .tab--active::after {
+    bottom: 0;
+  }
 }
 </style>

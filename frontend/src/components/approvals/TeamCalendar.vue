@@ -343,6 +343,8 @@ function awayLabel(day: TeamDay): string {
 }
 
 .scroller {
+  /* relative: so absolutely positioned .visually-hidden text is clipped by the scroll box too */
+  position: relative;
   overflow-x: auto;
 }
 
@@ -520,5 +522,40 @@ tbody tr {
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* Phones (design.md, "Mobile"): a narrower name column and days, still scrolling sideways */
+@media (max-width: 720px) {
+  .toolbar {
+    padding: var(--space-4);
+  }
+
+  .nav {
+    flex: 1 0 100%;
+    gap: var(--space-2);
+  }
+
+  .nav__title {
+    flex: 1;
+    min-width: 0;
+    font-size: 17px;
+    white-space: nowrap;
+  }
+
+  .legend {
+    gap: var(--space-2) var(--space-3);
+    font-size: 12px;
+  }
+
+  .grid {
+    min-width: calc(150px + 31 * 32px);
+  }
+
+  .grid .member {
+    width: 150px;
+    padding: var(--space-2) var(--space-3);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 </style>

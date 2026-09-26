@@ -118,8 +118,8 @@ function onNotes(gridRows: GridRow[], days: string[], projectId: number) {
     </div>
     <p v-else-if="rows.length === 0" class="state">No timesheets to approve right now.</p>
 
-    <div v-else class="card">
-      <table class="table">
+    <div v-else class="card card--stack">
+      <table class="table table--stack">
         <thead>
           <tr>
             <th scope="col" class="col-toggle"><span class="visually-hidden">Details</span></th>
@@ -132,7 +132,7 @@ function onNotes(gridRows: GridRow[], days: string[], projectId: number) {
         </thead>
         <tbody v-for="row in rows" :key="row.id">
           <tr>
-            <td class="toggle-cell">
+            <td class="toggle-cell stack-corner">
               <button
                 type="button"
                 class="toggle"
@@ -155,10 +155,10 @@ function onNotes(gridRows: GridRow[], days: string[], projectId: number) {
                 {{ row.name }}
               </span>
             </th>
-            <td>{{ row.week }}</td>
-            <td class="total">{{ row.total }}</td>
-            <td class="muted projects">{{ row.projects }}</td>
-            <td>
+            <td data-label="Week">{{ row.week }}</td>
+            <td class="total" data-label="Total">{{ row.total }}</td>
+            <td class="muted projects" data-label="Projects">{{ row.projects }}</td>
+            <td class="stack-actions">
               <div class="actions">
                 <BaseButton
                   variant="secondary"
@@ -181,7 +181,7 @@ function onNotes(gridRows: GridRow[], days: string[], projectId: number) {
             </td>
           </tr>
           <tr v-if="row.expanded" class="details">
-            <td :id="row.gridId" colspan="6" class="details__cell">
+            <td :id="row.gridId" colspan="6" class="details__cell stack-full">
               <TimesheetGrid
                 :rows="row.gridRows"
                 :days="row.days"
