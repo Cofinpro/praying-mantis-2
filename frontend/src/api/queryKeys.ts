@@ -24,6 +24,8 @@ export const queryKeys = {
     absences: (from: string, to: string) => ['team', 'absences', from, to] as const,
   },
   publicHolidays: (year: number) => ['public-holidays', year] as const,
+  /** Every year's holidays, e.g. after an admin edits the list (FE-9.4) */
+  allPublicHolidays: ['public-holidays'] as const,
   // Invalidating ['notifications'] after marking something read refreshes the badge and the list
   notifications: {
     all: ['notifications'] as const,
@@ -50,5 +52,9 @@ export const queryKeys = {
       year: (year: number) => ['admin', 'entitlements', year] as const,
     },
     projects: ['admin', 'projects'] as const,
+    publicHolidays: {
+      all: ['admin', 'public-holidays'] as const,
+      year: (year: number) => ['admin', 'public-holidays', year] as const,
+    },
   },
 }

@@ -7,9 +7,6 @@ declare module 'vue-router' {
   }
 }
 
-// Placeholder pages until each feature's story builds the real one
-const adminPlaceholder = () => import('../views/admin/AdminPlaceholderView.vue')
-
 export const routes: RouteRecordRaw[] = [
   { path: '/', redirect: { name: 'absences' } },
   {
@@ -63,8 +60,7 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'public-holidays',
         name: 'admin-public-holidays',
-        component: adminPlaceholder,
-        props: { title: 'Public holidays', story: 'FE-9.4' },
+        component: () => import('../views/admin/AdminHolidaysView.vue'),
       },
     ],
   },

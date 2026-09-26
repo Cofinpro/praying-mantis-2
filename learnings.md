@@ -262,6 +262,13 @@ data it would flip before the server answered, and stay flipped when the call fa
 server's value: it moves when the refetched list says so, and a failure leaves it where it was
 (FE-9.3).
 
+### Inputs in a table row can still submit a form: the `form` attribute
+The holiday page adds a holiday in an inline table row. A `<form>` isn't allowed between `<tbody>`
+and `<tr>` (the parser moves it out and the inputs end up outside it), so Enter wouldn't submit.
+An empty `<form id="add-holiday" @submit.prevent>` before the table, and `form="add-holiday"` on
+the row's inputs and its submit button, make them part of that form wherever they sit: Enter
+submits, and the test triggers `submit` on the form (FE-9.4).
+
 ## TypeScript
 
 ### One tsconfig per environment, tied together with project references

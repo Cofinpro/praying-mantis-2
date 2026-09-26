@@ -165,7 +165,7 @@ export const absenceRequests: AbsenceRequest[] = [
   }),
 ]
 
-// Portugal's national holidays (contract: GET /public-holidays)
+// Portugal's national holidays (contract: GET /public-holidays); the admin page edits them (FE-9.4)
 export const publicHolidays: Record<number, PublicHoliday[]> = {
   2026: [
     { date: '2026-01-01', name: 'New Year’s Day' },
@@ -180,5 +180,19 @@ export const publicHolidays: Record<number, PublicHoliday[]> = {
     { date: '2026-12-01', name: 'Restoration of Independence' },
     { date: '2026-12-08', name: 'Immaculate Conception' },
     { date: '2026-12-25', name: 'Christmas Day' },
+  ],
+  2027: [
+    { date: '2027-01-01', name: 'New Year’s Day' },
+    { date: '2027-03-26', name: 'Good Friday' },
+    { date: '2027-04-25', name: 'Freedom Day' },
+    { date: '2027-05-01', name: 'Labour Day' },
+    { date: '2027-05-27', name: 'Corpus Christi' },
+    { date: '2027-06-10', name: 'Portugal Day' },
+    { date: '2027-08-15', name: 'Assumption' },
+    { date: '2027-10-05', name: 'Republic Day' },
+    { date: '2027-11-01', name: 'All Saints’ Day' },
+    { date: '2027-12-01', name: 'Restoration of Independence' },
+    { date: '2027-12-08', name: 'Immaculate Conception' },
+    { date: '2027-12-25', name: 'Christmas Day' },
   ],
 }

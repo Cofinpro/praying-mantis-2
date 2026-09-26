@@ -2,6 +2,7 @@ import { http, HttpResponse } from 'msw'
 
 import type {
   AdminEntitlement,
+  AdminPublicHoliday,
   AdminUser,
   AdminUserUpdate,
   CurrentUser,
@@ -11,7 +12,10 @@ import type {
   Problem,
   Project,
   ProjectInput,
+  PublicHoliday,
 } from '@/api/client'
+import { isIsoDate } from '@/format/dates'
+import { publicHolidays } from './data/absences'
 import { projects } from './data/timesheets'
 import { mockTeamLeads, mockUsers } from './data/users'
 
@@ -66,6 +70,23 @@ let nextEntitlementId = 100
 const projectSeed: Project[] = structuredClone(projects)
 let nextProjectId = 100
 
+// Public holidays get ids here; data/absences.ts keeps them by year for GET /public-holidays and
+// the working-day maths, and is rewritten in place after every change (and put back after tests).
+const holidaySeed = structuredClone(publicHolidays)
+const seedHolidays = (): AdminPublicHoliday[] =>
+  Object.values(holidaySeed)
+    .flat()
+    .map((h, i) => ({ id: i + 1, ...h }))
+let holidays = seedHolidays()
+let nextHolidayId = 100
+
+function syncPublicHolidays() {
+  for (const year of Object.keys(publicHolidays)) delete publicHolidays[Number(year)]
+  for (const { date, name } of [...holidays].sort((a, b) => a.date.localeCompare(b.date))) {
+    ;(publicHolidays[Number(date.slice(0, 4))] ??= []).push({ date, name })
+  }
+}
+
 /** Called from resetMockSession() after every test */
 export function resetAdminMock() {
   users = seed()
@@ -74,6 +95,9 @@ export function resetAdminMock() {
   nextEntitlementId = 100
   projects.splice(0, projects.length, ...structuredClone(projectSeed))
   nextProjectId = 100
+  holidays = seedHolidays()
+  nextHolidayId = 100
+  syncPublicHolidays()
 }
 
 const PROJECT_CODE = /^[A-Za-z0-9-]{2,30}$/
@@ -399,5 +423,53 @@ export function createAdminHandlers(session: {
         return HttpResponse.json(updated)
       },
     ),
+
+    // Public holidays (BE-9.4), by date
+    http.get<never, never, AdminPublicHoliday[] | Problem>(
+      '*/api/admin/public-holidays',
+      ({ request }) => {
+        const denied = guard('/api/admin/public-holidays')
+        if (denied) return denied
+        const year = new URL(request.url).searchParams.get('year') ?? ''
+        return HttpResponse.json(
+          holidays
+            .filter((h) => h.date.startsWith(`${year}-`))
+            .sort((a, b) => a.date.localeCompare(b.date)),
+        )
+      },
+    ),
+
+    http.post<never, PublicHoliday, AdminPublicHoliday | Problem>(
+      '*/api/admin/public-holidays',
+      async ({ request }) => {
+        const denied = guard('/api/admin/public-holidays')
+        if (denied) return denied
+        const body = await request.json()
+        if (!isIsoDate(body.date)) return invalid('date', 'must be a valid date')
+        if (!body.name?.trim()) return invalid('name', 'must not be blank')
+        if (holidays.some((h) => h.date === body.date)) {
+          return conflict('holiday-date-taken', `${body.date} is already a public holiday`)
+        }
+        const created = { id: nextHolidayId++, date: body.date, name: body.name.trim() }
+        holidays.push(created)
+        syncPublicHolidays()
+        return HttpResponse.json(created, { status: 201 })
+      },
+    ),
+
+    http.delete<{ id: string }, never, Problem>('*/api/admin/public-holidays/:id', ({ params }) => {
+      const denied = guard(`/api/admin/public-holidays/${params.id}`)
+      if (denied) return denied
+      if (!holidays.some((h) => h.id === Number(params.id))) {
+        return problem(404, {
+          type: 'about:blank',
+          title: 'Not Found',
+          detail: 'Public holiday not found',
+        })
+      }
+      holidays = holidays.filter((h) => h.id !== Number(params.id))
+      syncPublicHolidays()
+      return new HttpResponse(null, { status: 204 })
+    }),
   ]
 }
