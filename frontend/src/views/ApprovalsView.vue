@@ -7,6 +7,7 @@ import type { TeamAbsenceRequest } from '@/api/client'
 import { problemMessage } from '@/api/problems'
 import BaseButton from '@/components/BaseButton.vue'
 import RejectDialog from '@/components/approvals/RejectDialog.vue'
+import TeamCalendar from '@/components/approvals/TeamCalendar.vue'
 import TimesheetApprovals from '@/components/approvals/TimesheetApprovals.vue'
 import { avatarColor } from '@/approvals/avatar'
 import { APPROVAL_MESSAGES } from '@/approvals/messages'
@@ -21,19 +22,22 @@ import { formatNumber, formatRange, formatRangeWithYear } from '@/format/dates'
 import { initials } from '@/format/labels'
 
 // FE-5.1 and FE-7.1, Figma frame "04 Approvals": what the backend says I decide on (T-5.1,
-// T-7.1), in two tabs. Someone who isn't a team lead gets empty lists from the backend (decision
+// T-7.1), in two tabs, plus FE-5.3's team calendar (frame "10 Approvals – Team calendar"). Someone who isn't a team lead gets empty lists from the backend (decision
 // #11), so opening the URL directly just shows "Nothing to approve right now."
 
 // --- Tabs -----------------------------------------------------------------------------------------
-// The tab lives in the URL (`?tab=timesheets`), so the TIMESHEET_SUBMITTED notification can link
+// The tab lives in the URL (`?tab=timesheets`, `?tab=team-calendar`), so the TIMESHEET_SUBMITTED notification can link
 // straight to it, and a reload keeps it. Arrow keys, Home and End move between the tabs (the ARIA
 // tabs pattern); only the selected tab is in the Tab order.
-type Tab = 'absences' | 'timesheets'
-const TABS: Tab[] = ['absences', 'timesheets']
+type Tab = 'absences' | 'timesheets' | 'team-calendar'
+const TABS: Tab[] = ['absences', 'timesheets', 'team-calendar']
 
 const route = useRoute()
 const router = useRouter()
-const tab = computed<Tab>(() => (route.query.tab === 'timesheets' ? 'timesheets' : 'absences'))
+const tab = computed<Tab>(() => {
+  const value = route.query.tab
+  return TABS.find((t) => t === value) ?? 'absences'
+})
 
 function select(next: Tab) {
   if (next !== tab.value) {
@@ -161,6 +165,19 @@ function onApprove(item: TeamAbsenceRequest) {
         Timesheets
         <span v-if="timesheets.isSuccess.value" class="tab__count">{{ timesheetCount }}</span>
       </button>
+      <button
+        id="tab-team-calendar"
+        type="button"
+        role="tab"
+        :aria-selected="tab === 'team-calendar'"
+        aria-controls="panel-team-calendar"
+        :tabindex="tab === 'team-calendar' ? 0 : -1"
+        class="tab"
+        :class="{ 'tab--active': tab === 'team-calendar' }"
+        @click="select('team-calendar')"
+      >
+        Team calendar
+      </button>
     </div>
 
     <section
@@ -272,6 +289,20 @@ function onApprove(item: TeamAbsenceRequest) {
       :hidden="tab !== 'timesheets'"
     >
       <TimesheetApprovals />
+    </section>
+
+    <section
+      id="panel-team-calendar"
+      role="tabpanel"
+      aria-labelledby="tab-team-calendar"
+      class="panel"
+      :hidden="tab !== 'team-calendar'"
+    >
+      <!-- Mounted only while its tab is open, so the other tabs don't fetch a month nobody sees -->
+      <template v-if="tab === 'team-calendar'">
+        <TeamCalendar />
+        <p class="footnote">Pending requests are dashed. Hover a day to see who is away.</p>
+      </template>
     </section>
 
     <!-- Mounted only while open, so each rejection starts with an empty comment -->

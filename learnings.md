@@ -207,6 +207,15 @@ environment's `Blob` is jsdom's, and Node's `Response` doesn't recognise it, so 
 A string (or `ArrayBuffer`) body with the right `Content-Type` works in the browser and in Node, and
 `response.blob()` on the client side is fine (FE-8.1).
 
+### A sticky first column in a scrolling `<table>`
+The team calendar (FE-5.3) scrolls sideways inside its card, with the names fixed on the left: wrap
+the table in a `div` with `overflow-x: auto` and give the row headers `position: sticky; left: 0`,
+a `z-index` and an opaque background (or the days scroll visibly under them). Sticky goes on the
+cells (`<th>`), not on the `<tr>`. Two traps
+we hit: a reset like `.grid th { padding: 0 }` (0,1,1) beats `.member { padding: … }` (0,1,0), so the
+sticky cells lost their padding until the rule became `.grid .member`; and the scroll container
+needs `tabindex="0"` plus a `role="region"` with a label, or keyboard users can't scroll it.
+
 ## TypeScript
 
 ### One tsconfig per environment, tied together with project references

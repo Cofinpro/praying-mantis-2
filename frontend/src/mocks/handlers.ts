@@ -17,7 +17,9 @@ import type {
   Project,
   ProjectHours,
   PublicHoliday,
+  TeamAbsence,
   TeamAbsenceRequest,
+  TeamMemberAbsences,
   TeamTimesheet,
   TimeEntry,
   Timesheet,
@@ -28,11 +30,11 @@ import type {
   UnreadCount,
 } from '@/api/client'
 import { workingDays } from '@/absences/workingDays'
-import { addDays, daysInMonth, today, weekStartOf, weekday } from '@/format/dates'
+import { addDays, daysInMonth, isIsoDate, today, weekStartOf, weekday } from '@/format/dates'
 import { absenceRequests, absenceTypes, balances, publicHolidays } from './data/absences'
 import { exportTemplates, XLSX_TYPE } from './data/exports'
 import { mockNotifications } from './data/notifications'
-import { teamAbsenceRequests } from './data/team'
+import { teamAbsenceRequests, teamCalendarAbsences } from './data/team'
 import { projects, teamTimesheets, timesheets, type StoredTimesheet } from './data/timesheets'
 import { findMockUser, mockUsers } from './data/users'
 
@@ -403,6 +405,51 @@ export const handlers = [
       return HttpResponse.json(r)
     },
   ),
+
+  // T-5.3: my row first, then the people I lead by name; only pending and approved absences that
+  // overlap the range, without reason or comments (decision 36)
+  http.get<never, never, TeamMemberAbsences[] | Problem>('*/api/team/absences', ({ request }) => {
+    if (!loggedInAs) {
+      return unauthorized('/api/team/absences')
+    }
+    const params = new URL(request.url).searchParams
+    const from = params.get('from') ?? ''
+    const to = params.get('to') ?? ''
+    if (!isIsoDate(from)) {
+      return invalid('from', 'must be a date')
+    }
+    if (!isIsoDate(to)) {
+      return invalid('to', 'must be a date')
+    }
+    if (to < from) {
+      return invalid('to', 'must not be before from')
+    }
+    if (addDays(from, 366) < to) {
+      return invalid('to', 'the range must not be longer than 366 days')
+    }
+    const me = loggedInAs
+    const inRange = (a: TeamAbsence) =>
+      (a.status === 'PENDING' || a.status === 'APPROVED') && a.startDate <= to && a.endDate >= from
+    const view = ({ id, type, startDate, endDate, startPart, endPart, status }: TeamAbsence) =>
+      ({ id, type, startDate, endDate, startPart, endPart, status }) satisfies TeamAbsence
+    const byStart = (a: TeamAbsence, b: TeamAbsence) => a.startDate.localeCompare(b.startDate)
+    // The mock's "my requests" are the caller's own, whoever is logged in
+    const mine = requests.filter(inRange).map(view).sort(byStart)
+    const team = mockUsers
+      .filter((u) => TEAM_LEADS[u.id] === me.id)
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((u) => ({
+        user: { id: u.id, name: u.name },
+        absences: [
+          ...teamCalendarAbsences.filter((t) => t.userId === u.id).map((t) => t.absence),
+          ...teamRequests.filter((r) => r.requester.id === u.id).map((r) => r.request),
+        ]
+          .filter(inRange)
+          .map(view)
+          .sort(byStart),
+      }))
+    return HttpResponse.json([{ user: { id: me.id, name: me.name }, absences: mine }, ...team])
+  }),
 
   // T-6.1: ordered by code; `active` defaults to true
   http.get<never, never, Project[] | Problem>('*/api/projects', ({ request }) => {

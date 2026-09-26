@@ -92,12 +92,21 @@ describe('ApprovalsView, Timesheets tab', () => {
 
     await tab(wrapper, 'timesheets').trigger('keydown', { key: 'ArrowRight' })
     await flushPromises()
+    expect(router.currentRoute.value.query.tab).toBe('team-calendar')
+    expect(document.activeElement).toBe(tab(wrapper, 'team-calendar').element)
+
+    await tab(wrapper, 'team-calendar').trigger('keydown', { key: 'ArrowRight' })
+    await flushPromises()
     // Wraps around to the first tab, which gets the focus; the URL loses ?tab=
     expect(router.currentRoute.value.query.tab).toBeUndefined()
     expect(tab(wrapper, 'absences').attributes('aria-selected')).toBe('true')
     expect(document.activeElement).toBe(tab(wrapper, 'absences').element)
 
     await tab(wrapper, 'absences').trigger('keydown', { key: 'End' })
+    await flushPromises()
+    expect(tab(wrapper, 'team-calendar').attributes('aria-selected')).toBe('true')
+
+    await tab(wrapper, 'team-calendar').trigger('keydown', { key: 'ArrowLeft' })
     await flushPromises()
     expect(tab(wrapper, 'timesheets').attributes('aria-selected')).toBe('true')
   })

@@ -66,8 +66,14 @@ export function buildMonth(
   return weeks
 }
 
-/** A request can start in the afternoon and end in the morning; days in between are full */
-function halfOf(r: AbsenceRequest, date: string): CalendarEntry['half'] {
+/** The dates and day parts of an absence: an AbsenceRequest, or a TeamAbsence of the team calendar */
+export type AbsenceSpan = Pick<AbsenceRequest, 'startDate' | 'endDate' | 'startPart' | 'endPart'>
+
+/**
+ * Which half of `date` the absence takes, or null for the whole day. A request can start in the
+ * afternoon and end in the morning; days in between are full.
+ */
+export function halfOf(r: AbsenceSpan, date: string): 'MORNING' | 'AFTERNOON' | null {
   if (date === r.startDate && r.startPart !== 'FULL') {
     return r.startPart
   }

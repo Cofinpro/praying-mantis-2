@@ -33,6 +33,8 @@ export type NotificationsQuery = NonNullable<
 export type TeamAbsenceRequest = components['schemas']['TeamAbsenceRequest']
 export type AbsenceDecision = components['schemas']['AbsenceDecision']
 export type UserRef = components['schemas']['UserRef']
+export type TeamMemberAbsences = components['schemas']['TeamMemberAbsences']
+export type TeamAbsence = components['schemas']['TeamAbsence']
 export type Project = components['schemas']['Project']
 export type ProjectRef = components['schemas']['ProjectRef']
 export type Timesheet = components['schemas']['Timesheet']
@@ -191,6 +193,12 @@ export const api = {
   /** The comment is required to reject (decision 31) */
   rejectAbsenceRequest: (id: number, body: AbsenceDecision) =>
     unwrap(client.POST('/team/absence-requests/{id}/reject', { params: { path: { id } }, body })),
+  /**
+   * The team calendar (BE-5.3): my own row first, then the people I lead, by name, with their
+   * pending and approved absences overlapping the inclusive `from`..`to` range (decision 36)
+   */
+  getTeamAbsences: (from: string, to: string) =>
+    unwrap(client.GET('/team/absences', { params: { query: { from, to } } })),
   getPublicHolidays: (year: number) =>
     unwrap(client.GET('/public-holidays', { params: { query: { year } } })),
   /** Newest first. `before` is the `id` of the last item you have, for the next page. */
