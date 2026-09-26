@@ -7,6 +7,7 @@ import {
   type AdminUserUpdate,
   type NewAdminUser,
   type PasswordReset,
+  type ProjectInput,
 } from '@/api/client'
 import { queryKeys } from '@/api/queryKeys'
 import { useCurrentUser } from '@/auth/session'
@@ -92,5 +93,45 @@ export function useSaveEntitlements() {
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.entitlements.all }),
         queryClient.invalidateQueries({ queryKey: queryKeys.absences.all }),
       ]),
+  })
+}
+
+// FE-9.3: all projects, active and inactive
+export function useAdminProjects() {
+  return useQuery({
+    queryKey: queryKeys.admin.projects,
+    queryFn: api.getAdminProjects,
+    retry: false,
+  })
+}
+
+/**
+ * After a project is saved: the admin list, the timesheet's project choices (active ones only)
+ * and the weeks, whose entries show the project's code and name.
+ */
+function useAfterProjectSave() {
+  const queryClient = useQueryClient()
+  return () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.projects }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.allProjects }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.timesheets.all }),
+    ])
+}
+
+export function useCreateAdminProject() {
+  const afterSave = useAfterProjectSave()
+  return useMutation({
+    mutationFn: (body: ProjectInput) => api.createAdminProject(body),
+    onSuccess: afterSave,
+  })
+}
+
+export function useUpdateAdminProject() {
+  const afterSave = useAfterProjectSave()
+  return useMutation({
+    mutationFn: ({ id, body }: { id: number; body: ProjectInput }) =>
+      api.updateAdminProject(id, body),
+    onSuccess: afterSave,
   })
 }

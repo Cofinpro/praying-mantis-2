@@ -9,7 +9,10 @@ import type {
   NewAdminUser,
   PasswordReset,
   Problem,
+  Project,
+  ProjectInput,
 } from '@/api/client'
+import { projects } from './data/timesheets'
 import { mockTeamLeads, mockUsers } from './data/users'
 
 // The admin endpoints of api/openapi.yaml (T-9.1), in memory like the rest of the mock. Separate
@@ -58,13 +61,48 @@ const seedEntitlements = (): StoredEntitlement[] => [
 let entitlements: StoredEntitlement[] = seedEntitlements()
 let nextEntitlementId = 100
 
+// Projects live in data/timesheets.ts, shared with GET /projects and the weeks, so an admin's edit
+// shows up in the timesheet too. Changed in place, and put back after every test.
+const projectSeed: Project[] = structuredClone(projects)
+let nextProjectId = 100
+
 /** Called from resetMockSession() after every test */
 export function resetAdminMock() {
   users = seed()
   nextUserId = 100
   entitlements = seedEntitlements()
   nextEntitlementId = 100
+  projects.splice(0, projects.length, ...structuredClone(projectSeed))
+  nextProjectId = 100
 }
+
+const PROJECT_CODE = /^[A-Za-z0-9-]{2,30}$/
+
+/** The contract's checks on a project (BE-9.3), with its field names */
+function projectError(body: ProjectInput) {
+  if (!PROJECT_CODE.test(body.code ?? '')) {
+    return invalid('code', 'must match "^[A-Za-z0-9-]{2,30}$"')
+  }
+  if (!body.name?.trim() || body.name.length > 255) {
+    return invalid('name', 'size must be between 1 and 255')
+  }
+  return null
+}
+
+/** The project as stored: the code upper-cased, the name trimmed, no `client` when internal */
+function projectFrom(id: number, body: ProjectInput): Project {
+  return {
+    id,
+    code: body.code.trim().toUpperCase(),
+    name: body.name.trim(),
+    ...(body.client ? { client: body.client } : {}),
+    isBillable: body.isBillable,
+    isActive: body.isActive,
+  }
+}
+
+const codeTaken = (code: string) =>
+  conflict('project-code-taken', `Another project already has the code ${code}`)
 
 function entitlementView(e: StoredEntitlement): AdminEntitlement {
   const { userId, ...rest } = e
@@ -314,5 +352,52 @@ export function createAdminHandlers(session: {
       entitlements = entitlements.filter((e) => e.id !== Number(params.id))
       return new HttpResponse(null, { status: 204 })
     }),
+
+    // Projects (BE-9.3): never deleted, only deactivated (decision 35)
+    http.get<never, never, Project[] | Problem>('*/api/admin/projects', () => {
+      const denied = guard('/api/admin/projects')
+      if (denied) return denied
+      return HttpResponse.json([...projects].sort((a, b) => a.code.localeCompare(b.code)))
+    }),
+
+    http.post<never, ProjectInput, Project | Problem>(
+      '*/api/admin/projects',
+      async ({ request }) => {
+        const denied = guard('/api/admin/projects')
+        if (denied) return denied
+        const body = await request.json()
+        const error = projectError(body)
+        if (error) return error
+        const created = projectFrom(nextProjectId++, body)
+        if (projects.some((p) => p.code === created.code)) return codeTaken(created.code)
+        projects.push(created)
+        return HttpResponse.json(created, { status: 201 })
+      },
+    ),
+
+    http.put<{ id: string }, ProjectInput, Project | Problem>(
+      '*/api/admin/projects/:id',
+      async ({ params, request }) => {
+        const denied = guard(`/api/admin/projects/${params.id}`)
+        if (denied) return denied
+        const index = projects.findIndex((p) => p.id === Number(params.id))
+        if (index < 0) {
+          return problem(404, {
+            type: 'about:blank',
+            title: 'Not Found',
+            detail: 'Project not found',
+          })
+        }
+        const body = await request.json()
+        const error = projectError(body)
+        if (error) return error
+        const updated = projectFrom(Number(params.id), body)
+        if (projects.some((p) => p.code === updated.code && p.id !== updated.id)) {
+          return codeTaken(updated.code)
+        }
+        projects[index] = updated
+        return HttpResponse.json(updated)
+      },
+    ),
   ]
 }

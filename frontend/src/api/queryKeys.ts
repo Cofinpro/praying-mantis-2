@@ -31,6 +31,8 @@ export const queryKeys = {
     unreadCount: ['notifications', 'unread-count'] as const,
   },
   projects: (active: boolean) => ['projects', { active }] as const,
+  /** Both lists of projects, e.g. after an admin edits one (FE-9.3) */
+  allProjects: ['projects'] as const,
   // My own weeks (FE-6.1). The approver's view of other people's weeks is under `team`.
   timesheets: {
     all: ['timesheets'] as const,
@@ -47,5 +49,6 @@ export const queryKeys = {
       all: ['admin', 'entitlements'] as const,
       year: (year: number) => ['admin', 'entitlements', year] as const,
     },
+    projects: ['admin', 'projects'] as const,
   },
 }

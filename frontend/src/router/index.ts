@@ -58,8 +58,7 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'projects',
         name: 'admin-projects',
-        component: adminPlaceholder,
-        props: { title: 'Projects', story: 'FE-9.3' },
+        component: () => import('../views/admin/AdminProjectsView.vue'),
       },
       {
         path: 'public-holidays',

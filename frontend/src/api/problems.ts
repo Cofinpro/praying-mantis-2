@@ -17,6 +17,8 @@ const CONFLICTS: Record<string, string> = {
   '/problems/team-lead-cycle':
     'Nobody can be their own team lead, directly or through others. Pick another team lead.',
   '/problems/last-admin': 'This is the only admin. Make someone else an admin first.',
+  // Admin, projects (T-9.1). The project dialog shows it under Code.
+  '/problems/project-code-taken': 'Another project already has this code.',
 }
 
 /**
