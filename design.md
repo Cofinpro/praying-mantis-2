@@ -56,6 +56,14 @@ States and choices the code has that Figma doesn't show yet. Add them to Figma w
   - The reject dialog says "Reject Diogo’s week 38?" and "Reject week"; the comment is required.
   - States: "Loading timesheets…", empty "No timesheets to approve right now.", load error with "Try again", the danger banner "Couldn’t approve Diogo Pereira’s week 38. …" above the table. Footnote: "The approver is the person’s team lead. A rejected week goes back to them to correct."
 
+- **10 Approvals – Team calendar (FE-5.3):**
+  - A third ARIA tab, "Team calendar" (no count), in the URL as `?tab=team-calendar`. The month starts on the current one; ‹ › and "Today" move it (not in the URL).
+  - Pending blocks are dashed in the **type's** colour on its soft shade (the frame only shows vacation). A person with two half days on one date gets two half blocks.
+  - The footnote drops "click a name to open their requests": there's no page for someone else's requests yet. It reads "Pending requests are dashed. Hover a day to see who is away." Hovering a day header or its Away count shows "Away: Ana Silva, Carla Mendes" (a `title`); hovering a block shows its description ("Carla Mendes, vacation, pending, 16–18 Nov").
+  - The Away row counts people, a half day included; weekends and public holidays get no blocks and no count.
+  - States inside the card, under the toolbar (so the month stays navigable): "Loading the team calendar…", a load error with "Try again", and for someone who leads nobody (only their own row, decision 36) a muted note "Nobody has you as their team lead, so the calendar only shows your own absences." above the grid.
+  - Under ~1360px the grid scrolls sideways inside the card, the member column stays sticky.
+
 - **05 Timesheets (FE-6.1):**
   - **Descriptions per entry** (the contract's `TimeEntry.description`): a message icon button in each row (between the project and Monday, in its own cell) opens a `BaseDialog` (520px) "Descriptions · DKB-CORE" with one text field per day that has hours ("Monday 19 Oct · 6 h", 500 characters max). Secondary "Cancel", primary "Apply"; Apply updates the grid and the week's Save sends it. The icon turns primary with a count when the row has descriptions. Read-only weeks show them as a list with "Close".
   - **Remove a row**: a trash icon button next to the descriptions button (editable weeks only).

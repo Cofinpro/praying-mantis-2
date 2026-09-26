@@ -13,12 +13,15 @@ export const queryKeys = {
     allRequests: ['absences', 'requests'] as const,
     requests: (from: string, to: string) => ['absences', 'requests', from, to] as const,
   },
-  // What I decide on as approver: absence requests (FE-5.1) and weeks (FE-7.1). Separate from
-  // `absences` and `timesheets`, which are my own; invalidating ['team'] refreshes both tabs.
+  // What I decide on as approver: absence requests (FE-5.1), weeks (FE-7.1) and the team calendar
+  // (FE-5.3). Separate from `absences` and `timesheets`, which are my own; invalidating ['team']
+  // refreshes all three tabs.
   team: {
     all: ['team'] as const,
     absenceRequests: (status: AbsenceStatus) => ['team', 'absence-requests', status] as const,
     timesheets: (status: TimesheetStatus) => ['team', 'timesheets', status] as const,
+    /** The team calendar (FE-5.3): under ['team'], so a decision or a notification refreshes it */
+    absences: (from: string, to: string) => ['team', 'absences', from, to] as const,
   },
   publicHolidays: (year: number) => ['public-holidays', year] as const,
   // Invalidating ['notifications'] after marking something read refreshes the badge and the list

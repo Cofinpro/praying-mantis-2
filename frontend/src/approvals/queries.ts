@@ -1,3 +1,4 @@
+import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/vue-query'
 
 import { api, type TeamAbsenceRequest, type TeamTimesheet } from '@/api/client'
@@ -19,6 +20,14 @@ export function useSubmittedTeamTimesheets() {
   return useQuery({
     queryKey: submittedKey,
     queryFn: () => api.getTeamTimesheets('SUBMITTED'),
+  })
+}
+
+/** FE-5.3: who on my team is away in the range (T-5.3); a new month is a new key */
+export function useTeamAbsences(from: MaybeRefOrGetter<string>, to: MaybeRefOrGetter<string>) {
+  return useQuery({
+    queryKey: computed(() => queryKeys.team.absences(toValue(from), toValue(to))),
+    queryFn: () => api.getTeamAbsences(toValue(from), toValue(to)),
   })
 }
 
