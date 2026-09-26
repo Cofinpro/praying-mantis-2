@@ -19,6 +19,8 @@ const CONFLICTS: Record<string, string> = {
   '/problems/last-admin': 'This is the only admin. Make someone else an admin first.',
   // Admin, projects (T-9.1). The project dialog shows it under Code.
   '/problems/project-code-taken': 'Another project already has this code.',
+  // Admin, public holidays (T-9.1). The add row shows it under the date.
+  '/problems/holiday-date-taken': 'That date is already a public holiday.',
 }
 
 /**

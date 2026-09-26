@@ -55,6 +55,7 @@ export type PasswordReset = components['schemas']['PasswordReset']
 export type AdminEntitlement = components['schemas']['AdminEntitlement']
 export type EntitlementInput = components['schemas']['EntitlementInput']
 export type ProjectInput = components['schemas']['ProjectInput']
+export type AdminPublicHoliday = components['schemas']['AdminPublicHoliday']
 
 /** A downloaded file: the body and the name the server gave it in `Content-Disposition` */
 export interface DownloadedFile {
@@ -287,4 +288,12 @@ export const api = {
   /** Projects are never deleted: `isActive: false` stops new hours on it (decision 32) */
   updateAdminProject: (id: number, body: ProjectInput) =>
     unwrap(client.PUT('/admin/projects/{id}', { params: { path: { id } }, body })),
+  /** A year's holidays with their ids, by date (BE-9.4) */
+  getAdminPublicHolidays: (year: number) =>
+    unwrap(client.GET('/admin/public-holidays', { params: { query: { year } } })),
+  /** Only requests created afterwards see it; existing ones keep their working days (decision 15) */
+  createAdminPublicHoliday: (body: PublicHoliday) =>
+    unwrap(client.POST('/admin/public-holidays', { body })),
+  deleteAdminPublicHoliday: (id: number) =>
+    unwrap(client.DELETE('/admin/public-holidays/{id}', { params: { path: { id } } })),
 }

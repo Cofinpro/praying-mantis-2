@@ -8,6 +8,7 @@ import {
   type NewAdminUser,
   type PasswordReset,
   type ProjectInput,
+  type PublicHoliday,
 } from '@/api/client'
 import { queryKeys } from '@/api/queryKeys'
 import { useCurrentUser } from '@/auth/session'
@@ -133,5 +134,45 @@ export function useUpdateAdminProject() {
     mutationFn: ({ id, body }: { id: number; body: ProjectInput }) =>
       api.updateAdminProject(id, body),
     onSuccess: afterSave,
+  })
+}
+
+// FE-9.4: a year's public holidays, with their ids
+export function useAdminPublicHolidays(year: MaybeRefOrGetter<number>) {
+  return useQuery({
+    queryKey: computed(() => queryKeys.admin.publicHolidays.year(toValue(year))),
+    queryFn: () => api.getAdminPublicHolidays(toValue(year)),
+    retry: false,
+  })
+}
+
+/**
+ * After a holiday is added or deleted: the admin list, everyone's holiday lists (absence
+ * calendars, the request dialog's working days, the team calendar) and the timesheet weeks, which
+ * carry their holidays.
+ */
+function useAfterHolidayChange() {
+  const queryClient = useQueryClient()
+  return () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.publicHolidays.all }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.allPublicHolidays }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.timesheets.all }),
+    ])
+}
+
+export function useCreatePublicHoliday() {
+  const afterChange = useAfterHolidayChange()
+  return useMutation({
+    mutationFn: (body: PublicHoliday) => api.createAdminPublicHoliday(body),
+    onSuccess: afterChange,
+  })
+}
+
+export function useDeletePublicHoliday() {
+  const afterChange = useAfterHolidayChange()
+  return useMutation({
+    mutationFn: (id: number) => api.deleteAdminPublicHoliday(id),
+    onSuccess: afterChange,
   })
 }

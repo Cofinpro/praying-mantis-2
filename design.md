@@ -65,7 +65,7 @@ States and choices the code has that Figma doesn't show yet. Add them to Figma w
   - Under ~1360px the grid scrolls sideways inside the card, the member column stays sticky.
 
 - **11 Admin – Users and 12 Admin – Edit user (FE-9.1):**
-  - The admin layout is built once for FE-9.1 to 9.4 (`AdminView`, nested routes): `/admin` opens `/admin/users`; Entitlements, Projects and Public holidays show a placeholder section until their stories. Under 800px the sub-nav wraps above the section.
+  - The admin layout is built once for FE-9.1 to 9.4 (`AdminView`, nested routes): `/admin` opens `/admin/users`. Under 800px the sub-nav wraps above the section.
   - The **Admin** column shows the flag only (a read-only `BaseToggle`, "Yes"/"No" for screen readers). It's changed in the edit dialog, where the last-admin 409 can be explained next to the switch.
   - Search filters on the client (the contract returns everyone); no match says "No user matches “x”.". The subtitle counts everyone ("9 people · …").
   - **Add user** uses the edit dialog titled "Add user", with an extra "Initial password (8 to 72 characters)" field under Email, no "Set new password", and a primary "Add user". New users start as DKB · Junior, no team lead.
@@ -91,6 +91,15 @@ States and choices the code has that Figma doesn't show yet. Add them to Figma w
   - An inactive project's name is muted, as VV-PORTAL in the frame; "Internal" is muted too. Billing uses the status badges: Billable = approved (success), Non-billable = draft (grey).
   - **Errors** under their field: the code is checked before sending ("Use 2 to 30 letters, digits or dashes, e.g. DKB-CORE.", also for the backend's pattern 400), an empty name ("Enter a name."), "Another project already has the code DKB-CORE." (409, the code as it would be stored, in upper case), and other 400 messages under the field they name. Anything else is a danger banner above the footer.
   - States: "Loading projects…", load error with "Try again", empty "No projects yet. Add the first one.", and the 403 card ("Only admins can manage projects.").
+
+- **15 Admin – Public holidays (FE-9.4):**
+  - **"Copy from 2026" is left out**: the contract has no endpoint for it, and copying date by date would get the Easter-based holidays wrong (Good Friday, Easter Sunday, Corpus Christi move every year).
+  - The year pill offers last year to two years ahead and **starts on next year** (the story: "the holiday list for next year").
+  - **Add holiday** opens the inline row at the top of the table, as in the frame (the button is disabled while it's open): a native date input (focused, limited to the year), the day it falls on, the name ("e.g. Christmas Eve"), a small primary "Save", and an × "Cancel adding". Enter saves, Esc cancels. Checked before sending: "Pick a date.", "Pick a date in 2027.", "Enter a name.". A taken date (409) says "5 Oct 2027 is already a holiday (Republic Day)." under the date; 400 messages go under their input, anything else in red under the row.
+  - Weekend holidays: the whole row muted and a grey "Weekend" badge (the draft status badge) after the name.
+  - **Delete** (trash, "Delete Republic Day") asks first with a 460px `ConfirmDialog`: trash icon, "Delete Republic Day?", "5 Oct 2027 becomes a working day again for absence requests made from now on. Requests already made keep their working days." (a weekend holiday: "25 Dec 2027 is a Saturday, so no working days change."), secondary "Cancel", danger-fill "Delete holiday". A failed delete keeps it open with a danger banner.
+  - Holidays aren't edited in place (the frame has no edit control): delete and add again. `PUT /admin/public-holidays/{id}` isn't used yet.
+  - States: "Loading public holidays…", load error with "Try again", empty "No public holidays for 2028 yet. Add them with “Add holiday”.", and the 403 card ("Only admins can manage public holidays.").
 
 - **05 Timesheets (FE-6.1):**
   - **Descriptions per entry** (the contract's `TimeEntry.description`): a message icon button in each row (between the project and Monday, in its own cell) opens a `BaseDialog` (520px) "Descriptions · DKB-CORE" with one text field per day that has hours ("Monday 19 Oct · 6 h", 500 characters max). Secondary "Cancel", primary "Apply"; Apply updates the grid and the week's Save sends it. The icon turns primary with a count when the row has descriptions. Read-only weeks show them as a list with "Close".
